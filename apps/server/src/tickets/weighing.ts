@@ -60,7 +60,12 @@ interface DbPoint extends Point {
  * does this first, so two trucks can never get the same one.
  */
 async function lockMaterial(tx: Transaction, materialId: number) {
-  const [row] = await tx.select().from(materials).where(eq(materials.id, materialId)).for("update");
+  // "no key update": others wait here, but saving a ticket of this material is not held up.
+  const [row] = await tx
+    .select()
+    .from(materials)
+    .where(eq(materials.id, materialId))
+    .for("no key update");
   return row!;
 }
 

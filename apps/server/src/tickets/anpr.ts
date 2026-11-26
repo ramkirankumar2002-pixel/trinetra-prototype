@@ -1,15 +1,16 @@
 // POST /api/anpr: read both plates of the truck on the bridge (build plan section 8).
 import {
   CAMERA_IDS,
+  PLATE_BLOCK_HOURS,
   type AnprCameraResult,
   type AnprResponse,
   type CameraId,
   type OpenTicket,
   type PlatesRead,
 } from "@trinetra/shared";
-import { and, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { photos } from "../db/schema";
+import { photos, tickets } from "../db/schema";
 import { AppError } from "../errors/app-error";
 import { PLATE_ATTEMPTS, platesDisagree, type PlateVisit } from "./anpr-session";
 import { bridgeNotReady } from "./blocked";
@@ -59,14 +60,40 @@ const openView = (ticket: TicketRow): OpenTicket => ({
   language: ticket.language,
 });
 
-/** The open ticket of the first plate that has one: the agreed plate, then front, then back. */
-async function openTicketFor(app: FastifyInstance, read: PlatesRead) {
-  const plates = [read.plate, read.cameras.front.plate, read.cameras.back.plate];
-  for (const plate of new Set(plates)) {
-    const ticket = plate ? await findOpenTicket(app.db, plate) : undefined;
+/** The plates to look up: the agreed one, then what the front and back cameras read. */
+const platesRead = (read: PlatesRead) =>
+  [...new Set([read.plate, read.cameras.front.plate, read.cameras.back.plate])].filter(
+    (plate): plate is string => plate !== null,
+  );
+
+/** The open ticket of the first plate that has one. */
+async function openTicketFor(app: FastifyInstance, plates: string[]) {
+  for (const plate of plates) {
+    const ticket = await findOpenTicket(app.db, plate);
     if (ticket) return ticket;
   }
   return undefined;
+}
+
+/**
+ * BLOCKED counts as closed, so that a new ticket is possible. The truck's blocked ticket
+ * is therefore looked up on its own.
+ */
+async function blockedTicketFor(app: FastifyInstance, plates: string[]) {
+  if (plates.length === 0) return undefined;
+  const [ticket] = await app.db
+    .select()
+    .from(tickets)
+    .where(
+      and(
+        inArray(tickets.plate, plates),
+        eq(tickets.status, "BLOCKED"),
+        gte(tickets.closedAt, new Date(Date.now() - PLATE_BLOCK_HOURS * 60 * 60 * 1000)),
+      ),
+    )
+    .orderBy(desc(tickets.id))
+    .limit(1);
+  return ticket;
 }
 
 export async function readTruckPlates(app: FastifyInstance, actor: Actor): Promise<AnprResponse> {
@@ -86,7 +113,9 @@ export async function readTruckPlates(app: FastifyInstance, actor: Actor): Promi
 
   const read = visit.last;
   const retriesUsedUp = visit.attempts >= PLATE_ATTEMPTS;
-  const open = await openTicketFor(app, read);
+  const plates = platesRead(read);
+  const open = await openTicketFor(app, plates);
+  const blocked = open ? undefined : await blockedTicketFor(app, plates);
 
   // A truck on its second visit starts no new ticket, so its photos and any warning are
   // saved here. A STARTED ticket is handled when the kiosk resumes it.
@@ -135,5 +164,6 @@ export async function readTruckPlates(app: FastifyInstance, actor: Actor): Promi
     photoIds: visit.photoIds,
     demo: read.demo,
     openTicket: open ? openView(open) : null,
+    blockedTicket: blocked ? openView(blocked) : null,
   };
 }

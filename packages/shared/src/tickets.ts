@@ -156,6 +156,11 @@ export interface AnprResponse {
   photoIds: string[];
   demo: boolean;
   openTicket: OpenTicket | null;
+  /**
+   * With no open ticket: this plate's ticket that a supervisor blocked in the last 24
+   * hours. The kiosk says the truck was not approved.
+   */
+  blockedTicket: OpenTicket | null;
 }
 
 export interface PhotoView {

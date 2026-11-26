@@ -79,6 +79,20 @@ describe.skipIf(!testDatabaseUrl)("POST /api/anpr", { timeout: 30_000 }, () => {
     expect((await read()).body.attempt).toBe(1);
   });
 
+  it("reports a ticket blocked in the last 24 hours, which no longer counts as open", async () => {
+    await h.call("kiosk", "POST", "/api/tickets", { plate: PLATE, language: "en", manual: true });
+    await h.db.execute("update tickets set status = 'BLOCKED', closed_at = now()");
+    h.cameras(PLATE);
+    h.weigh(32_560);
+    expect((await read()).body).toMatchObject({
+      openTicket: null,
+      blockedTicket: { plate: PLATE, status: "BLOCKED" },
+    });
+
+    await h.db.execute("update tickets set closed_at = now() - interval '25 hours'");
+    expect((await read()).body.blockedTicket).toBeNull();
+  });
+
   it("refuses a second read while one is running", async () => {
     h.cameras();
     h.weigh(32_560);
