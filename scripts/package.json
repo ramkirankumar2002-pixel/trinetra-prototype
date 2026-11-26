@@ -6,11 +6,13 @@
   "scripts": {
     "sim": "tsx esp32-sim.ts",
     "sim:plates": "tsx generate-sample-plates.ts",
+    "sim:invoices": "tsx generate-sample-invoices.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@trinetra/shared": "workspace:*",
+    "pdf-lib": "^1.17.1",
     "sharp": "^0.35.5",
     "tsx": "^4.23.15",
     "ws": "^8.23.0"

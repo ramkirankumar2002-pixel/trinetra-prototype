@@ -1,20 +1,25 @@
 // The readers as the rest of the backend uses them: real APIs, storage and database lists.
 import {
   CAMERA_IDS,
+  normalizePlate,
   platesMatch,
   type CameraId,
   type CameraPlateRead,
   type InvoiceRead,
   type PlatesRead,
 } from "@trinetra/shared";
+import { SAMPLE_INVOICES } from "@trinetra/shared/seed";
+import { eq } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import type { Env } from "../../config/env";
 import type { Database } from "../../db/client";
-import { materials, suppliers, transporters } from "../../db/schema";
+import { materials, suppliers, transporters, vehicles } from "../../db/schema";
+import { AppError } from "../../errors/app-error";
 import type { PhotoService } from "../../hardware/photos";
 import type { StorageService } from "../storage";
 import { createGemini } from "./gemini";
-import { readInvoiceWithGemini, type InvoiceLists } from "./invoice";
+import { interpretInvoice, readInvoiceWithGemini, type InvoiceLists } from "./invoice";
+import { loadReaderModes, type ReaderModes } from "./modes";
 import { createPlateReader } from "./plate-reader";
 import { createPlateRecognizer } from "./plate-recognizer";
 import { createUsageCounter } from "./usage";
@@ -62,11 +67,33 @@ export function createReaders(deps: ReaderDependencies) {
     log,
   });
 
+  const badDemoSetting = (message: string) => new AppError(409, "DEMO_SETTING_INVALID", message);
+
+  /** "pick" mode: the chosen plate from the vehicle list stands in for both cameras. */
+  async function pickedPlates(modes: ReaderModes): Promise<PlatesRead> {
+    const plate = normalizePlate(modes.demo_plate ?? "");
+    const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.plate, plate));
+    if (!vehicle) throw badDemoSetting("demo_plate is not a plate from the vehicle list.");
+    const camera: CameraPlateRead = {
+      plate,
+      source: "demo",
+      confidence: null,
+      validFormat: true,
+      ms: 0,
+      problems: [],
+      photoId: null,
+      cameraFailure: null,
+    };
+    return { cameras: { front: camera, back: camera }, match: true, plate, demo: true };
+  }
+
   /**
    * Takes a photo with each camera and reads both plates. `ticketId` is null before a
    * ticket exists. Camera and service failures are reported in the answer, not thrown.
    */
   async function readPlates(ticketId: number | null): Promise<PlatesRead> {
+    const modes = await loadReaderModes(db);
+    if (modes.anpr_mode === "pick") return pickedPlates(modes);
     const request = await photos.requestPhotos(ticketId);
 
     async function readCamera(camera: CameraId): Promise<CameraPlateRead> {
@@ -98,15 +125,24 @@ export function createReaders(deps: ReaderDependencies) {
     };
   }
 
-  /** Reads a processed invoice (JPEG or PDF). Throws a ReaderError if it cannot. */
+  /**
+   * Reads a processed invoice (JPEG or PDF). Throws a ReaderError if Gemini cannot be used.
+   * In "pick" mode the chosen sample invoice is returned and the file is not needed.
+   */
   async function readInvoice(
-    file: { data: Buffer; contentType: string },
+    file: { data: Buffer; contentType: string } | null,
     ticketPlate: string | null,
   ): Promise<InvoiceRead> {
-    return readInvoiceWithGemini(gemini, file, {
-      lists: await loadInvoiceLists(db),
-      ticketPlate,
-    });
+    const modes = await loadReaderModes(db);
+    const lists = await loadInvoiceLists(db);
+
+    if (modes.ocr_mode === "pick") {
+      const sample = SAMPLE_INVOICES.find((invoice) => invoice.id === modes.demo_invoice);
+      if (!sample) throw badDemoSetting("demo_invoice does not name a sample invoice.");
+      return interpretInvoice(sample.printed, { lists, ticketPlate, source: "demo", ms: 0 });
+    }
+    if (!file) throw new AppError(400, "NO_FILE", "No invoice file was sent.");
+    return readInvoiceWithGemini(gemini, file, { lists, ticketPlate });
   }
 
   return { readPlate, readPlates, readInvoice, usage, model: gemini.model };

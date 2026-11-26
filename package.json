@@ -19,6 +19,7 @@
     "db:seed": "pnpm --filter @trinetra/server run db:seed",
     "sim": "pnpm -C scripts run sim",
     "sim:plates": "pnpm -C scripts run sim:plates",
+    "sim:invoices": "pnpm -C scripts run sim:invoices",
     "db:create": "pnpm --filter @trinetra/server run db:create",
     "db:generate": "pnpm --filter @trinetra/server run db:generate",
     "db:studio": "pnpm --filter @trinetra/server run db:studio",

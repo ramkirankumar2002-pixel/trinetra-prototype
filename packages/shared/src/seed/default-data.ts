@@ -216,4 +216,12 @@ export const SEED_SETTINGS = {
   wake_threshold_kg: 500,
   // Placeholder: model weight to truck kilograms. Calibrate on the real model (Phase 5).
   scale_factor: 1,
+  // Demo replacements, if something fails on stage. "real" or "pick".
+  anpr_mode: "real",
+  ocr_mode: "real",
+  // Used only in "pick" mode: a plate from SEED_VEHICLES and an id from SAMPLE_INVOICES.
+  demo_plate: "MH12AB1234",
+  demo_invoice: "cement",
 } satisfies Record<string, number | string | boolean>;
+
+export * from "./sample-invoices";
