@@ -20,6 +20,7 @@
     "sim": "pnpm -C scripts run sim",
     "journey": "pnpm -C scripts run journey",
     "test:e2e": "pnpm --filter @trinetra/e2e run e2e",
+    "screenshots": "pnpm --filter @trinetra/e2e run screenshots",
     "sim:plates": "pnpm -C scripts run sim:plates",
     "sim:invoices": "pnpm -C scripts run sim:invoices",
     "sim:test-plates": "pnpm -C scripts run sim:test-plates",
