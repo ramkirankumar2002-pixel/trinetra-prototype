@@ -8,6 +8,7 @@ import { createDb } from "./db/client";
 import { registerErrorHandling, sendError } from "./errors/handler";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { registerTestRoutes } from "./routes/test-routes";
 
 export interface AppOptions {
   env: Env;
@@ -33,6 +34,7 @@ export async function buildApp({ env, logger = false, now }: AppOptions): Promis
   app.addHook("onClose", () => database.close());
 
   registerAuthRoutes(app, { env, db: database.db, lockout: new LoginLockout(now) });
+  if (env.NODE_ENV === "test") registerTestRoutes(app);
 
   app.addHook("onReady", async () => {
     app.log.info(`Trinetra backend ready for weighbridge ${WEIGHBRIDGE_ID}`);
