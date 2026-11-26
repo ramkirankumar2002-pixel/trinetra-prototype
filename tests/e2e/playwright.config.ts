@@ -16,7 +16,7 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   forbidOnly: !!process.env.CI,
   reporter: [["list"]],
-  use: { baseURL: WEB_URL, trace: "retain-on-failure" },
+  use: { baseURL: WEB_URL, trace: "retain-on-failure", screenshot: "only-on-failure" },
   // The Google Chrome already on the computer: nothing else is downloaded.
   projects: [{ name: "chrome", use: { ...devices["Desktop Chrome"], channel: "chrome" } }],
   webServer: [

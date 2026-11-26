@@ -10,9 +10,9 @@ const ROLES = [
     path: "kiosk",
     username: "wb01",
     size: { width: 1366, height: 768 },
-    // The shell's empty text, to see the language change.
-    english: "The screens for drivers will appear here.",
-    hindi: "ड्राइवर की स्क्रीन यहाँ दिखेंगी।",
+    // A heading of the Ready screen, to see the language change.
+    english: "Ready to collect",
+    hindi: "पर्ची तैयार है",
   },
   {
     path: "supervisor",
@@ -119,10 +119,8 @@ for (const role of ROLES) {
 
       // The shell: who is logged in and the live connection.
       await expect(page).toHaveURL(pageAt(`/${role.path}`));
-      await expect(
-        page.getByText(role.path === "kiosk" ? `Logged in: ${user.name}` : "Welcome,"),
-      ).toBeVisible();
       if (role.path !== "kiosk") {
+        await expect(page.getByText("Welcome,")).toBeVisible();
         await expect(page.getByRole("heading", { name: `Welcome, ${user.name}` })).toBeVisible();
       }
       await expect(page.getByTestId("connection")).toHaveText("Online");
@@ -174,6 +172,13 @@ for (const role of ROLES) {
       // On a phone the drawer is a dialog too; only it holds the Logout button.
       const logout = page.getByRole("button", { name: "Log out" });
       await inMenu(page, role.path, async () => {
+        // The weighbridge shows no Logout to drivers: staff hold the logo for it.
+        if (role.path === "kiosk") {
+          await page.getByTestId("rail-logo").hover();
+          await page.mouse.down();
+          await expect(page.getByRole("dialog", { name: "For staff" })).toBeVisible();
+          await page.mouse.up();
+        }
         await logout.click();
         await dialog.getByRole("button", { name: "No" }).click();
         await expect(dialog).toHaveCount(0);

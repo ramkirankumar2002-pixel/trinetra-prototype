@@ -21,6 +21,7 @@
     "journey": "pnpm -C scripts run journey",
     "test:e2e": "pnpm --filter @trinetra/e2e run e2e",
     "screenshots": "pnpm --filter @trinetra/e2e run screenshots",
+    "screenshots:kiosk": "pnpm --filter @trinetra/e2e run screenshots:kiosk && pnpm -C scripts run compress-screenshots ../docs/screenshots/phase10",
     "sim:plates": "pnpm -C scripts run sim:plates",
     "sim:invoices": "pnpm -C scripts run sim:invoices",
     "sim:test-plates": "pnpm -C scripts run sim:test-plates",

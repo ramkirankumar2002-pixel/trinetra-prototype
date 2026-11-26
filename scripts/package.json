@@ -6,6 +6,7 @@
   "scripts": {
     "sim": "tsx esp32-sim.ts",
     "journey": "tsx journey.ts",
+    "compress-screenshots": "tsx compress-screenshots.ts",
     "sim:plates": "tsx generate-sample-plates.ts",
     "sim:invoices": "tsx generate-sample-invoices.ts",
     "sim:test-plates": "tsx generate-test-plates.ts",

@@ -45,6 +45,13 @@ export async function expectDriverRules(page: Page) {
           problems.push(`cut off: ${name(element)}`);
         }
       }
+      // Lines that do not fit the height of a button or a box spill out of it.
+      if (
+        element.matches("button, [data-fits]") &&
+        element.scrollHeight > element.clientHeight + 2
+      ) {
+        problems.push(`spills out: ${name(element)}`);
+      }
       if (element.matches("button, a[data-slot=button]")) {
         if (box.height < 95.5) problems.push(`button ${box.height}px tall: ${name(element)}`);
         if (box.bottom > innerHeight + 1)
