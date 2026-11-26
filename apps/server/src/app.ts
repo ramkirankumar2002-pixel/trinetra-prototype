@@ -18,12 +18,14 @@ import { createSocketServer, type SocketServer } from "./realtime/socket-server"
 import { upgradesWithoutSocketIo } from "./realtime/upgrades";
 import { registerAnprRoutes } from "./routes/anpr";
 import { registerApprovalRoutes } from "./routes/approvals";
+import { registerDemoRoutes } from "./routes/demo";
 import { registerDevicePhotoRoute } from "./routes/device-photo";
 import { registerDevReaderRoutes } from "./routes/dev-readers";
 import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
 import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
 import { registerKioskRoutes } from "./routes/kiosk";
+import { registerPublicRoutes } from "./routes/public";
 import { registerStoreRoutes } from "./routes/store";
 import { registerSupervisorRoutes } from "./routes/supervisor";
 import { registerTestRoutes } from "./routes/test-routes";
@@ -137,6 +139,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerSupervisorRoutes(app);
   registerApprovalRoutes(app);
   registerStoreRoutes(app);
+  registerPublicRoutes(app);
+  registerDemoRoutes(app, env, now);
   await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
 
   registerHealthRoute(app, database.sql);

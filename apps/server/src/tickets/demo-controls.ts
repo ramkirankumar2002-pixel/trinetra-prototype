@@ -1,0 +1,109 @@
+// The demo settings (build plan section 12): replacements for the hardware and the
+// reading services if something fails on stage, and "Reset demo data".
+import type { DemoSettings, demoSettingsSchema } from "@trinetra/shared";
+import { SAMPLE_INVOICE_IDS } from "@trinetra/shared/seed";
+import { eq, inArray, sql } from "drizzle-orm";
+import type { FastifyInstance } from "fastify";
+import type { z } from "zod";
+import {
+  approvals,
+  photos,
+  settings,
+  ticketEvents,
+  tickets,
+  uploadLinks,
+  vehicles,
+} from "../db/schema";
+import { AppError } from "../errors/app-error";
+import type { Transaction } from "../realtime/after-commit";
+import { loadReaderModes } from "../services/readers/modes";
+
+export async function demoSettings(app: FastifyInstance): Promise<DemoSettings> {
+  const modes = await loadReaderModes(app.db);
+  const simulated = app.hardware.simulatedWeight.current();
+  return {
+    anprMode: modes.anpr_mode,
+    ocrMode: modes.ocr_mode,
+    demoPlate: modes.demo_plate ?? null,
+    demoInvoice: modes.demo_invoice ?? null,
+    weightMode: simulated ? "simulated" : "real",
+    simulatedWeight: simulated
+      ? { kg: simulated.kg, stable: simulated.stable, positionOk: simulated.pos }
+      : null,
+  };
+}
+
+async function saveSetting(tx: Transaction, key: string, value: string): Promise<void> {
+  await tx
+    .insert(settings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: settings.key, set: { value } });
+}
+
+export async function changeDemoSettings(
+  app: FastifyInstance,
+  changes: z.output<typeof demoSettingsSchema>,
+): Promise<DemoSettings> {
+  const { anprMode, ocrMode, demoPlate, demoInvoice, weightMode } = changes;
+  if (demoPlate !== undefined) {
+    const [vehicle] = await app.db.select().from(vehicles).where(eq(vehicles.plate, demoPlate));
+    if (!vehicle) {
+      throw new AppError(400, "UNKNOWN_PLATE", "Pick a plate from the vehicle list.");
+    }
+  }
+  if (
+    demoInvoice !== undefined &&
+    !(SAMPLE_INVOICE_IDS as readonly string[]).includes(demoInvoice)
+  ) {
+    throw new AppError(
+      400,
+      "UNKNOWN_INVOICE",
+      `Pick a sample invoice: ${SAMPLE_INVOICE_IDS.join(", ")}.`,
+    );
+  }
+
+  await app.db.transaction(async (tx) => {
+    const values = {
+      anpr_mode: anprMode,
+      ocr_mode: ocrMode,
+      demo_plate: demoPlate,
+      demo_invoice: demoInvoice,
+    };
+    for (const [key, value] of Object.entries(values)) {
+      if (value !== undefined) await saveSetting(tx, key, value);
+    }
+  });
+  if (weightMode === "real") app.hardware.simulatedWeight.stop();
+  return demoSettings(app);
+}
+
+/**
+ * Deletes the demo tickets with everything on them, and starts the trip numbers at 1
+ * again. Real tickets are untouched, and ticket numbers are never used a second time.
+ * Stored photo files stay: stored files are never removed.
+ */
+export async function resetDemoData(app: FastifyInstance): Promise<{ deletedTickets: number }> {
+  const deletedTickets = await app.db.transaction(async (tx) => {
+    // Lets the database trigger delete the timelines of demo tickets, in this transaction.
+    await tx.execute(sql`select set_config('trinetra.demo_reset', 'on', true)`);
+    const ids = (
+      await tx
+        .select({ id: tickets.id })
+        .from(tickets)
+        .where(eq(tickets.isDemo, true))
+        .for("update")
+    ).map((row) => row.id);
+    if (ids.length > 0) {
+      // In this order: requests point at photos, and everything points at tickets.
+      await tx.delete(approvals).where(inArray(approvals.ticketId, ids));
+      await tx.delete(uploadLinks).where(inArray(uploadLinks.ticketId, ids));
+      await tx.delete(ticketEvents).where(inArray(ticketEvents.ticketId, ids));
+      await tx.delete(photos).where(inArray(photos.ticketId, ids));
+      await tx.delete(tickets).where(inArray(tickets.id, ids));
+    }
+    await saveSetting(tx, "trip_count_from", new Date().toISOString());
+    return ids.length;
+  });
+  app.anpr.clear();
+  return { deletedTickets };
+}

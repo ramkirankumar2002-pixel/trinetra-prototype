@@ -212,6 +212,47 @@ describe.skipIf(!url)("database", { timeout: 60_000 }, () => {
       await expectRefused(connection.db.delete(schema.ticketEvents), "23001");
       expect(await connection.db.$count(schema.ticketEvents)).toBe(1);
     });
+
+    describe("the one exception: Reset demo data", () => {
+      /** A DELETE inside a transaction, with the reset switch on or off. */
+      const deleteEvents = (resetOn: boolean) =>
+        connection.db.transaction(async (tx) => {
+          if (resetOn) await tx.execute("select set_config('trinetra.demo_reset', 'on', true)");
+          await tx.delete(schema.ticketEvents);
+        });
+      const markDemo = () => connection.db.update(schema.tickets).set({ isDemo: true });
+
+      it("deletes a demo ticket's rows only while the reset is on", async () => {
+        await addEvent();
+        await markDemo();
+        await expectRefused(deleteEvents(false), "23001");
+        await deleteEvents(true);
+        expect(await connection.db.$count(schema.ticketEvents)).toBe(0);
+        // The switch ends with its transaction.
+        await connection.db
+          .insert(schema.ticketEvents)
+          .values({ ticketId: 1, type: "again", actor: "system" });
+        await expectRefused(connection.db.delete(schema.ticketEvents), "23001");
+      });
+
+      it("never deletes the rows of a real ticket", async () => {
+        await addEvent();
+        await expectRefused(deleteEvents(true), "23001");
+        expect(await connection.db.$count(schema.ticketEvents)).toBe(1);
+      });
+
+      it("never allows UPDATE", async () => {
+        await addEvent();
+        await markDemo();
+        await expectRefused(
+          connection.db.transaction(async (tx) => {
+            await tx.execute("select set_config('trinetra.demo_reset', 'on', true)");
+            await tx.update(schema.ticketEvents).set({ type: "changed" });
+          }),
+          "23001",
+        );
+      });
+    });
   });
 
   describe("approvals", () => {
