@@ -1,0 +1,22 @@
+# Optional: only for people who use Docker. A normal PostgreSQL 16 install works just as well.
+# Uses port 5433, the same as DATABASE_URL, so do not run it next to a local server on that port.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # local development only
+      POSTGRES_DB: trinetra
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - trinetra-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  trinetra-postgres:

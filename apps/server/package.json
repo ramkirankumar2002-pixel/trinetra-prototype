@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "node scripts/db-not-ready.mjs",
-    "db:seed": "node scripts/db-not-ready.mjs"
+    "db:seed": "node scripts/db-not-ready.mjs",
+    "db:create": "tsx src/db/create-databases.ts"
   },
   "dependencies": {
     "@trinetra/shared": "workspace:*",
-    "fastify": "^5.12.8"
+    "fastify": "^5.12.8",
+    "postgres": "^4.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.7",
