@@ -106,6 +106,16 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
   });
 
   describe("POST /api/upload/:code", () => {
+    it("answers 409 once the ticket has moved on, for both routes", async () => {
+      h.invoiceReads();
+      const { code } = (await link(await newTicket())).body;
+      await h.db.execute("update tickets set status = 'READY_FOR_SECOND'");
+      for (const response of [await h.call(null, "GET", `/api/upload/${code}`), await send(code)]) {
+        expect(response.status).toBe(409);
+        expect(response.body.error?.code).toBe("WRONG_STAGE");
+      }
+    });
+
     it("reads the invoice and saves it on the ticket, once", async () => {
       h.invoiceReads();
       const id = await newTicket();
@@ -184,7 +194,7 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
       expect((await view(second)).warnings).toMatchObject([{ type: "DUPLICATE_INVOICE" }]);
       expect(await h.eventTypes(first)).not.toContain("INVOICE_DUPLICATE");
       const store = await h.call<{ warnings: unknown[] }>("store", "GET", "/api/store/requests");
-      if (store.status === 200) expect(store.body.warnings).toHaveLength(1);
+      expect(store.body.warnings).toMatchObject([{ type: "DUPLICATE_INVOICE" }]);
     });
 
     it("does not warn for another supplier", async () => {
