@@ -113,7 +113,8 @@ function quit(): void {
   clearInterval(sender);
   devices.forEach((device) => device.close());
   if (process.stdin.isTTY) process.stdin.setRawMode(false);
-  process.stdin.pause();
+  // pause() is not enough: on Windows an open input stream keeps the process running.
+  process.stdin.destroy();
   log("simulator stopped");
 }
 
