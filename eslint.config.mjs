@@ -11,6 +11,8 @@ export default defineConfig(
     "**/dist/**",
     "**/coverage/**",
     "**/next-env.d.ts",
+    "**/test-results/**",
+    "**/playwright-report/**",
   ]),
   js.configs.recommended,
   tseslint.configs.recommended,

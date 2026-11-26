@@ -1,0 +1,16 @@
+{
+  "name": "@trinetra/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@trinetra/shared": "workspace:*",
+    "@types/node": "^22",
+    "typescript": "~6.0.3"
+  }
+}

@@ -19,6 +19,7 @@
     "db:seed": "pnpm --filter @trinetra/server run db:seed",
     "sim": "pnpm -C scripts run sim",
     "journey": "pnpm -C scripts run journey",
+    "test:e2e": "pnpm --filter @trinetra/e2e run e2e",
     "sim:plates": "pnpm -C scripts run sim:plates",
     "sim:invoices": "pnpm -C scripts run sim:invoices",
     "sim:test-plates": "pnpm -C scripts run sim:test-plates",

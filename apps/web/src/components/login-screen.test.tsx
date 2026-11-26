@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createQueryClient } from "@/lib/query-client";
 import { LoginScreen } from "./login-screen";
@@ -51,6 +52,22 @@ function type(username: string, pin: string) {
 const submit = () => act(async () => void fireEvent.click(button("Log in")));
 
 describe("login page", () => {
+  it("cannot be typed in before the browser has taken the page over", () => {
+    const page = document.createElement("div");
+    // As the server sends it.
+    page.innerHTML = renderToString(
+      <QueryClientProvider client={createQueryClient()}>
+        <LoginScreen area="store" goTo={goTo} />
+      </QueryClientProvider>,
+    );
+    expect(page.querySelector("input")!.disabled).toBe(true);
+    const keys = page.querySelectorAll<HTMLButtonElement>('[role="group"] button');
+    expect([...keys].slice(0, 12).every((key) => key.disabled)).toBe(true);
+
+    open();
+    expect((screen.getByLabelText("Username") as HTMLInputElement).disabled).toBe(false);
+  });
+
   it("needs a username and at least 4 digits", () => {
     open();
     type("ram", "200");

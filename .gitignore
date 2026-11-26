@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Playwright output
+test-results/
+playwright-report/
+
 # Build output
 .next/
 out/

@@ -98,6 +98,13 @@ export function LoginScreen({
     () => "",
   );
   const username = typed ?? remembered;
+  // False in the page the server sends. Until React has taken it over, anything typed
+  // would be wiped, so the form waits.
+  const interactive = useSyncExternalStore(
+    neverChanges,
+    () => true,
+    () => false,
+  );
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -189,6 +196,7 @@ export function LoginScreen({
               {t("login.username")}
               <input
                 name="username"
+                disabled={!interactive}
                 value={username}
                 onChange={(event) => setTyped(event.target.value)}
                 autoComplete="username"
@@ -238,7 +246,7 @@ export function LoginScreen({
               value={pin}
               onChange={setPin}
               maxLength={PIN_MAX}
-              disabled={busy || locked}
+              disabled={!interactive || busy || locked}
               labels={{
                 pad: t("numberPad.label"),
                 clear: t("numberPad.clear"),
