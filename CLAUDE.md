@@ -76,6 +76,6 @@ Related docs:
 
 ## Current status
 
-Phase 0 done by hand. Next: Phase 1.
+Phase 1 done. Next: Phase 2.
 
 *(Update this section at the end of every phase.)*

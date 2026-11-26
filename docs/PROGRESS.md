@@ -18,19 +18,21 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 ## Phase 1 — Project setup
 
-- [ ] **8.** Create a private GitHub repository `trinetra-prototype` and clone it.
-- [ ] **9.** Create the folders above and `pnpm-workspace.yaml`.
-- [ ] **10.** Add root scripts: `dev`, `build`, `test`, `lint`, `db:migrate`, `db:seed`.
-- [ ] **11.** Add a shared strict TypeScript config.
-- [ ] **12.** Add ESLint, Prettier, `.editorconfig`, `.gitignore` (node_modules, `.env*`, `.next`, `dist`, `uploads`).
-- [ ] **13.** Add `.env.example` for server and web (section 4).
-- [ ] **14.** Create the Next.js app in `apps/web` (TypeScript, Tailwind, App Router) and add shadcn/ui.
-- [ ] **15.** Create the Fastify app in `apps/server` (run with `tsx` in development, build with `tsup`).
-- [ ] **16.** Create `packages/shared` and import it from both apps.
+- [x] **8.** Create a private GitHub repository `trinetra-prototype` and clone it.
+- [x] **9.** Create the folders above and `pnpm-workspace.yaml`.
+- [x] **10.** Add root scripts: `dev`, `build`, `test`, `lint`, `db:migrate`, `db:seed`.
+- [x] **11.** Add a shared strict TypeScript config.
+- [x] **12.** Add ESLint, Prettier, `.editorconfig`, `.gitignore` (node_modules, `.env*`, `.next`, `dist`, `uploads`).
+- [x] **13.** Add `.env.example` for server and web (section 4).
+- [x] **14.** Create the Next.js app in `apps/web` (TypeScript, Tailwind, App Router) and add shadcn/ui.
+- [x] **15.** Create the Fastify app in `apps/server` (run with `tsx` in development, build with `tsup`).
+- [x] **16.** Create `packages/shared` and import it from both apps.
 - [x] **17.** Make `pnpm dev` start both: website on port 3000, backend on port 4000.
-- [ ] **18.** Write the README (how to install and run) and push the first commit.
+- [x] **18.** Write the README (how to install and run) and push the first commit.
 
 **Done when:** `localhost:3000` shows a page and `localhost:4000/api/health` answers `ok`.
+
+✅ Passed on 2026-11-26 (run on Node 26.13.1; Node 22 not yet tested). Step 8: the repository already existed and is **public**, not private.
 
 ## Phase 2 — Database
 

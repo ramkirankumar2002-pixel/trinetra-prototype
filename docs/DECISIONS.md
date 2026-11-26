@@ -50,3 +50,16 @@ One row per decision. All rows dated 2026-11-26 come from the [build plan](BUILD
 | 2026-11-26 | `ticket_events` is append-only; only the backend changes ticket status | Corrections add new events; nothing is overwritten |
 | 2026-11-26 | Weights stored as whole kilograms; times stored in UTC, shown in IST; ticket number `WB01-YYYYMMDD-NNNN`; plates normalised before matching | Consistent storage, display and matching |
 | 2026-11-26 | Demo date is not fixed; phases are followed in order | Not stated in plan |
+| 2026-11-26 | pnpm 10 (version pinned in `packageManager`), installed with `npm install -g` | Corepack is not available with Node 26; pnpm 10 is a mature release line |
+| 2026-11-26 | Project targets Node 22 (`.nvmrc`, `engines` >=22.18.0, server build target `node22`) | Plan says Node 22 LTS; the development machine currently has Node 26.13.1, so Node 22 is still untested |
+| 2026-11-26 | TypeScript 6.0, not 7 | typescript-eslint supports TypeScript below 6.1 only |
+| 2026-11-26 | ESLint 9, not 10, with one flat config at the root (Next.js rules apply to `apps/web`) | Plugins used by `eslint-config-next` do not support ESLint 10; ESLint 9 shows a "no longer supported" warning, so upgrade when they do |
+| 2026-11-26 | Only `esbuild` may run an install script (`onlyBuiltDependencies`) | pnpm blocks install scripts; esbuild is the only one that was needed |
+| 2026-11-26 | LF line endings everywhere (`.gitattributes`, `.editorconfig`, Prettier) | Same files on Windows and on the Linux hosts |
+| 2026-11-26 | Prettier does not format `docs/` or `CLAUDE.md` | Keeps the hand-written master plan unchanged |
+| 2026-11-26 | Fonts come from `@fontsource-variable/noto-sans` and `noto-sans-devanagari`, not `next/font/google` | The kiosk must work on weak networks |
+| 2026-11-26 | shadcn/ui added with the Radix base and Nova preset; its registry was reachable. Its default Geist font was removed | No fallback to hand-written components is needed; Noto fonts are the Tailwind sans font |
+| 2026-11-26 | Class names are merged with shadcn's `cn` package | Installed by the current shadcn setup in place of `clsx` + `tailwind-merge` |
+| 2026-11-26 | Next.js `agentRules` is off | Stops `next dev` writing `AGENTS.md`; project rules live in `CLAUDE.md` |
+| 2026-11-26 | Next.js "Cache Components" and partial prefetching (turned on by the app generator) are off | Not in the plan, and the live screens do not need them yet |
+| 2026-11-26 | `packages/shared` is plain TypeScript with no build step: Next transpiles it and tsup bundles it into the server | One source of truth with nothing extra to build |
