@@ -25,6 +25,7 @@ import { registerHealthRoute } from "./routes/health";
 import { registerKioskRoutes } from "./routes/kiosk";
 import { registerTestRoutes } from "./routes/test-routes";
 import { registerTicketRoutes } from "./routes/tickets";
+import { registerUploadRoutes } from "./routes/upload";
 import { createReaders, type Readers } from "./services/readers";
 import { createStorage, LocalStorage, type StorageService } from "./services/storage";
 import { AnprSession } from "./tickets/anpr-session";
@@ -128,7 +129,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.decorate("anpr", anpr);
   hardware.bus.on("truck:left", () => anpr.clear());
   registerAnprRoutes(app);
-  registerTicketRoutes(app);
+  registerTicketRoutes(app, env);
+  registerUploadRoutes(app);
   await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
 
   registerHealthRoute(app, database.sql);

@@ -1,7 +1,9 @@
-import { createTicketSchema } from "@trinetra/shared";
+import { createTicketSchema, emptyBodySchema } from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/guard";
+import type { Env } from "../config/env";
 import { AppError } from "../errors/app-error";
+import { createUploadLink } from "../tickets/invoice-upload";
 import { getTicket, userActor } from "../tickets/repo";
 import { startTicket } from "../tickets/start";
 import { ticketView } from "../tickets/view";
@@ -10,7 +12,7 @@ import { idOf } from "./params";
 export const notYourTicket = () =>
   new AppError(403, "NOT_YOUR_TICKET", "This truck was not sent to you.");
 
-export function registerTicketRoutes(app: FastifyInstance): void {
+export function registerTicketRoutes(app: FastifyInstance, env: Env): void {
   const kiosk = { preHandler: requireRole("KIOSK") };
 
   app.post("/api/tickets", kiosk, async (request, reply) => {
@@ -18,6 +20,11 @@ export function registerTicketRoutes(app: FastifyInstance): void {
     const result = await startTicket(app, body, userActor(request.user.userId));
     reply.status(result.resumed ? 200 : 201);
     return result;
+  });
+
+  app.post("/api/tickets/:id/upload-link", kiosk, async (request) => {
+    emptyBodySchema.parse(request.body);
+    return createUploadLink(app, env, idOf(request.params), userActor(request.user.userId));
   });
 
   app.get(

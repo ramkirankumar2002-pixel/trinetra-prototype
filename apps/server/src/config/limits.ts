@@ -10,6 +10,12 @@ export const LOGIN_RATE_LIMIT = { max: 20, timeWindow: "1 minute" };
 /** The kiosk may read the live state up to 20 times a second. */
 export const KIOSK_STATE_RATE_LIMIT = { max: 1200, timeWindow: "1 minute" };
 
+/** The phone upload routes need no login, so they get a tighter limit. */
+export const UPLOAD_RATE_LIMIT = { max: 30, timeWindow: "1 minute" };
+
+/** How long the QR code for the invoice upload works. */
+export const UPLOAD_LINK_MS = 10 * 60 * 1000;
+
 export const SESSION_SECONDS = 12 * 60 * 60;
 export const SOCKET_TOKEN_SECONDS = 60;
 

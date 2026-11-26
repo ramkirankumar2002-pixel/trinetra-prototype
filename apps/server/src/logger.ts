@@ -10,6 +10,7 @@ const SECRET_FIELDS = [
   "cookie",
   "set-cookie",
   "x-device-token",
+  "x-admin-pin",
   "x-goog-api-key",
   "apiKey",
 ];
@@ -26,9 +27,11 @@ const redactPaths = SECRET_FIELDS.flatMap((field) =>
   [0, 1, 2, 3].map((depth) => redactPath(field, depth)),
 );
 
-/** Hides secrets that travel in the address, such as the signature of a file link. */
+/** Hides secrets that travel in the address: file link signatures and invoice upload codes. */
 export function scrubUrl(url: string): string {
-  return url.replace(/([?&](?:sig|token)=)[^&]*/g, "$1[Redacted]");
+  return url
+    .replace(/([?&](?:sig|token)=)[^&]*/g, "$1[Redacted]")
+    .replace(/(\/api\/upload\/)[^/?]+/g, "$1[Redacted]");
 }
 
 export function loggerOptions(
