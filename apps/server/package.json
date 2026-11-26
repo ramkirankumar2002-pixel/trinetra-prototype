@@ -17,11 +17,13 @@
   },
   "dependencies": {
     "@trinetra/shared": "workspace:*",
+    "bcrypt": "^6.0.0",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
     "postgres": "^4.1.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.20.7",
     "drizzle-kit": "^0.31.11",
     "tsup": "^9.0.0",
