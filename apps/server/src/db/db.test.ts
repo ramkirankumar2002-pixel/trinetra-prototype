@@ -8,9 +8,9 @@ import { PgTable } from "drizzle-orm/pg-core";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createDb } from "./client";
 import { loadEnv } from "./env";
-import { migrateDatabase } from "./migrate";
 import * as schema from "./schema";
 import { seedDatabase } from "./seed";
+import { resetTestDatabase } from "../test/database";
 
 loadEnv();
 const url = process.env.TEST_DATABASE_URL;
@@ -46,16 +46,8 @@ describe.skipIf(!url)("database", { timeout: 60_000 }, () => {
       .returning({ id: schema.tickets.id });
 
   beforeAll(async () => {
-    // Everything below deletes data, so refuse anything that is not clearly a test database.
-    const name = new URL(url!).pathname.slice(1);
-    if (!name.endsWith("_test")) {
-      throw new Error(`TEST_DATABASE_URL must name a database ending in "_test", not "${name}".`);
-    }
+    await resetTestDatabase(url!);
     connection = createDb(url!, { max: 1 });
-    await connection.sql.unsafe(
-      "drop schema if exists drizzle cascade; drop schema public cascade; create schema public;",
-    );
-    await migrateDatabase(url!);
   }, 60_000);
 
   beforeEach(async () => {

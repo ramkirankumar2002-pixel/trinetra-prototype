@@ -11,4 +11,5 @@ export interface HealthResponse {
 }
 
 export * from "./api";
+export * from "./auth";
 export * from "./domain";
