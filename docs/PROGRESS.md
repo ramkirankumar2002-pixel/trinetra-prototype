@@ -104,12 +104,14 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 ## Phase 6 — Real-time events
 
-- [ ] **52.** Attach Socket.IO to the backend; accept connections only with a valid socket token.
-- [ ] **53.** Put each connection in its room (kiosk, supervisor:id, store, live).
-- [ ] **54.** Add one helper that sends events **after** the database change is saved.
-- [ ] **55.** Frontend hook: connect, reconnect by itself, reload data after reconnecting.
+- [x] **52.** Attach Socket.IO to the backend; accept connections only with a valid socket token.
+- [x] **53.** Put each connection in its room (kiosk, supervisor:id, store, live).
+- [x] **54.** Add one helper that sends events **after** the database change is saved.
+- [x] **55.** Frontend hook: connect, reconnect by itself, reload data after reconnecting.
 
 **Done when:** an event sent from the backend appears in two browser tabs at once.
+
+✅ Passed on 2026-11-26 in the built-in browser with `pnpm dev` and the simulator: two `/dev/live` tabs showed the same events within 2 ms; the weight on screen changed 51 ms after pressing `a`; offline and back online appeared with `o`; both tabs reconnected by themselves after a backend restart.
 
 ## Phase 7 — ANPR and invoice OCR
 

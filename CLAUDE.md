@@ -80,14 +80,18 @@ Related docs:
 
 ## Current status
 
-Phase 5A done. Next: Phase 5B (needs hardware code) or Phase 6.
+Phase 6 done. Next: Phase 5B (needs hardware code) or Phase 7. Phase 5 is still open.
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website.
 
 Settle before the phases that need it:
 
 - **Phase 5B:** do not tick Phase 5 until 5B passes. The firmware must follow the device protocol in the README ("Device connection"). Send a heartbeat or weight often enough: the main ESP32 is offline after 3 s of silence, a camera after 15 s.
-- **Phase 6:** forward the events on `app.hardware.bus` (`hw:weight`, `hw:status`, `truck:arrived`, `truck:left`) to the browsers.
+- **Phase 8:** change data inside `app.eventTransaction()` and announce it with `emitAfterCommit()`. Event names, payloads and who may receive each are in `packages/shared/src/realtime.ts`. The "live" room needs no login: never put names, phones or plates in an event it receives.
+- **Phase 8/10:** the backend keeps "truck on the bridge" in memory, so after a restart `truck:arrived` fires again for a truck already there. Events missed while disconnected are not resent: pages reload over REST (`useOnReconnect`).
+- **Phase 9 (important):** the login cookie must be same-site. When adding the `/api` rewrite (step 76), make the browser call `/api/...` on the website's own address, including the socket-token request in `lib/socket.ts`. Today it calls `NEXT_PUBLIC_API_URL` directly, which works on localhost but would not send the cookie from Vercel to Railway.
+- **Phase 9:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires.
+- **Before Phase 16:** the "live" room has no limit on how many viewers can connect.
 - **Phase 8:** to capture a weight, call `app.hardware.state.canCapture()` once and save the `kg` from that same answer. Never take a weight from a request.
 - **Phase 8:** a `PLATE_WARNING` needs `plateWarningReason`. Only `BLOCKED_HISTORY` goes into `plateCheck`; `FRONT_BACK_MISMATCH` never blocks.
 - **Phase 7/8:** `app.hardware.photos.requestPhotos(ticketId)` takes the plate photos (`ticketId` null before a ticket exists; link the photo rows to the ticket when it starts). Photos are saved as received; resizing with sharp is step 56.

@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 5A (hardware link, backend side). The backend receives weights and camera photos from devices, and a simulator stands in for the weighbridge. The real firmware (Phase 5B) and the screens are not built yet.
+**Current state:** Phase 6 (live events). The backend pushes weights and board status to browsers, and `/dev/live` shows them using the simulator. The real firmware (Phase 5B) and the screens are not built yet.
 
 ## Folder layout
 
@@ -232,6 +232,58 @@ Put a different random value (at least 16 characters) in each of `DEVICE_TOKEN`,
 ```powershell
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
+
+## Live events
+
+The backend pushes news to the browsers with **Socket.IO** on the same port as the API (4000). Browsers only listen.
+
+- A page first calls `GET /api/auth/socket-token` with its login cookie, then connects with that token, which lasts 60 seconds. A new one is fetched for every reconnection. A missing, wrong or expired token is refused. The connection ends when the login expires.
+- The **backend** puts each connection in its room: kiosk, `supervisor:<userId>` or store. A browser cannot choose.
+- The **live** room (for the projector screen) needs no login: connect with `{ live: true }`. It is read-only.
+- Only the website at `FRONTEND_ORIGIN` may connect from a browser.
+
+| Event                         | Sent to                        | Carries                                                             |
+| ----------------------------- | ------------------------------ | ------------------------------------------------------------------- |
+| `hw:weight`                   | kiosk                          | kg, stable, positionOk, canCapture, reason, at (at most 5 a second) |
+| `hw:status`                   | kiosk, live                    | main, front, back online; also sent to each screen as it connects   |
+| `truck:arrived`, `truck:left` | kiosk                          | kg, at                                                              |
+| `ticket:updated`              | kiosk, supervisor, store, live | ticketId, status                                                    |
+| `approval:new`                | supervisor, store              | approvalId, ticketId, kind                                          |
+| `approval:decided`            | kiosk, supervisor, store       | the same, and status                                                |
+| `kiosk:ready`                 | kiosk                          | ticketId, ticketNo, plate                                           |
+| `invoice:read`                | kiosk                          | ticketId                                                            |
+
+The ticket, approval and invoice events are defined but nothing sends them until Phase 8. The names and types are in [packages/shared/src/realtime.ts](packages/shared/src/realtime.ts).
+
+**Backend code** sends news about saved data only after the save:
+
+```ts
+await app.eventTransaction(async (tx) => {
+  // ...database changes using tx...
+  emitAfterCommit("ticket:updated", ["kiosk", "store"], { ticketId, status });
+});
+```
+
+If the transaction rolls back, nothing is sent. **Website code** uses `useSocketEvent(name, handler)` and `useOnReconnect(reload)` from `apps/web/src/lib/socket-hooks.ts`.
+
+### Try it: /dev/live
+
+A development-only test page (a 404 in production builds).
+
+1. Start the website and backend (skip this if `pnpm dev` is already running):
+
+   ```powershell
+   pnpm dev
+   ```
+
+2. In a second terminal, start the simulator:
+
+   ```powershell
+   pnpm sim
+   ```
+
+3. Open <http://localhost:3000/dev/live>. Use `localhost`, not `127.0.0.1` or the computer's IP address: the backend allows only the website address in `FRONTEND_ORIGIN`.
+4. Log in as `wb01` with the kiosk demo PIN (printed by `pnpm db:seed`).
 
 ## Environment files
 

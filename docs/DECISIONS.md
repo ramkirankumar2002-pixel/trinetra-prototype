@@ -128,3 +128,13 @@ One row per decision. All rows dated 2026-11-26 come from the [build plan](BUILD
 | 2026-11-26 | `GET /api/kiosk/state` allows 1200 requests a minute | The general limit of 300 would block a kiosk asking several times a second |
 | 2026-11-26 | The simulator is the `@trinetra/scripts` workspace package; it has an extra key `m` and `--mismatch` to send the mismatched plate pair | Gets its own type check and tests |
 | 2026-11-26 | `NODE_ENV=test` also adds `POST /api/test/photos` and `POST /api/test/command` (kiosk login) | To try the hardware before the kiosk APIs exist |
+| 2026-11-26 | Socket.IO shares port 4000 with `/device`. `@fastify/websocket` listens through a gate that leaves `/socket.io/` upgrades to Socket.IO | Otherwise it would answer Socket.IO's connections itself |
+| 2026-11-26 | Besides CORS, the Origin of every Socket.IO connection is checked; requests without an Origin are not from a web page and still need a token | CORS does not cover WebSockets |
+| 2026-11-26 | The live room is joined by connecting with `{ live: true }` and no token; a bad token is refused even with `live: true` | The only choice a browser has is the public read-only room |
+| 2026-11-26 | Socket tokens carry when the login ends, and the server closes the connection then | A token is checked only when connecting |
+| 2026-11-26 | Each event has a fixed list of rooms it may go to; publishing elsewhere, or to no room, is an error | Keeps private events out of the public live room; Socket.IO treats an empty room list as everyone |
+| 2026-11-26 | `hw:weight` is limited to one every 200 ms; an early reading is delayed, not dropped, and none follows the news that the weighbridge is offline | A reading a moment early must not halve the update rate |
+| 2026-11-26 | A kiosk or live screen is sent `hw:status` as soon as it connects | A new screen need not wait for a change |
+| 2026-11-26 | `emitAfterCommit` works only inside `app.eventTransaction()` (found with AsyncLocalStorage) and throws elsewhere; nested ones are savepoints; a failure to send after a commit is logged, not thrown | Gives the requested signature without losing events silently or reporting a saved change as failed |
+| 2026-11-26 | The website defaults to `http://localhost:4000` in development; a production build must set NEXT_PUBLIC_API_URL and NEXT_PUBLIC_SOCKET_URL | Nothing to configure locally, and no silent wrong address when deployed |
+| 2026-11-26 | `/dev/live` groups consecutive weights into one of its 20 rows | At 5 a second, weights would push every other event out of the list within 4 seconds |
