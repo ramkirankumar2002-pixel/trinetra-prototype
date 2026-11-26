@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { LayoutKind } from "@/components/layout/layout-context";
+import type { ThemeName } from "@/components/layout/theme-context";
 import { PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ function Samples() {
   );
 }
 
-export function UiPanel({ layout }: { layout: LayoutKind }) {
+export function UiPanel({ layout }: { layout: ThemeName }) {
   return (
     <PageShell
       layout={layout}

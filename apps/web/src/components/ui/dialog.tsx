@@ -3,7 +3,7 @@
 import { cn } from "cn";
 import { Dialog as Primitive } from "radix-ui";
 import type { ReactNode } from "react";
-import { useLayout } from "../layout/layout-context";
+import { useTheme } from "../layout/theme-context";
 
 export const Dialog = Primitive.Root;
 export const DialogTrigger = Primitive.Trigger;
@@ -21,12 +21,12 @@ export function DialogContent({
   children?: ReactNode;
   className?: string;
 }) {
-  const layout = useLayout();
+  const theme = useTheme();
   return (
     <Primitive.Portal>
       <Primitive.Overlay className="fixed inset-0 z-40 bg-black/60" />
       <Primitive.Content
-        data-layout={layout}
+        data-theme={theme}
         // Without a description, say so, or Radix warns.
         {...(description ? {} : { "aria-describedby": undefined })}
         className={cn(

@@ -167,7 +167,7 @@ export function LoginScreen({
 
   return (
     <PageShell
-      layout={area === "kiosk" ? "kiosk" : "phone"}
+      layout={area === "kiosk" ? "kiosk" : "dashboard"}
       brand={t("app.name")}
       title={t(`area.${area}`)}
       bottomBar={<LanguageSwitch />}

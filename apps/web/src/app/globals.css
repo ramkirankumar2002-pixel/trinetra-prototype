@@ -2,158 +2,288 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
-/* The kiosk layout: text at least 32 px, buttons at least 96 px tall. */
-@custom-variant kiosk (&:where([data-layout="kiosk"], [data-layout="kiosk"] *));
+/*
+ * Two themes (docs/design/STYLE_GUIDE.md):
+ *   kiosk      dark navy, glass cards, glowing blue and cyan; for the weighbridge screen
+ *   dashboard  navy bars on a light page with white cards; for everything else
+ * A theme is switched on by data-theme on an element (ThemeRoot). Components use the
+ * token names (bg-card, text-primary-foreground …), never a colour value.
+ */
+@custom-variant kiosk (&:where([data-theme="kiosk"], [data-theme="kiosk"] *));
 
 @theme inline {
-  /* Signal colours. Never colour alone: always with an icon and a word. */
-  --color-go: var(--go);
-  --color-go-foreground: var(--go-foreground);
-  --color-go-soft: var(--go-soft);
-  --color-go-ink: var(--go-ink);
-  --color-wait: var(--wait);
-  --color-wait-foreground: var(--wait-foreground);
-  --color-wait-soft: var(--wait-soft);
-  --color-wait-ink: var(--wait-ink);
-  --color-stop: var(--stop);
-  --color-stop-foreground: var(--stop-foreground);
-  --color-stop-soft: var(--stop-soft);
-  --color-stop-ink: var(--stop-ink);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-heading: var(--font-sans);
   /* Noto Sans for English; Hindi characters fall through to Noto Sans Devanagari. */
   --font-sans:
     "Noto Sans Variable", "Noto Sans Devanagari Variable", ui-sans-serif, system-ui, sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-solid: var(--card-solid);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-border: var(--card-border);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-field: var(--field);
   --color-input: var(--input);
   --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-ring: var(--ring);
   --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-live: var(--live);
+
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-primary-to: var(--primary-to);
+  --color-primary-edge: var(--primary-edge);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-border: var(--secondary-border);
+  --color-outline-ink: var(--outline-ink);
+  --color-outline-edge: var(--outline-edge);
+  --color-destructive: var(--stop);
+
+  /* Status colours. Never colour alone: always with an icon and a word. */
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+  --color-wait: var(--wait);
+  --color-wait-foreground: var(--wait-foreground);
+  --color-wait-soft: var(--wait-soft);
+  --color-wait-ink: var(--wait-ink);
+  --color-go: var(--go);
+  --color-go-to: var(--go-to);
+  --color-go-edge: var(--go-edge);
+  --color-go-foreground: var(--go-foreground);
+  --color-go-soft: var(--go-soft);
+  --color-go-ink: var(--go-ink);
+  --color-stop: var(--stop);
+  --color-stop-to: var(--stop-to);
+  --color-stop-edge: var(--stop-edge);
+  --color-stop-foreground: var(--stop-foreground);
+  --color-stop-soft: var(--stop-soft);
+  --color-stop-ink: var(--stop-ink);
+  --color-idle: var(--idle);
+  --color-idle-foreground: var(--idle-foreground);
+  --color-idle-soft: var(--idle-soft);
+  --color-idle-ink: var(--idle-ink);
+
+  /* Sidebar, rail and top bar. */
+  --color-nav: var(--nav);
+  --color-nav-foreground: var(--nav-foreground);
+  --color-nav-muted: var(--nav-muted);
+  --color-nav-active: var(--nav-active);
+  --color-nav-active-to: var(--nav-active-to);
+  --color-nav-danger: var(--nav-danger);
+  --color-bar: var(--bar);
+  --color-bar-to: var(--bar-to);
+
+  /* KPI icon circles. */
+  --color-kpi-blue: var(--kpi-blue);
+  --color-kpi-blue-ink: var(--kpi-blue-ink);
+  --color-kpi-orange: var(--kpi-orange);
+  --color-kpi-orange-ink: var(--kpi-orange-ink);
+  --color-kpi-green: var(--kpi-green);
+  --color-kpi-green-ink: var(--kpi-green-ink);
+  --color-kpi-purple: var(--kpi-purple);
+  --color-kpi-purple-ink: var(--kpi-purple-ink);
+
+  --shadow-card: var(--card-shadow);
+  --shadow-primary: var(--primary-shadow);
+  --shadow-go: var(--go-shadow);
+  --shadow-stop: var(--stop-shadow);
 }
 
+/* Shared by both themes: the logo's navy, which the logo images need behind them. */
 :root {
-  /* Each pair has a contrast of at least 4.5 : 1. */
-  --go: #15803d;
-  --go-foreground: #ffffff;
-  --go-soft: #dcfce7;
-  --go-ink: #14532d;
-  --wait: #fb923c;
-  --wait-foreground: #1c1917;
-  --wait-soft: #ffedd5;
-  --wait-ink: #7c2d12;
-  --stop: #b91c1c;
-  --stop-foreground: #ffffff;
-  --stop-soft: #fee2e2;
-  --stop-ink: #7f1d1d;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --nav: #06182b;
+  --nav-foreground: #ffffff;
+  --nav-muted: #aebfd6;
+  --nav-active: #0a62e0;
+  --nav-active-to: #063f9a;
+  --nav-danger: #ff7b82;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* ---- Dashboard theme (the default) ---- */
+:root,
+[data-theme="dashboard"] {
+  color-scheme: light;
+  --background: #f2f6fb;
+  --foreground: #0f1c33;
+  --card: #ffffff;
+  --card-solid: #ffffff;
+  --card-foreground: #0f1c33;
+  --card-border: #e3eaf4;
+  --popover: #ffffff;
+  --popover-foreground: #0f1c33;
+  --field: #ffffff;
+  --input: #b9c6da;
+  --border: #e3eaf4;
+  --ring: #3b8bff;
+  --muted: #eef2f8;
+  --muted-foreground: #4f5d75;
+  --accent: #e8f1fe;
+  --accent-foreground: #0757b8;
+  --highlight: #0757b8;
+  --live: #0f7a3b;
+
+  --primary: #0a6ae6;
+  --primary-to: #0757c7;
+  --primary-edge: #0a62d6;
+  --primary-foreground: #ffffff;
+  --secondary: #14304f;
+  --secondary-foreground: #ffffff;
+  --secondary-border: #14304f;
+  --outline-ink: #0757c7;
+  --outline-edge: #8db8f5;
+
+  --info: #0a62d6;
+  --info-foreground: #ffffff;
+  --info-soft: #e1f0fe;
+  --info-ink: #0753ad;
+  --wait: #f9a23b;
+  --wait-foreground: #231503;
+  --wait-soft: #feeed6;
+  --wait-ink: #8a4204;
+  --go: #12803f;
+  --go-to: #0f7036;
+  --go-edge: #12803f;
+  --go-foreground: #ffffff;
+  --go-soft: #def9ea;
+  --go-ink: #0a6331;
+  --stop: #c81e36;
+  --stop-to: #b0172d;
+  --stop-edge: #e0606f;
+  --stop-foreground: #ffffff;
+  --stop-soft: #fee7e9;
+  --stop-ink: #a9132a;
+  --idle: #5b6780;
+  --idle-foreground: #ffffff;
+  --idle-soft: #ebeff6;
+  --idle-ink: #46536b;
+
+  --bar: #0c1f37;
+  --bar-to: #12315a;
+
+  --kpi-blue: #d8eafd;
+  --kpi-blue-ink: #0757b8;
+  --kpi-orange: #fdebd2;
+  --kpi-orange-ink: #a85205;
+  --kpi-green: #dbf6e6;
+  --kpi-green-ink: #0f7038;
+  --kpi-purple: #ebe2fd;
+  --kpi-purple-ink: #6532bf;
+
+  --card-shadow: 0 1px 2px rgb(15 28 51 / 6%), 0 6px 20px rgb(15 28 51 / 7%);
+  --primary-shadow: 0 2px 8px rgb(10 106 230 / 28%);
+  --go-shadow: 0 2px 8px rgb(18 128 63 / 22%);
+  --stop-shadow: 0 2px 8px rgb(200 30 54 / 22%);
+}
+
+/* ---- Kiosk theme ---- */
+[data-theme="kiosk"] {
+  color-scheme: dark;
+  --background: #040f26;
+  --foreground: #ffffff;
+  /* Glass. card-solid is what it looks like over the background, for contrast checks. */
+  --card: rgb(10 36 78 / 55%);
+  --card-solid: #07193a;
+  --card-foreground: #ffffff;
+  --card-border: rgb(70 160 255 / 42%);
+  --popover: #08204a;
+  --popover-foreground: #ffffff;
+  --field: rgb(3 16 40 / 75%);
+  --input: rgb(110 165 240 / 55%);
+  --border: rgb(110 165 240 / 22%);
+  --ring: #4fd8ff;
+  --muted: rgb(120 165 230 / 14%);
+  --muted-foreground: #b4c4df;
+  --accent: rgb(60 130 255 / 20%);
+  --accent-foreground: #ffffff;
+  --highlight: #35d6ea;
+  --live: #3ef08a;
+
+  --primary: #1766ee;
+  --primary-to: #0649bd;
+  --primary-edge: #4d97ff;
+  --primary-foreground: #ffffff;
+  --secondary: rgb(9 34 74 / 80%);
+  --secondary-foreground: #ffffff;
+  --secondary-border: rgb(110 165 240 / 45%);
+  --outline-ink: #8fe6f5;
+  --outline-edge: rgb(53 214 234 / 65%);
+
+  --info: #1763e0;
+  --info-foreground: #ffffff;
+  --info-soft: #0a2a58;
+  --info-ink: #9ccbff;
+  --wait: #ffb020;
+  --wait-foreground: #1f1503;
+  --wait-soft: #35240a;
+  --wait-ink: #ffc86e;
+  --go: #1f7d3c;
+  --go-to: #145c2a;
+  --go-edge: #3ee07f;
+  --go-foreground: #ffffff;
+  --go-soft: #08301f;
+  --go-ink: #62f09d;
+  --stop: #b3232b;
+  --stop-to: #861820;
+  --stop-edge: #e4545c;
+  --stop-foreground: #ffffff;
+  --stop-soft: #2d121f;
+  --stop-ink: #ff8c92;
+  --idle: #4c5a76;
+  --idle-foreground: #ffffff;
+  --idle-soft: #17233f;
+  --idle-ink: #c6d2e8;
+
+  --card-shadow:
+    0 0 0 1px rgb(40 120 255 / 8%), 0 0 24px rgb(30 110 255 / 16%), 0 12px 32px rgb(0 0 0 / 35%),
+    inset 0 1px 0 rgb(160 210 255 / 8%);
+  --primary-shadow: 0 0 20px rgb(31 107 255 / 55%), inset 0 1px 0 rgb(255 255 255 / 22%);
+  --go-shadow: 0 0 18px rgb(50 220 120 / 40%), inset 0 1px 0 rgb(255 255 255 / 18%);
+  --stop-shadow: 0 0 16px rgb(230 70 80 / 32%), inset 0 1px 0 rgb(255 255 255 / 12%);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/60;
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+  }
+
+  /* The kiosk's backdrop: two soft glows over a faint grid. All CSS, no pictures. */
+  .kiosk-backdrop {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(ellipse 70% 55% at 62% 0%, rgb(24 92 220 / 30%), transparent 70%),
+      radial-gradient(ellipse 60% 45% at 85% 100%, rgb(20 180 210 / 14%), transparent 70%),
+      linear-gradient(rgb(90 160 255 / 7%) 0.0625rem, transparent 0.0625rem),
+      linear-gradient(90deg, rgb(90 160 255 / 7%) 0.0625rem, transparent 0.0625rem);
+    background-size:
+      100% 100%,
+      100% 100%,
+      3.5rem 3.5rem,
+      3.5rem 3.5rem;
+  }
+
+  /*
+   * A larger kiosk screen (1920×1080) shows the same layout, larger. Everything on the
+   * kiosk is sized in rem, so raising the base size scales it evenly.
+   */
+  @media (min-width: 1700px) and (min-height: 940px) {
+    :root:has([data-theme="kiosk"]) {
+      font-size: 22.4px;
+    }
   }
 }

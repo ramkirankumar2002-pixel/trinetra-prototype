@@ -47,7 +47,7 @@ export function RequireRole({ area, children }: { area: AreaName; children: Reac
 
   const serverDown = !user && error !== null && "retryable" in error && error.retryable === true;
   return (
-    <PageShell layout={area === "kiosk" ? "kiosk" : "phone"} brand={t("app.name")}>
+    <PageShell layout={area === "kiosk" ? "kiosk" : "dashboard"} brand={t("app.name")}>
       <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
         <Spinner label={t(serverDown ? "session.serverDown" : "session.checking")} />
         {serverDown && (

@@ -12,5 +12,5 @@ export default async function DevUiPage({
 }) {
   if (process.env.NODE_ENV === "production") notFound();
   const { layout } = await searchParams;
-  return <UiPanel layout={layout === "kiosk" ? "kiosk" : "phone"} />;
+  return <UiPanel layout={layout === "kiosk" ? "kiosk" : "dashboard"} />;
 }

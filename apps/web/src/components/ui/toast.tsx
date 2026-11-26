@@ -4,7 +4,7 @@
 import { cn } from "cn";
 import { Toast as Primitive } from "radix-ui";
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
-import { useLayout } from "../layout/layout-context";
+import { useTheme } from "../layout/theme-context";
 import { TONE_ICONS, TONE_SOFT, type Tone } from "./tone";
 
 export interface ToastMessage {
@@ -22,7 +22,7 @@ export function useToast() {
 
 /** Put it inside PageShell, so the messages take the page's layout. */
 export function ToastProvider({ children, label }: { children: ReactNode; label: string }) {
-  const layout = useLayout();
+  const theme = useTheme();
   const [toasts, setToasts] = useState<(ToastMessage & { id: number })[]>([]);
   const nextId = useRef(1);
 
@@ -41,7 +41,7 @@ export function ToastProvider({ children, label }: { children: ReactNode; label:
           return (
             <Primitive.Root
               key={id}
-              data-layout={layout}
+              data-theme={theme}
               onOpenChange={(open) => !open && remove(id)}
               className={cn(
                 "flex items-center gap-3 rounded-xl border-2 p-4 font-semibold shadow-lg kiosk:p-6 kiosk:text-[2rem]",

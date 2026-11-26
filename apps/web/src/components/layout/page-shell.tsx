@@ -4,10 +4,10 @@
 import { cn } from "cn";
 import { Eye } from "lucide-react";
 import type { ReactNode } from "react";
-import { LayoutContext, type LayoutKind } from "./layout-context";
+import { ThemeContext, type ThemeName } from "./theme-context";
 
 export interface PageShellProps {
-  layout: LayoutKind;
+  layout: ThemeName;
   /** The product name, beside the logo. */
   brand: string;
   title?: ReactNode;
@@ -23,11 +23,11 @@ export function PageShell(props: PageShellProps) {
   const kiosk = layout === "kiosk";
 
   return (
-    <LayoutContext.Provider value={layout}>
+    <ThemeContext.Provider value={layout}>
       <div
-        data-layout={layout}
+        data-theme={layout}
         className={cn(
-          "flex w-full flex-col bg-neutral-50",
+          "flex w-full flex-col bg-background text-foreground",
           kiosk ? "h-dvh overflow-hidden text-[2rem] leading-snug" : "min-h-dvh text-base",
         )}
       >
@@ -70,6 +70,6 @@ export function PageShell(props: PageShellProps) {
           </footer>
         )}
       </div>
-    </LayoutContext.Provider>
+    </ThemeContext.Provider>
   );
 }
