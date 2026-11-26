@@ -34,7 +34,7 @@ export function PageShell(props: PageShellProps) {
         <header
           className={cn(
             "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-2 bg-background px-4 py-3",
-            kiosk ? "min-h-28 px-8" : "sticky top-0 z-10",
+            kiosk ? "min-h-24 px-8 py-2" : "sticky top-0 z-10",
           )}
         >
           <div className="flex items-center gap-3">

@@ -19,7 +19,8 @@ export interface NumberPadProps {
 
 const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const KEY = "min-h-16 text-2xl kiosk:min-h-24 kiosk:text-5xl";
-const WORD_KEY = "min-h-16 flex-col gap-0 px-1 text-sm kiosk:flex-row kiosk:gap-2 kiosk:px-2";
+const WORD_KEY =
+  "min-h-16 flex-col gap-0 px-1 text-sm leading-tight whitespace-nowrap kiosk:px-1 kiosk:leading-none kiosk:[&_svg:not([class*='size-'])]:size-8";
 
 export function NumberPad(props: NumberPadProps) {
   const { value, onChange, maxLength, labels, disabled, className } = props;
