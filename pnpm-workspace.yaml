@@ -1,3 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Only these packages may run install scripts. esbuild is used by tsx, tsup and Vitest.
+onlyBuiltDependencies:
+  - esbuild
