@@ -173,6 +173,12 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 **Done when:** each role can log in and sees its empty page; wrong roles are sent back to login.
 
+✅ Passed on 2026-11-26: Playwright (`pnpm test:e2e`, installed Google Chrome) logs in all three roles through `localhost:3000/api`, checks the cookie, the language switch, Online / "Offline — reconnecting" and the other roles' pages. Typecheck, lint, unit tests and build passed. In the built-in browser the kiosk login and page were checked at 1366×768 and the store pages at 390 px wide; a real backend restart showed Offline and then Online again.
+
+- Not checked: a real phone or touchscreen, iPhone Safari, 1920×1080, and the Hindi text (see step 79).
+- Playwright cuts the live connection itself; a real Wi-Fi drop has not been tried.
+- The `/dev` pages are in English only.
+
 ## Phase 10 — Kiosk website
 
 - [ ] **81.** Kiosk shell: top bar, bottom bar, step dots, kiosk store (current screen, ticket id, answers).
@@ -247,6 +253,7 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [ ] **115.** Run migrations and the seed against the Supabase database.
 - [ ] **116.** **Railway:** new project from the GitHub repo, root `apps/server`, build and start commands, all backend env variables, health check `/api/health`, region closest to India (e.g. Singapore).
 - [ ] **117.** **Vercel:** import the repo, root `apps/web`, env variables, rewrite `/api` to the Railway address.
+  - Set `BACKEND_URL` and `NEXT_PUBLIC_SOCKET_URL` before building. Then check through Vercel that an 8 MB upload and a slow invoice read (up to about 60 s) work: Vercel has its own limits for forwarded requests, which have not been tested.
 - [ ] **118.** Use the free Vercel and Railway addresses (HTTPS is automatic); set `FRONTEND_ORIGIN`; check login cookies and CORS.
 - [ ] **119.** Put the `wss://` backend address and device token in the ESP32 secrets and flash it; connect it to the hotspot.
 - [ ] **120.** Smoke test the four demo scenarios on the deployed site with the real kiosk, two phones and the model; tag the release `v1.0-demo`. From now on, every push to `main` deploys automatically.

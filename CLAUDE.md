@@ -80,18 +80,21 @@ Related docs:
 
 ## Current status
 
-Phase 8 done. Next: Phase 9, or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run.
+Phase 9 done. Next: Phase 10, or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run.
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website. The ticket API's request schemas and answer types are in `src/tickets.ts`.
 
 Backend rules to keep: change a status only through `changeStatus()` (`apps/server/src/tickets/repo.ts`) inside `app.eventTransaction()`; lock the ticket before the approval or the material; a weight comes only from one `canCapture()` answer. `pnpm journey` runs the five scenarios (it runs "Reset demo data" first).
 
+Website rules to keep: call the backend only through `api` (`apps/web/src/lib/api.ts`), on the website's own `/api` (never the backend's address; only Socket.IO connects there). Every screen text goes in both `src/i18n/en.json` and `hi.json` and is read with `useT()`; the Hindi text still needs the user's review. Pages of a role go under `src/app/<role>/(signed-in)/` and are framed by `RoleShell`; use the components in `src/components/ui` (`/dev/ui` shows them). Colour always comes with an icon and a word. The kiosk has little height at 1366×768: check each screen there. `pnpm test:e2e` runs the browser tests (installed Chrome, development database).
+
 Settle before the phases that need it:
 
 - **Phase 5B:** do not tick Phase 5 until 5B passes. The firmware must follow the device protocol in the README ("Device connection"). Send a heartbeat or weight often enough: the main ESP32 is offline after 3 s of silence, a camera after 15 s.
 - **Phase 9/10:** the backend keeps "truck on the bridge" and the plate reads in memory, so after a restart `truck:arrived` fires again (safe: it creates nothing) and the plate must be read again. Events missed while disconnected are not resent: pages reload over REST (`useOnReconnect`).
-- **Phase 9 (important):** the login cookie must be same-site. When adding the `/api` rewrite (step 76), make the browser call `/api/...` on the website's own address, including the socket-token request in `lib/socket.ts`. Today it calls `NEXT_PUBLIC_API_URL` directly, which works on localhost but would not send the cookie from Vercel to Railway.
-- **Phase 9:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires.
+- **Open:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires. (Such a tab goes to the login when it next gets focus.)
+- **Phase 10:** call `resetKioskLanguage()` whenever the kiosk goes back to Ready (logout already does). Save the driver's language on the ticket.
+- **Phase 10:** replace the kiosk's placeholder page. The "weighbridge light" in the top bar shows only online / offline so far.
 - **Phase 10:** send an `Idempotency-Key` with every POST and PATCH (a new key per press, the same key when retrying it).
 - **Phase 10:** weighing: show the live weight and "Correct / Weigh again" **before** calling first-weight or second-weight; "Weigh again" calls discard-weight. A saved weight cannot be discarded.
 - **Phase 10:** still to build: `GET /api/master` and the kiosk's "Ready to collect" / "Not approved" lists. Show `blockedTicket` from `/api/anpr` and `plateCheck` from the ticket as "Not approved".
@@ -106,6 +109,7 @@ Settle before the phases that need it:
 - **Before Phase 16:** set `NODE_ENV=production` on Railway (otherwise the login cookie is not `Secure`).
 - **Before Phase 16:** configure Fastify's `trustProxy` safely for Railway, so rate limits use the real client address (otherwise all users may share the limits; login: 20 a minute).
 - **Before Phase 16:** test the Supabase storage driver against the real bucket.
+- **Before Phase 16:** set `BACKEND_URL` on Vercel, and test an 8 MB upload and a slow (about 60 s) invoice read through Vercel's forwarding (the 120 s proxy timeout in `next.config.ts` is proven only for Next's own server). With the rewrite, `trustProxy` must cover both hops.
 - **Before Phase 16:** the "live" room has no limit on how many viewers can connect.
 
 *(Update this section at the end of every phase.)*

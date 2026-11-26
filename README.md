@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 8 (ticket APIs). A whole truck journey of every type runs through the API (`pnpm journey`). The real firmware (Phase 5B) and the screens are not built yet.
+**Current state:** Phase 9 (website foundation). The three logins and their empty pages work in English and Hindi. A whole truck journey of every type runs through the API (`pnpm journey`). The real firmware (Phase 5B) and the truck screens are not built yet.
 
 ## Folder layout
 
@@ -22,7 +22,7 @@ trinetra-prototype/
 │  ├─ esp32/          Weighbridge model code (from Phase 5)
 │  └─ esp32-cam/      Front and back camera code (from Phase 5)
 ├─ scripts/           @trinetra/scripts: ESP32 and camera simulator, sample plate photos
-├─ tests/e2e/         Playwright demo scenarios (added in a later phase)
+├─ tests/e2e/         @trinetra/e2e: Playwright browser tests (logins; demo scenarios later)
 └─ docs/              Build plan, progress and decisions
 ```
 
@@ -276,6 +276,31 @@ Put a different random value (at least 16 characters) in each of `DEVICE_TOKEN`,
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
+## Website
+
+With `pnpm dev` running (and the database seeded):
+
+| Page                               | Log in with                                            |
+| ---------------------------------- | ------------------------------------------------------ |
+| <http://localhost:3000/kiosk>      | The kiosk user (landscape, 1366×768 or 1920×1080)      |
+| <http://localhost:3000/supervisor> | A supervisor (made for a phone)                        |
+| <http://localhost:3000/store>      | The store officer (made for a phone)                   |
+| <http://localhost:3000/dev/ui>     | No login: the design system (not in production builds) |
+
+Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/default-data.ts), and `pnpm db:seed` prints them. One browser holds one login: logging in to another part replaces it. To be logged in to two at once, use two browser profiles or a private window.
+
+- **API calls** go to `/api/*` on the website itself, and Next forwards them to `BACKEND_URL` (default `http://localhost:4000`), so the login cookie belongs to the website. Restart `pnpm dev` after changing it. **Live events** connect straight to `NEXT_PUBLIC_SOCKET_URL`.
+- **Website code** calls the backend only through `api` in `apps/web/src/lib/api.ts`. Errors are `ApiError` with a `code`; an ended login opens the right login page; every POST, PATCH and PUT carries an `Idempotency-Key`.
+- **Screen text** is in `apps/web/src/i18n/en.json` and `hi.json`, read with `useT()`. Add every key to both. The Hindi text has not been reviewed yet.
+
+### Browser tests
+
+Playwright logs in as each role with its demo PIN, checks the page, the language switch and the connection status, tries the other roles' pages and logs out. It uses the installed **Google Chrome** and the development database, and uses a running `pnpm dev` or starts one.
+
+```powershell
+pnpm test:e2e
+```
+
 ## Live events
 
 The backend pushes news to the browsers with **Socket.IO** on the same port as the API (4000). Browsers only listen.
@@ -388,6 +413,7 @@ Run all commands from the repository root.
 | `pnpm build`           | Builds the website and the backend for production                               |
 | `pnpm test`            | Runs the tests (Vitest)                                                         |
 | `pnpm test:coverage`   | Tests `packages/shared` and reports coverage; fails below the limits            |
+| `pnpm test:e2e`        | Runs the browser tests (see [Browser tests](#browser-tests))                    |
 | `pnpm sim`             | Simulates the main ESP32 and both cameras (see [Simulator](#simulator))         |
 | `pnpm journey`         | Runs the five truck journeys (see [Journeys](#journeys))                        |
 | `pnpm sim:plates`      | Draws the sample plate photos again                                             |
