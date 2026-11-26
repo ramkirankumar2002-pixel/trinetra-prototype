@@ -31,7 +31,8 @@ Related docs:
 - **Frontend:** Next.js (latest, App Router) + React, Tailwind CSS, shadcn/ui, TanStack Query, Zustand (kiosk screen flow), Socket.IO client, `en.json` + `hi.json` with a small `t()` helper, Noto Sans + Noto Sans Devanagari, Web Speech API and Fuse.js (voice), `qrcode`, browser print dialog.
 - **Backend:** Node.js 22 LTS, Fastify, Socket.IO, plain WebSocket (`ws`) for ESP32 devices, Zod, PostgreSQL 16, Drizzle ORM, PIN login hashed with bcrypt with a JWT cookie (`@fastify/jwt`, `@fastify/cookie`), `@fastify/multipart` + sharp, pino.
 - **Firmware libraries:** HX711 (bogde), WebSockets (links2004) over Wi-Fi with `wss://`, ArduinoJson.
-- **Quality and tests:** ESLint + Prettier, Vitest (+ Fastify's request testing), Playwright for the 4 demo scenarios, Docker Desktop for local Postgres.
+- **Quality and tests:** ESLint + Prettier, Vitest (+ Fastify's request testing), Playwright for the 4 demo scenarios.
+- **Local database:** PostgreSQL 16 installed directly on Windows, port **5433** (`trinetra` and `trinetra_test`). Docker is optional (`docker-compose.yml`). A separate PostgreSQL 17 uses port 5432: **leave it alone**.
 
 ### Hosting
 
@@ -60,11 +61,13 @@ Related docs:
 
 ### Data and business rules
 
-- **Master data is hardcoded** in one seed file, `packages/shared/seed/default-data.ts` (loaded with `pnpm db:seed`). Material types, unloading rules and tolerance live there. No screens to edit them.
+- **Master data is hardcoded** in one seed file, `packages/shared/src/seed/default-data.ts` (imported as `@trinetra/shared/seed`, never by the website; loaded with `pnpm db:seed`). Material types, unloading rules and tolerance live there. No screens to edit them.
 - **Tolerance: 0.5%.** Variance % = |net − invoice weight| ÷ invoice weight × 100. Pass if ≤ 0.5%.
 - **Type 2 / Type 3 split is by OCR invoice weight:** above the material's threshold → Type 2 (Store); at or below → Type 3. Thresholds: Steel Scrap 1,000 kg, Sand 1,000 kg, Aggregate 20 mm 500 kg, Aggregate 10 mm 500 kg. Cement Bags, Additive, Bitumen and Steel Bars are always Type 1 (Supervisor). Bricks are always Type 3.
 - Weights are stored in kilograms as whole numbers; times are stored in UTC and shown in IST.
-- `ticket_events` is append-only. Only the backend changes a ticket status.
+- `ticket_events` is append-only (a database trigger enforces it). Only the backend changes a ticket status.
+- Approval kinds: STORE_TYPE2, SUPERVISOR, HOLD, MISMATCH, DRIVER_HELP, PLATE_WARNING. A blocked truck is a rejected SUPERVISOR approval.
+- One open ticket per plate. Closed statuses: COMPLETED, REJECTED, BLOCKED, ABANDONED.
 
 ### Out of scope
 
@@ -76,6 +79,12 @@ Related docs:
 
 ## Current status
 
-Phase 1 done. Next: Phase 2.
+Phase 2 done. Next: Phase 3.
+
+Settle before the phases that need it:
+
+- **Before Phase 8:** the plan's rule 3 treats a `BLOCKED` ticket as open (second visit), but the database treats it as closed. The ANPR step must look for a blocked ticket itself, or a blocked truck could start a new one.
+- **Before Phase 8:** "Reset demo data" must delete demo tickets, but the `ticket_events` trigger refuses DELETE.
+- **Before Phase 16:** the demo PINs are public in the repository. Use different PINs on the deployed site.
 
 *(Update this section at the end of every phase.)*

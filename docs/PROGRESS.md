@@ -36,16 +36,18 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 ## Phase 2 — Database
 
-- [ ] **19.** Add `docker-compose.yml` with Postgres 16 and a data volume; start it.
-- [ ] **20.** Configure Drizzle with `DATABASE_URL`.
-- [ ] **21.** Write all tables from section 5, with enums for status and kinds.
-- [ ] **22.** Add indexes: unique ticket number, unique plate per vehicle, **only one open ticket per plate**.
-- [ ] **23.** Generate and run the first migration.
-- [ ] **24.** Write `default-data.ts` (materials, points, rules, users, fleet, settings).
-- [ ] **25.** Write the seed script (hashes PINs, can reset).
+- [x] **19.** Add `docker-compose.yml` with Postgres 16 and a data volume; start it.
+- [x] **20.** Configure Drizzle with `DATABASE_URL`.
+- [x] **21.** Write all tables from section 5, with enums for status and kinds.
+- [x] **22.** Add indexes: unique ticket number, unique plate per vehicle, **only one open ticket per plate**.
+- [x] **23.** Generate and run the first migration.
+- [x] **24.** Write `default-data.ts` (materials, points, rules, users, fleet, settings).
+- [x] **25.** Write the seed script (hashes PINs, can reset).
 - [x] **26.** Run the seed and check the rows in Drizzle Studio.
 
 **Done when:** all tables exist with the demo data.
+
+✅ Passed on 2026-11-26. Step 19: PostgreSQL 16 installed on Windows (port 5433) is used instead of Docker; `docker-compose.yml` is added but untested. Step 26: rows checked with `psql` and automated tests; the Drizzle Studio server started and answered a query, but its web page was not opened.
 
 ## Phase 3 — Backend foundation
 

@@ -63,3 +63,26 @@ One row per decision. All rows dated 2026-11-26 come from the [build plan](BUILD
 | 2026-11-26 | Next.js `agentRules` is off | Stops `next dev` writing `AGENTS.md`; project rules live in `CLAUDE.md` |
 | 2026-11-26 | Next.js "Cache Components" and partial prefetching (turned on by the app generator) are off | Not in the plan, and the live screens do not need them yet |
 | 2026-11-26 | `packages/shared` is plain TypeScript with no build step: Next transpiles it and tsup bundles it into the server | One source of truth with nothing extra to build |
+| 2026-11-26 | Local database is PostgreSQL 16 installed directly on Windows, port 5433, user and password `postgres`; databases `trinetra` and `trinetra_test`. A separate PostgreSQL 17 on 5432 is left alone | Docker is not installed on the development machine. Changes the plan's "Docker Desktop running Postgres" |
+| 2026-11-26 | `docker-compose.yml` (Postgres 16 on 5433) is provided but optional and untested | For anyone who uses Docker later |
+| 2026-11-26 | `DATABASE_URL` and `TEST_DATABASE_URL` live in `apps/server/.env`; `.env.example` holds the local development values | They are local-only credentials. This is the exception to "`.env.example` lists names without values" |
+| 2026-11-26 | `pnpm db:create` creates the databases | Works without finding `psql` |
+| 2026-11-26 | Drizzle ORM 0.45 with the `postgres` driver; a hand-written SQL migration holds the no-overlap exclusion constraint (needs `btree_gist`) and the append-only trigger | Latest stable Drizzle; these two rules are not expressed in the schema file |
+| 2026-11-26 | PINs are hashed with the `bcrypt` package; its install script stays blocked | Its prebuilt binary works without the script |
+| 2026-11-26 | Seed data is in `packages/shared/src/seed/default-data.ts`, imported as `@trinetra/shared/seed` | Requested path (the plan says `packages/shared/seed/`); the separate import keeps demo PINs out of the browser |
+| 2026-11-26 | `upload_links` table added: ticket_id, code_hash, expires_at, used_at, created_at | Described in section 7 but missing from the section 5 table list. Approved by the user |
+| 2026-11-26 | Approval kinds are STORE_TYPE2, SUPERVISOR, HOLD, MISMATCH, DRIVER_HELP, PLATE_WARNING; a blocked truck is a rejected SUPERVISOR approval | Covers driver help and plate warnings. Approved by the user |
+| 2026-11-26 | A plate has only one open ticket; COMPLETED, REJECTED, BLOCKED and ABANDONED are closed | Requested. Differs from rule 3, which lists BLOCKED as open: the ANPR step must check blocked tickets itself |
+| 2026-11-26 | A `chainages` table holds the 10 chainages, separate from `unloading_points` | Requested; the unloading rules use points that are not in the chainage list |
+| 2026-11-26 | "Plant" is two unloading points with the same code and different supervisors (Amit Kumar; Dinesh Verma for Steel Scrap) | The rules give Plant two contacts and a point has one supervisor, so code + supervisor is unique |
+| 2026-11-26 | The overall default rule has no material and no trip range | One row covers every material without a rule and trips past every range |
+| 2026-11-26 | A material's `type` is its type without a weight rule; materials split by weight are stored as TYPE_3 with `type2_above_kg` | Above the threshold is Type 2, otherwise Type 3 |
+| 2026-11-26 | `tickets` also stores `invoice_material` and `invoice_date` | Sections 4 and 7 read them from the invoice and the mismatch check needs the material |
+| 2026-11-26 | `tickets.supplier` and `tickets.transporter` are names, not links to the lists | An invoice can name one that is not in the lists |
+| 2026-11-26 | `approvals.chosen_weight` stores the choice (MEASURED_NET or INVOICE_WEIGHT), not a number | The store officer picks which weight to accept; both numbers are on the ticket |
+| 2026-11-26 | `photos.ticket_id` may be empty, and photo ids are random UUIDs | Plate photos are taken before a ticket starts; ids are sent to cameras and links |
+| 2026-11-26 | `approvals.ticket_id` may be empty only for DRIVER_HELP | Help can be pressed before a ticket exists |
+| 2026-11-26 | `users` has a unique `username` | Login is username + PIN |
+| 2026-11-26 | Demo PINs: supervisors 1001-1010, store 2001, kiosk 3001. They are public in the repository, so the deployed site needs different ones | Easy to type in a local demo |
+| 2026-11-26 | `wake_threshold_kg` = 500 and `scale_factor` = 1 are placeholders; `stable_band_kg` = 10 is added to settings | The plan gives no values for the first two (tune in Phase 5); 10 kg comes from rule 6 |
+| 2026-11-26 | Database tests wipe and rebuild `TEST_DATABASE_URL` (name must end in `_test`) and are skipped if it is not set | They test the real migrations without touching development data |
