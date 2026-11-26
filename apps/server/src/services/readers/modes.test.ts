@@ -99,6 +99,7 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
 
         expect(read).toMatchObject({
           source: "demo",
+          model: null,
           invoiceNo: sample.printed.invoice_number,
           material: { raw: sample.printed.material, matched: sample.expected.material },
           supplier: { matched: sample.printed.supplier },

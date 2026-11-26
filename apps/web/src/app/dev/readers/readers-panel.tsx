@@ -62,6 +62,7 @@ function PlateResult({ answer }: { answer: Answer<PlateRead> }) {
         ["Plate", result.plate && formatPlate(result.plate)],
         ["Shaped like an Indian plate", result.validFormat ? "yes" : "no"],
         ["Source", result.source ?? "neither service answered"],
+        ["Gemini model", result.model ?? "not used"],
         ["Confidence", confidence(result.confidence)],
         ["Time", `${result.ms} ms reading, ${answer.browserMs} ms in total`],
         ["Problems", result.problems.map((p) => `${p.service}: ${p.code}`).join(", ") || "none"],
@@ -92,6 +93,7 @@ function InvoiceResult({ answer }: { answer: Answer<InvoiceRead> }) {
         ["Weight", result.weightKg === null ? null : formatKg(result.weightKg)],
         ["Warnings", result.warnings.map((w) => w.message).join(" ") || "none"],
         ["Source", result.source],
+        ["Gemini model", result.model ?? "not used"],
         ["Confidence", "not given for invoices"],
         ["Time", `${result.ms} ms reading, ${answer.browserMs} ms in total`],
       ]}

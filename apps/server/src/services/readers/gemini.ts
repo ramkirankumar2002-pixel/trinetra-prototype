@@ -1,5 +1,6 @@
 // Google Gemini through the Interactions API, always answering with JSON.
 // https://ai.google.dev/gemini-api/docs/interactions
+import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import { ReaderError } from "./errors";
 import type { UsageCounter } from "./usage";
@@ -7,7 +8,13 @@ import type { UsageCounter } from "./usage";
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
 const API_REVISION = "2026-05-20";
 export const GEMINI_TIMEOUT_MS = 30_000;
-/** Waits before trying again when Google answers "high demand" or has an error. */
+/** Failures of the main model that are worth asking the backup model about. */
+const BACKUP_REASONS: ReadonlySet<ReaderError["code"]> = new Set([
+  "BUSY",
+  "RATE_LIMITED",
+  "TIMEOUT",
+]);
+/** Without a backup: waits before trying again when Google answers "high demand". */
 const BUSY_RETRY_DELAYS_MS = [1500, 4000];
 
 const answerSchema = z.object({
@@ -34,14 +41,18 @@ export function filePart(data: Buffer, contentType: string): GeminiPart {
 export interface GeminiOptions {
   apiKey: string | undefined;
   model: string;
+  /** Asked once if the main model is busy, rate limited or too slow. Same name = none. */
+  fallbackModel?: string;
   usage: UsageCounter;
+  log?: Pick<FastifyBaseLogger, "info" | "warn">;
   fetch?: typeof fetch;
   timeoutMs?: number;
   busyRetryDelaysMs?: number[];
 }
 
 export function createGemini(options: GeminiOptions) {
-  const { apiKey, model, usage, timeoutMs = GEMINI_TIMEOUT_MS } = options;
+  const { apiKey, model, usage, log, timeoutMs = GEMINI_TIMEOUT_MS } = options;
+  const backup = options.fallbackModel === model ? undefined : options.fallbackModel;
   const delays = options.busyRetryDelaysMs ?? BUSY_RETRY_DELAYS_MS;
   const fail = (code: ReaderError["code"], message: string) =>
     new ReaderError("gemini", code, message);
@@ -97,13 +108,16 @@ export function createGemini(options: GeminiOptions) {
     return text;
   }
 
-  async function send(body: string): Promise<string> {
+  /** One model, with its own retries. */
+  async function send(body: string, hasBackup: boolean): Promise<string> {
     let networkRetried = false;
     for (let busy = 0; ;) {
       try {
         return await attempt(body);
       } catch (error) {
         const code = error instanceof ReaderError ? error.code : undefined;
+        // With a backup, waiting on a model that is busy or slow only delays the driver.
+        if (hasBackup && code && BACKUP_REASONS.has(code)) throw error;
         if (code === "BUSY" && busy < delays.length) {
           await new Promise((resolve) => setTimeout(resolve, delays[busy++]));
         } else if ((code === "NETWORK" || code === "TIMEOUT") && !networkRetried) {
@@ -115,35 +129,66 @@ export function createGemini(options: GeminiOptions) {
     }
   }
 
+  /** The main model, then once on the backup. Says which of them answered. */
+  async function ask(bodyFor: (name: string) => string): Promise<{ text: string; model: string }> {
+    try {
+      return { text: await send(bodyFor(model), backup !== undefined), model };
+    } catch (error) {
+      if (!backup || !(error instanceof ReaderError) || !BACKUP_REASONS.has(error.code)) {
+        throw error;
+      }
+      log?.warn(
+        { model, backupModel: backup, reason: error.code, detail: error.message },
+        "Gemini: trying the backup model",
+      );
+      try {
+        return { text: await attempt(bodyFor(backup)), model: backup };
+      } catch (backupError) {
+        if (backupError instanceof ReaderError) {
+          log?.warn(
+            { model: backup, reason: backupError.code, detail: backupError.message },
+            "Gemini: the backup model failed too",
+          );
+        }
+        throw backupError;
+      }
+    }
+  }
+
   return {
     model,
+    fallbackModel: backup,
     /**
      * Asks for JSON in the shape of `schema` (JSON Schema) and checks it with `validate`.
+     * Returns the data and the name of the model that answered.
      * Nothing is stored at Google ("store: false"): invoices stay out of their history.
      */
     async generateJson<T>(request: {
       parts: GeminiPart[];
       schema: object;
       validate: z.ZodType<T>;
-    }): Promise<T> {
+    }): Promise<{ data: T; model: string }> {
       if (!apiKey) throw fail("NOT_CONFIGURED", "GEMINI_API_KEY is not set");
-      const text = await send(
+      const answer = await ask((name) =>
         JSON.stringify({
-          model,
+          model: name,
           store: false,
           input: request.parts,
           response_format: { type: "text", mime_type: "application/json", schema: request.schema },
         }),
       );
+      log?.info({ model: answer.model, backup: answer.model !== model }, "Gemini: answer received");
       let json: unknown;
       try {
-        json = JSON.parse(text);
+        json = JSON.parse(answer.text);
       } catch {
-        throw fail("BAD_ANSWER", "the answer was not JSON");
+        throw fail("BAD_ANSWER", `the answer from ${answer.model} was not JSON`);
       }
       const result = request.validate.safeParse(json);
-      if (!result.success) throw fail("BAD_ANSWER", "the JSON did not have the asked shape");
-      return result.data;
+      if (!result.success) {
+        throw fail("BAD_ANSWER", `the JSON from ${answer.model} did not have the asked shape`);
+      }
+      return { data: result.data, model: answer.model };
     },
   };
 }

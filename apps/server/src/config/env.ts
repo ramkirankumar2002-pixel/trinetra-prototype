@@ -9,6 +9,12 @@ const optional = z.string().optional();
 /** A device without a token cannot connect. */
 const deviceToken = z.string().min(16, "must be at least 16 characters long").optional();
 
+const geminiModel = (fallback: string) =>
+  z
+    .string()
+    .regex(/^[a-z0-9.-]+$/, "must be a model name such as gemini-3.8-flash")
+    .default(fallback);
+
 function isPostgresUrl(value: string): boolean {
   const url = URL.parse(value);
   return !!url && /^postgres(ql)?:$/.test(url.protocol) && url.pathname.length > 1;
@@ -68,10 +74,9 @@ const envSchema = z
     TEST_DATABASE_URL: optional,
     PLATE_RECOGNIZER_TOKEN: optional,
     GEMINI_API_KEY: optional,
-    GEMINI_MODEL: z
-      .string()
-      .regex(/^[a-z0-9.-]+$/, "must be a model name such as gemini-3.8-flash")
-      .default("gemini-3.8-flash"),
+    GEMINI_MODEL: geminiModel("gemini-3.8-flash"),
+    /** Used when the main model is busy. The same name as GEMINI_MODEL means no backup. */
+    GEMINI_FALLBACK_MODEL: geminiModel("gemini-3.5-flash-lite"),
     DEVICE_TOKEN: deviceToken,
     CAM_FRONT_TOKEN: deviceToken,
     CAM_BACK_TOKEN: deviceToken,

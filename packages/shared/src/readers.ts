@@ -14,6 +14,8 @@ export interface PlateRead {
   plate: string | null;
   /** Null if neither service gave an answer. */
   source: ReadSource | null;
+  /** The Gemini model that answered, when the source is Gemini; otherwise null. */
+  model: string | null;
   /** 0 to 1 from Plate Recognizer; Gemini gives none. */
   confidence: number | null;
   /** True if the text has the shape of an Indian plate. */
@@ -64,5 +66,7 @@ export interface InvoiceRead {
   weightKg: number | null;
   warnings: InvoiceWarning[];
   source: "gemini" | "demo";
+  /** The Gemini model that answered (the main one or the backup); null in demo mode. */
+  model: string | null;
   ms: number;
 }

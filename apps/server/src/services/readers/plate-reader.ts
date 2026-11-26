@@ -20,15 +20,18 @@ const plateJsonSchema = {
   required: ["plate"],
 };
 
-export async function readPlateWithGemini(gemini: Gemini, jpeg: Buffer): Promise<string | null> {
-  const answer = await gemini.generateJson({
+export async function readPlateWithGemini(
+  gemini: Gemini,
+  jpeg: Buffer,
+): Promise<{ plate: string | null; model: string }> {
+  const { data: answer, model } = await gemini.generateJson({
     parts: [filePart(jpeg, "image/jpeg"), { type: "text", text: PLATE_PROMPT }],
     schema: plateJsonSchema,
     validate: z.object({ plate: z.string().nullable() }),
   });
   const plate = answer.plate === null ? "" : normalizePlate(answer.plate);
   // Anything that is not a whole plate counts as unread.
-  return isValidIndianPlate(plate) ? plate : null;
+  return { plate: isValidIndianPlate(plate) ? plate : null, model };
 }
 
 export function createPlateReader(deps: {
@@ -44,9 +47,11 @@ export function createPlateReader(deps: {
       plate: string | null,
       source: PlateRead["source"],
       confidence: number | null,
+      model: string | null = null,
     ): PlateRead => ({
       plate,
       source,
+      model,
       confidence,
       validFormat: plate !== null && isValidIndianPlate(plate),
       ms: Math.round(performance.now() - started),
@@ -66,9 +71,9 @@ export function createPlateReader(deps: {
     }
     // No plate found (or the service failed): ask Gemini to read the same photo.
     try {
-      const plate = await readPlateWithGemini(deps.gemini, jpeg);
+      const { plate, model } = await readPlateWithGemini(deps.gemini, jpeg);
       // Gemini gives no confidence number.
-      return done(plate, "gemini", null);
+      return done(plate, "gemini", null, model);
     } catch (error) {
       note(error);
     }

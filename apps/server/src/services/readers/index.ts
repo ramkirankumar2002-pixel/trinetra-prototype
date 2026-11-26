@@ -54,7 +54,9 @@ export function createReaders(deps: ReaderDependencies) {
   const gemini = createGemini({
     apiKey: env.GEMINI_API_KEY,
     model: env.GEMINI_MODEL,
+    fallbackModel: env.GEMINI_FALLBACK_MODEL,
     usage,
+    log,
     ...network,
   });
   const readPlate = createPlateReader({
@@ -77,6 +79,7 @@ export function createReaders(deps: ReaderDependencies) {
     const camera: CameraPlateRead = {
       plate,
       source: "demo",
+      model: null,
       confidence: null,
       validFormat: true,
       ms: 0,
@@ -102,6 +105,7 @@ export function createReaders(deps: ReaderDependencies) {
         return {
           plate: null,
           source: null,
+          model: null,
           confidence: null,
           validFormat: false,
           ms: 0,

@@ -52,6 +52,7 @@ const readers = createReaders({
 const gemini = createGemini({
   apiKey: env.GEMINI_API_KEY,
   model: env.GEMINI_MODEL,
+  fallbackModel: env.GEMINI_FALLBACK_MODEL,
   usage: readers.usage,
 });
 
@@ -118,6 +119,7 @@ if (!args["invoices-only"]) {
         : "no full plate",
       got: read.plate ? formatPlate(read.plate) : "(none)",
       source: read.source ?? "-",
+      model: read.model ?? "-",
       confidence: read.confidence === null ? "-" : `${Math.round(read.confidence * 100)}%`,
       ms: read.ms,
       problems: read.problems.map((p) => `${p.service}:${p.code}`).join(" ") || "",
@@ -168,6 +170,7 @@ if (!args["plates-only"]) {
         kg: read.weightKg,
         supplier: read.supplier.matched,
         vehicle: read.vehicle.plate,
+        model: read.model,
         ms: read.ms,
         result:
           wrong.length === 0
@@ -181,7 +184,7 @@ if (!args["plates-only"]) {
     console.log(`  ${file}: done`);
   }
   console.log(
-    `\nSample invoices (model ${env.GEMINI_MODEL}): ${correct} of ${rows.length} fully correct`,
+    `\nSample invoices (main model ${env.GEMINI_MODEL}, backup ${env.GEMINI_FALLBACK_MODEL}): ${correct} of ${rows.length} fully correct`,
   );
   console.table(rows);
 }

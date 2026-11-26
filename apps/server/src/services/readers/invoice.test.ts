@@ -55,6 +55,7 @@ describe("interpretInvoice", () => {
       weightKg: 14_310,
       warnings: [],
       source: "gemini",
+      model: null,
       ms: 5,
     });
   });
@@ -203,7 +204,7 @@ describe("readInvoiceWithGemini", () => {
 
     const read = await readInvoiceWithGemini(client, { data, contentType }, context);
 
-    expect(read.weightKg).toBe(14_310);
+    expect(read).toMatchObject({ weightKg: 14_310, model: "gemini-test" });
     const body = JSON.parse(apis.calls.gemini[0]!.body as string);
     expect(body.input[0]).toEqual({
       type: partType,

@@ -119,10 +119,11 @@ export function interpretInvoice(
     /** The plate read at the weighbridge, if there is a ticket. */
     ticketPlate: string | null;
     source: InvoiceRead["source"];
+    model?: string | null;
     ms: number;
   },
 ): InvoiceRead {
-  const { lists, ticketPlate, source, ms } = context;
+  const { lists, ticketPlate, source, ms, model = null } = context;
   const material = matched(
     clean(raw.material),
     (value) => matchMaterial(value, lists.materials)?.material.name,
@@ -167,6 +168,7 @@ export function interpretInvoice(
     weightKg,
     warnings,
     source,
+    model,
     ms,
   };
 }
@@ -178,7 +180,7 @@ export async function readInvoiceWithGemini(
   context: { lists: InvoiceLists; ticketPlate: string | null },
 ): Promise<InvoiceRead> {
   const started = performance.now();
-  const raw = await gemini.generateJson({
+  const { data: raw, model } = await gemini.generateJson({
     parts: [filePart(file.data, file.contentType), { type: "text", text: PROMPT }],
     schema: responseJsonSchema,
     validate: rawInvoiceSchema,
@@ -186,6 +188,7 @@ export async function readInvoiceWithGemini(
   return interpretInvoice(raw, {
     ...context,
     source: "gemini",
+    model,
     ms: Math.round(performance.now() - started),
   });
 }

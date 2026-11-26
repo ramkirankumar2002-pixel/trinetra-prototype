@@ -161,7 +161,7 @@ describe("Gemini client", () => {
   it("asks for structured JSON, stores nothing, and keeps the key in a header", async () => {
     const { apis, gemini } = setup({ gemini: () => geminiText('{"a":1}') });
 
-    expect(await ask(gemini)).toEqual({ a: 1 });
+    expect(await ask(gemini)).toEqual({ data: { a: 1 }, model: "gemini-test" });
 
     const [call] = apis.calls.gemini;
     expect(call!.url).toBe("https://generativelanguage.googleapis.com/v1beta/interactions");
@@ -178,7 +178,7 @@ describe("Gemini client", () => {
     const { apis, gemini } = setup({
       gemini: (n) => (n < 3 ? json({ error: { message: "high demand" } }, 503) : geminiText("{}")),
     });
-    expect(await ask(gemini)).toEqual({});
+    expect(await ask(gemini)).toMatchObject({ data: {} });
     expect(apis.calls.gemini).toHaveLength(3);
   });
 
@@ -229,6 +229,7 @@ describe("plate reader with Gemini fallback", () => {
     expect(await read(JPEG)).toEqual({
       plate: "MH12AB1234",
       source: "plate_recognizer",
+      model: null,
       confidence: 0.93,
       validFormat: true,
       ms: expect.any(Number),
@@ -246,6 +247,7 @@ describe("plate reader with Gemini fallback", () => {
     expect(await read(JPEG)).toMatchObject({
       plate: "MH12AB1234",
       source: "gemini",
+      model: "gemini-test",
       confidence: null,
       validFormat: true,
       problems: [],

@@ -289,7 +289,7 @@ A development-only test page (a 404 in production builds).
 
 The backend reads number plates with **Plate Recognizer** (region India) and asks **Gemini** about the same photo if no plate is found or the service fails. **Gemini** reads invoices (photo or PDF). Put `PLATE_RECOGNIZER_TOKEN` and `GEMINI_API_KEY` in `apps/server/.env`.
 
-- `GEMINI_MODEL` chooses the model (default `gemini-3.8-flash`). If Google answers "high demand", set another one, for example `GEMINI_MODEL=gemini-3.5-flash-lite`, and restart the backend.
+- `GEMINI_MODEL` chooses the main model (default `gemini-3.8-flash`) and `GEMINI_FALLBACK_MODEL` the backup (default `gemini-3.5-flash-lite`). If the main model is busy, rate limited or does not answer within 30 s, the backup is asked **once**. The result (`model`) and the log say which one answered. To switch the backup off, give both the same name; the main model is then retried when busy. A wrong key, a refused request or an unreadable answer does not go to the backup. Restart the backend after changing either.
 - Gemini is called with storage turned off. On the free tier, still use **sample invoices only**.
 - Plate Recognizer's free plan allows 2,500 lookups a month and **1 a second**, so the two photos of a truck are read about a second apart.
 - Calls are counted per day in the `settings` table (`api_usage:...`), with a warning in the log near the limits. The services' own dashboards are the truth.

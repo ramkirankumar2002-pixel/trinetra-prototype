@@ -25,6 +25,18 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...valid, GEMINI_MODEL: "a b/c" })).toThrow(/- GEMINI_MODEL /);
   });
 
+  it("has a backup Gemini model unless another is named", () => {
+    expect(parseEnv({ ...valid, GEMINI_FALLBACK_MODEL: "" }).GEMINI_FALLBACK_MODEL).toBe(
+      "gemini-3.5-flash-lite",
+    );
+    expect(
+      parseEnv({ ...valid, GEMINI_FALLBACK_MODEL: "gemini-3.6-flash" }).GEMINI_FALLBACK_MODEL,
+    ).toBe("gemini-3.6-flash");
+    expect(() => parseEnv({ ...valid, GEMINI_FALLBACK_MODEL: "Bad Name" })).toThrow(
+      /- GEMINI_FALLBACK_MODEL /,
+    );
+  });
+
   it("does not need the settings of later phases", () => {
     expect(parseEnv(valid).GEMINI_API_KEY).toBeUndefined();
   });
