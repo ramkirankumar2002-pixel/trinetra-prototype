@@ -23,3 +23,4 @@ export * from "./rules/stability";
 export { matchFromList, type ListMatch } from "./matching/list";
 export { matchMaterial, type MatchableMaterial, type MaterialMatch } from "./matching/material";
 export { parseDigits, parseYesNo } from "./matching/speech";
+export * from "./rules/ticket-state";
