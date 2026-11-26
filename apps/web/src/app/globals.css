@@ -3,8 +3,23 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+/* The kiosk layout: text at least 32 px, buttons at least 96 px tall. */
+@custom-variant kiosk (&:where([data-layout="kiosk"], [data-layout="kiosk"] *));
 
 @theme inline {
+  /* Signal colours. Never colour alone: always with an icon and a word. */
+  --color-go: var(--go);
+  --color-go-foreground: var(--go-foreground);
+  --color-go-soft: var(--go-soft);
+  --color-go-ink: var(--go-ink);
+  --color-wait: var(--wait);
+  --color-wait-foreground: var(--wait-foreground);
+  --color-wait-soft: var(--wait-soft);
+  --color-wait-ink: var(--wait-ink);
+  --color-stop: var(--stop);
+  --color-stop-foreground: var(--stop-foreground);
+  --color-stop-soft: var(--stop-soft);
+  --color-stop-ink: var(--stop-ink);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-heading: var(--font-sans);
@@ -50,6 +65,19 @@
 }
 
 :root {
+  /* Each pair has a contrast of at least 4.5 : 1. */
+  --go: #15803d;
+  --go-foreground: #ffffff;
+  --go-soft: #dcfce7;
+  --go-ink: #14532d;
+  --wait: #fb923c;
+  --wait-foreground: #1c1917;
+  --wait-soft: #ffedd5;
+  --wait-ink: #7c2d12;
+  --stop: #b91c1c;
+  --stop-foreground: #ffffff;
+  --stop-soft: #fee2e2;
+  --stop-ink: #7f1d1d;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
