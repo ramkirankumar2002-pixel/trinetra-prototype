@@ -10,6 +10,7 @@ import { registerErrorHandling, sendError } from "./errors/handler";
 import { createHardware, type Hardware } from "./hardware";
 import { loadHardwareSettings } from "./hardware/settings";
 import type { HardwareSettings } from "./hardware/state";
+import { registerIdempotency } from "./http/idempotency";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
 import { createEventTransaction, type EventTransaction } from "./realtime/after-commit";
@@ -82,6 +83,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   await registerSecurityPlugins(app, env);
   registerErrorHandling(app);
+  // Before any route, so every POST, PATCH and PUT under /api gets it.
+  registerIdempotency(app, now);
   await app.register(websocket, {
     // Only /device here; Socket.IO handles its own connections on the same port.
     options: { ...DEVICE_SOCKET_OPTIONS.options, server: upgradesWithoutSocketIo(app.server) },
