@@ -8,7 +8,7 @@ import { createUploadLink } from "../tickets/invoice-upload";
 import { getTicket, userActor } from "../tickets/repo";
 import { startTicket } from "../tickets/start";
 import { ticketView } from "../tickets/view";
-import { takeFirstWeight } from "../tickets/weighing";
+import { takeFirstWeight, takeSecondWeight } from "../tickets/weighing";
 import { idOf } from "./params";
 
 export const notYourTicket = () =>
@@ -38,6 +38,11 @@ export function registerTicketRoutes(app: FastifyInstance, env: Env): void {
     // No values at all: the backend has the weight.
     emptyBodySchema.parse(request.body);
     return takeFirstWeight(app, idOf(request.params), userActor(request.user.userId));
+  });
+
+  app.post("/api/tickets/:id/second-weight", kiosk, async (request) => {
+    emptyBodySchema.parse(request.body);
+    return takeSecondWeight(app, idOf(request.params), userActor(request.user.userId));
   });
 
   app.get(

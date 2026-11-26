@@ -3,9 +3,13 @@
 // request.
 import {
   afterFirstWeightEvent,
+  checkTolerance,
   classifyType,
+  computeNet,
+  DEFAULT_TOLERANCE_PCT,
   firstWeightEvent,
   resolveUnloadingPoint,
+  secondWeightEvent,
   type Point,
   type TicketEvent,
   type TicketType,
@@ -24,12 +28,13 @@ import {
   createApproval,
   lockTicket,
   plateCheckOf,
+  readNumberSetting,
   readSettings,
   wrongStage,
   type Actor,
   type TicketRow,
 } from "./repo";
-import { ticketView } from "./view";
+import { holdReasonOf, ticketView } from "./view";
 
 export interface CapturedWeight {
   kg: number;
@@ -205,6 +210,64 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
         takenAt,
         data: { source, why: classified.reason },
       });
+    }
+  });
+  return ticketView(app.db, app.storage, ticketId);
+}
+
+/** What the kiosk is told when the truck may not be weighed the second time. */
+function checkMayWeighAgain(ticket: TicketRow): void {
+  if (ticket.status === "READY_FOR_SECOND") return;
+  if (ticket.status === "SUPERVISOR_PENDING") {
+    throw new AppError(
+      409,
+      "WAITING_FOR_SUPERVISOR",
+      "This truck is waiting for supervisor approval.",
+    );
+  }
+  if (ticket.status === "BLOCKED") {
+    throw new AppError(409, "NOT_APPROVED", "This truck was not approved. Go to the store office.");
+  }
+  throw wrongStage("This truck is not ready for a second weight.");
+}
+
+export async function takeSecondWeight(app: FastifyInstance, ticketId: number, actor: Actor) {
+  await app.eventTransaction(async (tx) => {
+    let ticket = await lockTicket(tx, ticketId);
+    checkMayWeighAgain(ticket);
+    const tolerancePct = await readNumberSetting(tx, "tolerance_pct", DEFAULT_TOLERANCE_PCT);
+    const demo = await isDemoActive(tx, app.hardware);
+    const { kg, source } = captureWeight(app);
+    ticket = await tagDemo(tx, ticket, demo);
+
+    const net = computeNet(ticket.firstWeightKg!, kg);
+    // Without usable weights or an invoice weight there is nothing to pass.
+    const tolerance =
+      net.valid && ticket.invoiceWeightKg !== null
+        ? checkTolerance(net.netKg, ticket.invoiceWeightKg, tolerancePct)
+        : undefined;
+    const passed = tolerance?.valid === true && tolerance.pass;
+    const variancePct = tolerance?.valid ? tolerance.variancePct : null;
+    const holdReason = holdReasonOf(
+      { netKg: net.netKg, invoiceWeightKg: ticket.invoiceWeightKg },
+      !passed,
+    );
+
+    ticket = await changeStatus(tx, ticket, secondWeightEvent(passed), {
+      actor,
+      set: { secondWeightKg: kg, secondWeightAt: new Date(), netKg: net.netKg, variancePct },
+      data: {
+        kg,
+        source,
+        netKg: net.netKg,
+        invoiceWeightKg: ticket.invoiceWeightKg,
+        variancePct,
+        tolerancePct,
+        ...(holdReason ? { holdReason } : {}),
+      },
+    });
+    if (!passed) {
+      await createApproval(tx, ticket, { kind: "HOLD" }, "system", { holdReason });
     }
   });
   return ticketView(app.db, app.storage, ticketId);
