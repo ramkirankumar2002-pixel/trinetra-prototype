@@ -12,6 +12,7 @@ import { loadHardwareSettings } from "./hardware/settings";
 import type { HardwareSettings } from "./hardware/state";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { createEventTransaction, type EventTransaction } from "./realtime/after-commit";
 import { forwardHardware } from "./realtime/forward-hardware";
 import { createSocketServer, type SocketServer } from "./realtime/socket-server";
 import { upgradesWithoutSocketIo } from "./realtime/upgrades";
@@ -45,6 +46,8 @@ declare module "fastify" {
     hardware: Hardware;
     /** Live events to the browsers. */
     realtime: SocketServer;
+    /** A database transaction whose emitAfterCommit() events are sent after it commits. */
+    eventTransaction: EventTransaction;
   }
 }
 
@@ -71,6 +74,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   // Connects on the first query, so building the app does not need the database.
   const database = createDb(env.DATABASE_URL);
   app.addHook("onClose", () => database.close());
+  app.decorate("eventTransaction", createEventTransaction(database.db, realtime.publish, app.log));
 
   const fixedSettings = options.hardware?.settings;
   const photoTimeoutMs = options.hardware?.photoTimeoutMs;
