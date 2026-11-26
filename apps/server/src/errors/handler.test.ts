@@ -1,3 +1,4 @@
+import { transition } from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -22,6 +23,7 @@ beforeAll(async () => {
   app.get("/x/known", async () => {
     throw new AppError(409, "WRONG_STAGE", "Not allowed now.");
   });
+  app.get("/x/wrong-stage", async () => transition("COMPLETED", "ABANDON"));
   app.get("/x/unknown", async () => {
     throw new Error("password=hunter2 leaked from the database");
   });
@@ -84,6 +86,18 @@ describe("error format", () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: { code: "WRONG_STAGE", message: "Not allowed now." },
+    });
+  });
+
+  it("turns a refused ticket move into 409 WRONG_STAGE", async () => {
+    const response = await app.inject({ method: "GET", url: "/x/wrong-stage" });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: {
+        code: "WRONG_STAGE",
+        message: "ABANDON is not allowed while the ticket is COMPLETED.",
+      },
     });
   });
 
