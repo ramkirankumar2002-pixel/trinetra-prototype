@@ -2,6 +2,7 @@ import { WEIGHBRIDGE_ID, type HealthResponse } from "@trinetra/shared";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { DestinationStream } from "pino";
 import type { Env } from "./config/env";
+import { registerErrorHandling, sendError } from "./errors/handler";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
 
@@ -15,9 +16,12 @@ export interface AppOptions {
 export async function buildApp({ env, logger = false }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger === false ? false : loggerOptions(logger === true ? undefined : logger),
+    // Errors found before a route is chosen, such as a badly encoded address.
+    frameworkErrors: (error, request, reply) => void sendError(error, request, reply),
   });
 
   await registerSecurityPlugins(app, env);
+  registerErrorHandling(app);
 
   app.addHook("onReady", async () => {
     app.log.info(`Trinetra backend ready for weighbridge ${WEIGHBRIDGE_ID}`);

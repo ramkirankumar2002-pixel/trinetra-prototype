@@ -10,4 +10,5 @@ export interface HealthResponse {
   time: string;
 }
 
+export * from "./api";
 export * from "./domain";

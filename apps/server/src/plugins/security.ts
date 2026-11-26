@@ -7,6 +7,7 @@ import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance } from "fastify";
 import type { Env } from "../config/env";
 import { GENERAL_RATE_LIMIT, MAX_UPLOAD_BYTES } from "../config/limits";
+import { AppError } from "../errors/app-error";
 
 export const SESSION_COOKIE = "trinetra_session";
 
@@ -32,5 +33,14 @@ export async function registerSecurityPlugins(app: FastifyInstance, env: Env): P
     limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 20 },
   });
 
-  await app.register(rateLimit, GENERAL_RATE_LIMIT);
+  await app.register(rateLimit, {
+    ...GENERAL_RATE_LIMIT,
+    // The plugin throws what this returns, so the error handler formats it like any other.
+    errorResponseBuilder: (_request, context) =>
+      new AppError(
+        context.statusCode,
+        "RATE_LIMITED",
+        `Too many requests. Try again in ${context.after}.`,
+      ),
+  });
 }
