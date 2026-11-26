@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import "@fontsource-variable/noto-sans";
 import "@fontsource-variable/noto-sans-devanagari";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -13,7 +14,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
