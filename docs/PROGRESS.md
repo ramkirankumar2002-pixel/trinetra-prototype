@@ -51,15 +51,17 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 ## Phase 3 — Backend foundation
 
-- [ ] **27.** Load and check environment variables with Zod; the server refuses to start if one is missing.
-- [ ] **28.** Register Fastify plugins: CORS, cookie, JWT, multipart (8 MB limit), security headers, rate limiting, pino logging.
-- [ ] **29.** Add one error handler that always returns the standard error JSON.
-- [ ] **30.** Build login (PIN check + 5-try lock), logout, `me`, and socket token.
-- [ ] **31.** Add a role guard used by every route.
-- [ ] **32.** Make `/api/health` also check the database.
-- [ ] **33.** Build the storage service with two drivers: local folder and Supabase Storage.
+- [x] **27.** Load and check environment variables with Zod; the server refuses to start if one is missing.
+- [x] **28.** Register Fastify plugins: CORS, cookie, JWT, multipart (8 MB limit), security headers, rate limiting, pino logging.
+- [x] **29.** Add one error handler that always returns the standard error JSON.
+- [x] **30.** Build login (PIN check + 5-try lock), logout, `me`, and socket token.
+- [x] **31.** Add a role guard used by every route.
+- [x] **32.** Make `/api/health` also check the database.
+- [x] **33.** Build the storage service with two drivers: local folder and Supabase Storage.
 
 **Done when:** each role can log in with an API client (Bruno or curl) and is refused on other roles' routes.
+
+✅ Passed on 2026-11-26 with curl against the built server (`NODE_ENV=test`, development database). The Supabase storage driver is not tested until Phase 16.
 
 ## Phase 4 — Business rules (with tests)
 
@@ -124,6 +126,10 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [ ] **72.** A job every minute that marks old `STARTED` tickets `ABANDONED`.
 - [ ] **73.** Send light, buzzer and display commands: green when ready, red while weighing, orange when done, with the next instruction on the hardware display.
 - [ ] **74.** API tests for every endpoint: success, wrong status, wrong role.
+
+**Also in this phase** (added 2026-11-26, not one of the 120 steps):
+
+- [ ] Close the BLOCKED gap: if a plate has a BLOCKED or REJECTED ticket in the last 24 hours, a new ticket for it starts with a PLATE_WARNING request to the store officer.
 
 **Done when:** a script can run a complete truck journey of each type using only API calls.
 

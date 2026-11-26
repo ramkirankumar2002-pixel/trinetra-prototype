@@ -79,12 +79,16 @@ Related docs:
 
 ## Current status
 
-Phase 2 done. Next: Phase 3.
+Phase 3 done. Next: Phase 4.
 
 Settle before the phases that need it:
 
-- **Before Phase 8:** the plan's rule 3 treats a `BLOCKED` ticket as open (second visit), but the database treats it as closed. The ANPR step must look for a blocked ticket itself, or a blocked truck could start a new one.
+- **In Phase 8 (decided):** if a plate has a `BLOCKED` or `REJECTED` ticket in the last 24 hours, a new ticket for it starts with a `PLATE_WARNING` request to the store officer. It warns; it does not stop the truck. Still open: rule 3 and kiosk screen 13 also expect a returning blocked truck to see "not approved".
+- **Before Phase 8:** phones may send HEIC photos. Uploads accept only JPEG, PNG, WebP and PDF.
 - **Before Phase 8:** "Reset demo data" must delete demo tickets, but the `ticket_events` trigger refuses DELETE.
 - **Before Phase 16:** the demo PINs are public in the repository. Use different PINs on the deployed site.
+- **Before Phase 16:** set `NODE_ENV=production` on Railway (otherwise the login cookie is not `Secure`).
+- **Before Phase 16:** behind Vercel and Railway every user may look like one address, so they would share the rate limits (login: 20 a minute). Configure Fastify's `trustProxy` safely.
+- **Before Phase 16:** test the Supabase storage driver against the real bucket.
 
 *(Update this section at the end of every phase.)*

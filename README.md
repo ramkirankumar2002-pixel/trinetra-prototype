@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 2 (database). The website shows a simple home page, the backend has a health check, and the database tables and demo data are ready. No weighbridge features yet.
+**Current state:** Phase 3 (backend foundation). The website shows a simple home page. The backend has login with roles, a health check and file storage, on top of the database. No weighbridge features yet.
 
 ## Folder layout
 
@@ -74,7 +74,13 @@ Port 5433 is used because another PostgreSQL version may already be on the usual
 if (-not (Test-Path apps/server/.env)) { Copy-Item apps/server/.env.example apps/server/.env }
 ```
 
-It already contains:
+Then set `JWT_SECRET`: **the server will not start without it.** This prints a random value to paste after `JWT_SECRET=`:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+The copied file already has working local values for the other required settings, including:
 
 ```
 DATABASE_URL=postgres://postgres:postgres@localhost:5433/trinetra
@@ -125,9 +131,36 @@ Edit [apps/server/src/db/schema.ts](apps/server/src/db/schema.ts), run `pnpm db:
 
 `pnpm test` **wipes the database in `TEST_DATABASE_URL`** and rebuilds it from the migrations. Its name must end in `_test`. If `TEST_DATABASE_URL` is not set, the database tests are skipped, so check the test summary.
 
+## Backend API (so far)
+
+| Address                      | Who         | What it does                                                                                           |
+| ---------------------------- | ----------- | ------------------------------------------------------------------------------------------------------ |
+| `GET /api/health`            | Anyone      | `200` when the server and database are up; `503` with `"status": "degraded"` when the database is down |
+| `POST /api/auth/login`       | Anyone      | `{ "username", "pin" }` sets the login cookie, valid 12 hours                                          |
+| `POST /api/auth/logout`      | Anyone      | Clears the cookie                                                                                      |
+| `GET /api/auth/me`           | Logged in   | The logged-in user                                                                                     |
+| `GET /api/auth/socket-token` | Logged in   | A 60 second token for live updates (used from Phase 6)                                                 |
+| `GET /api/files/...`         | Signed link | A stored file (local storage only)                                                                     |
+
+Every error looks like `{ "error": { "code": "...", "message": "..." } }`, some with `details`.
+
+Five wrong PINs lock a username for 1 minute. The lock is kept in memory, so restarting the server clears it. Logging out removes the cookie from that browser; the server keeps no list of sessions.
+
+To log in from PowerShell, with `pnpm dev` running (`ram` is the store officer):
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:4000/api/auth/login -ContentType "application/json" -Body '{"username":"ram","pin":"2001"}' -SessionVariable trinetra
+```
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:4000/api/auth/me -WebSession $trinetra
+```
+
+To try the role guard, start the server with `NODE_ENV=test`. That adds `/api/test/kiosk`, `/api/test/supervisor` and `/api/test/store`, which do not exist otherwise.
+
 ## Environment files
 
-So far only the two database addresses are needed, and the example file already has them. Later phases need more. The files are:
+The backend checks its settings when it starts and lists anything missing or wrong. It requires `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN` and `STORAGE_DRIVER`; `STORAGE_DRIVER=supabase` also needs the three Supabase settings. `PORT` defaults to 4000 and `TZ` to Asia/Kolkata. The files are:
 
 | Copy this                  | To this               |
 | -------------------------- | --------------------- |

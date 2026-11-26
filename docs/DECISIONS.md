@@ -86,3 +86,15 @@ One row per decision. All rows dated 2026-11-26 come from the [build plan](BUILD
 | 2026-11-26 | Demo PINs: supervisors 1001-1010, store 2001, kiosk 3001. They are public in the repository, so the deployed site needs different ones | Easy to type in a local demo |
 | 2026-11-26 | `wake_threshold_kg` = 500 and `scale_factor` = 1 are placeholders; `stable_band_kg` = 10 is added to settings | The plan gives no values for the first two (tune in Phase 5); 10 kg comes from rule 6 |
 | 2026-11-26 | Database tests wipe and rebuild `TEST_DATABASE_URL` (name must end in `_test`) and are skipped if it is not set | They test the real migrations without touching development data |
+| 2026-11-26 | Settings are checked with Zod at startup; required: DATABASE_URL, JWT_SECRET (32+ characters), FRONTEND_ORIGIN, STORAGE_DRIVER. Later-phase settings are optional; TZ defaults to Asia/Kolkata. `.env.example` now holds local values for STORAGE_DRIVER, FRONTEND_ORIGIN and TZ | A wrong setting stops the server with a clear message; secrets have no default and no value is printed |
+| 2026-11-26 | `NODE_ENV` defaults to development and must be set to production when deployed | Controls the Secure cookie flag and the test routes |
+| 2026-11-26 | Rate limits: 300 requests a minute per address, 20 a minute for login (kept in memory) | The plan asks for rate limiting but gives no numbers |
+| 2026-11-26 | Login lock is per username and kept in memory; the 5th wrong PIN answers 429 LOCKED; unknown usernames behave like wrong PINs; attempts still being checked count too | One server only; gives no hint which usernames exist and no extra guesses from parallel requests |
+| 2026-11-26 | Sessions are a 12 hour JWT in the `trinetra_session` cookie, read only from the cookie. Session and socket tokens carry a `use` field | A 60 second socket token cannot be used as a login |
+| 2026-11-26 | Logout only clears the cookie; there is no server-side session list | Simple for a demo. A copied token would stay valid until it expires |
+| 2026-11-26 | Uploads accept JPEG, PNG, WebP and PDF, checked by their first bytes, up to 8 MB | "Images and PDF only"; the stated type alone proves nothing. HEIC and SVG are not accepted |
+| 2026-11-26 | Error answers may carry `error.details` (failing fields; seconds left when locked) | Extends the plan's `{ code, message }` format |
+| 2026-11-26 | Stored files are never overwritten. Local file links are signed with a key derived from JWT_SECRET and last at most 1 hour | Photos are evidence; links must be short-lived |
+| 2026-11-26 | `GET /api/health` answers 503 `degraded` if the database does not reply within 3 seconds | A host health check always gets an answer |
+| 2026-11-26 | Test files run one at a time | They share and wipe the test database |
+| 2026-11-26 | If a plate has a BLOCKED or REJECTED ticket in the last 24 hours, a new ticket for it starts with a PLATE_WARNING request to the store officer (to be built in Phase 8) | Closes the gap left by treating BLOCKED as closed. Requested by the user |
