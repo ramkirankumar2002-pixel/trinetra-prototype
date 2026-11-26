@@ -9,3 +9,5 @@ export interface HealthResponse {
   /** Server time as an ISO 8601 string in UTC. */
   time: string;
 }
+
+export * from "./domain";
