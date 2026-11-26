@@ -43,7 +43,7 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [ ] **23.** Generate and run the first migration.
 - [ ] **24.** Write `default-data.ts` (materials, points, rules, users, fleet, settings).
 - [ ] **25.** Write the seed script (hashes PINs, can reset).
-- [ ] **26.** Run the seed and check the rows in Drizzle Studio.
+- [x] **26.** Run the seed and check the rows in Drizzle Studio.
 
 **Done when:** all tables exist with the demo data.
 
