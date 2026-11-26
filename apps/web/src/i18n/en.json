@@ -1,0 +1,66 @@
+{
+  "app.name": "Trinetra Systems",
+  "home.subtitle": "Smart weighbridge prototype · {weighbridge}",
+
+  "common.yes": "Yes",
+  "common.no": "No",
+
+  "language.label": "Language",
+  "language.en": "English",
+  "language.hi": "हिंदी",
+
+  "area.kiosk": "Weighbridge",
+  "area.supervisor": "Supervisor",
+  "area.store": "Store officer",
+
+  "role.KIOSK": "weighbridge",
+  "role.SUPERVISOR": "supervisor",
+  "role.STORE": "store officer",
+
+  "login.heading": "Log in",
+  "login.username": "Username",
+  "login.pin": "PIN",
+  "login.pinHint": "4 to 6 digits",
+  "login.pinEntered": "Digits typed: {count}",
+  "login.submit": "Log in",
+  "login.busy": "Logging in…",
+  "login.otherAccount": "You are logged in as {name} ({role}). This page needs a {required} login.",
+  "login.wrongRole": "That is a {role} login. This page needs a {required} login.",
+
+  "numberPad.label": "Number pad",
+  "numberPad.clear": "Clear",
+  "numberPad.delete": "Delete",
+
+  "error.wrongPin": "Wrong username or PIN. Try again.",
+  "error.locked": "Too many wrong PINs. Wait {seconds} seconds.",
+  "error.tooMany": "Too many tries. Wait a minute, then try again.",
+  "error.network": "Cannot reach the server. Check the network and try again.",
+  "error.checkFields": "Type your username and a PIN of 4 to 6 digits.",
+  "error.generic": "Something went wrong. Please try again.",
+
+  "connection.online": "Online",
+  "connection.connecting": "Connecting…",
+  "connection.offline": "Offline — reconnecting",
+
+  "weighbridge.online": "Weighbridge online",
+  "weighbridge.offline": "Weighbridge offline",
+  "weighbridge.checking": "Checking the weighbridge…",
+
+  "session.checking": "Checking your login…",
+  "session.serverDown": "Cannot reach the server. Trying again…",
+  "session.retry": "Try now",
+
+  "shell.loggedInAs": "Logged in: {name}",
+  "shell.logout": "Log out",
+  "shell.notification": "Message",
+  "shell.backOnline": "Back online",
+
+  "logout.title": "Log out?",
+  "logout.description": "You will need the PIN to log in again.",
+  "logout.failed": "Could not log out. Check the network and try again.",
+
+  "empty.title": "This page is being built",
+  "empty.kiosk": "The screens for drivers will appear here.",
+  "empty.supervisor": "Your trucks will appear here.",
+  "empty.store": "Requests for the store will appear here."
+}

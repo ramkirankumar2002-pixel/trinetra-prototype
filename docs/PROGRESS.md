@@ -167,7 +167,8 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [x] **76.** Next.js rewrite so `/api/*` goes to the backend.
 - [x] **77.** API client (one fetch wrapper with error messages) + TanStack Query.
 - [ ] **78.** Login pages and route protection per role.
-- [ ] **79.** Translation files `en.json`, `hi.json` and the `t()` helper; language saved per kiosk session.
+- [x] **79.** Translation files `en.json`, `hi.json` and the `t()` helper; language saved per kiosk session.
+  - [ ] **The Hindi screen text needs your review** (`apps/web/src/i18n/hi.json`). It has not been checked by a Hindi speaker.
 - [ ] **80.** Socket hook from phase 6 wired into the app.
 
 **Done when:** each role can log in and sees its empty page; wrong roles are sent back to login.

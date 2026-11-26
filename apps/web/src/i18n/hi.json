@@ -1,0 +1,66 @@
+{
+  "app.name": "Trinetra Systems",
+  "home.subtitle": "स्मार्ट धर्म कांटा (प्रोटोटाइप) · {weighbridge}",
+
+  "common.yes": "हाँ",
+  "common.no": "नहीं",
+
+  "language.label": "भाषा",
+  "language.en": "English",
+  "language.hi": "हिंदी",
+
+  "area.kiosk": "धर्म कांटा",
+  "area.supervisor": "सुपरवाइज़र",
+  "area.store": "स्टोर अधिकारी",
+
+  "role.KIOSK": "धर्म कांटा",
+  "role.SUPERVISOR": "सुपरवाइज़र",
+  "role.STORE": "स्टोर अधिकारी",
+
+  "login.heading": "लॉग इन करें",
+  "login.username": "यूज़रनेम",
+  "login.pin": "पिन",
+  "login.pinHint": "4 से 6 अंक",
+  "login.pinEntered": "टाइप किए गए अंक: {count}",
+  "login.submit": "लॉग इन",
+  "login.busy": "लॉग इन हो रहा है…",
+  "login.otherAccount": "आप {name} ({role}) के नाम से लॉग इन हैं। इस पेज के लिए {required} का लॉग इन चाहिए।",
+  "login.wrongRole": "यह {role} का लॉग इन है। इस पेज के लिए {required} का लॉग इन चाहिए।",
+
+  "numberPad.label": "नंबर पैड",
+  "numberPad.clear": "सब मिटाएँ",
+  "numberPad.delete": "मिटाएँ",
+
+  "error.wrongPin": "यूज़रनेम या पिन गलत है। फिर से कोशिश करें।",
+  "error.locked": "कई बार गलत पिन डाला गया। {seconds} सेकंड रुकें।",
+  "error.tooMany": "बहुत बार कोशिश हुई। एक मिनट रुककर फिर कोशिश करें।",
+  "error.network": "सर्वर से संपर्क नहीं हो रहा। नेटवर्क देखें और फिर कोशिश करें।",
+  "error.checkFields": "अपना यूज़रनेम और 4 से 6 अंकों का पिन डालें।",
+  "error.generic": "कुछ गड़बड़ हो गई। फिर से कोशिश करें।",
+
+  "connection.online": "ऑनलाइन",
+  "connection.connecting": "जुड़ रहा है…",
+  "connection.offline": "ऑफ़लाइन — फिर से जुड़ रहा है",
+
+  "weighbridge.online": "धर्म कांटा चालू है",
+  "weighbridge.offline": "धर्म कांटा बंद है",
+  "weighbridge.checking": "धर्म कांटा जाँचा जा रहा है…",
+
+  "session.checking": "आपका लॉग इन जाँचा जा रहा है…",
+  "session.serverDown": "सर्वर से संपर्क नहीं हो रहा। फिर कोशिश हो रही है…",
+  "session.retry": "अभी कोशिश करें",
+
+  "shell.loggedInAs": "लॉग इन: {name}",
+  "shell.logout": "लॉग आउट",
+  "shell.notification": "संदेश",
+  "shell.backOnline": "फिर से ऑनलाइन",
+
+  "logout.title": "लॉग आउट करें?",
+  "logout.description": "दोबारा लॉग इन करने के लिए पिन लगेगा।",
+  "logout.failed": "लॉग आउट नहीं हो पाया। नेटवर्क देखें और फिर कोशिश करें।",
+
+  "empty.title": "यह पेज अभी बन रहा है",
+  "empty.kiosk": "ड्राइवर की स्क्रीन यहाँ दिखेंगी।",
+  "empty.supervisor": "आपके ट्रक यहाँ दिखेंगे।",
+  "empty.store": "स्टोर के लिए अनुरोध यहाँ दिखेंगे।"
+}
