@@ -9,17 +9,21 @@
     "start": "node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:migrate": "node scripts/db-not-ready.mjs",
-    "db:seed": "node scripts/db-not-ready.mjs",
-    "db:create": "tsx src/db/create-databases.ts"
+    "db:migrate": "tsx src/db/migrate-cli.ts",
+    "db:seed": "tsx src/db/seed-cli.ts",
+    "db:create": "tsx src/db/create-databases.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@trinetra/shared": "workspace:*",
+    "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
     "postgres": "^4.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.20.7",
+    "drizzle-kit": "^0.31.11",
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",

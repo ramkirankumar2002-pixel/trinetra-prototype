@@ -17,7 +17,9 @@
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @trinetra/server run db:migrate",
     "db:seed": "pnpm --filter @trinetra/server run db:seed",
-    "db:create": "pnpm --filter @trinetra/server run db:create"
+    "db:create": "pnpm --filter @trinetra/server run db:create",
+    "db:generate": "pnpm --filter @trinetra/server run db:generate",
+    "db:studio": "pnpm --filter @trinetra/server run db:studio"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
