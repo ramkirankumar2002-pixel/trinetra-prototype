@@ -1,3 +1,5 @@
+import { KioskHome } from "./home";
+
 export default function KioskPage() {
-  return null;
+  return <KioskHome />;
 }

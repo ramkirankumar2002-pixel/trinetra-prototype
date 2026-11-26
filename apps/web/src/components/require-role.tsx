@@ -9,6 +9,7 @@ import { useT } from "@/i18n/use-t";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { useMe } from "@/lib/session";
 import { PageShell } from "./layout/page-shell";
+import { LiveConnection } from "./live-connection";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 
@@ -36,7 +37,12 @@ export function RequireRole({ area, children }: { area: AreaName; children: Reac
 
   // Once known, the user stays shown while the server is out of reach.
   if (user && !wrongRole) {
-    return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
+    return (
+      <UserContext.Provider value={user}>
+        <LiveConnection area={area} />
+        {children}
+      </UserContext.Provider>
+    );
   }
 
   const serverDown = !user && error !== null && "retryable" in error && error.retryable === true;

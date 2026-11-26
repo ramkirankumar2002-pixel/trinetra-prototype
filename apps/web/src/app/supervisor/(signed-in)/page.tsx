@@ -1,3 +1,5 @@
+import { SupervisorHome } from "./home";
+
 export default function SupervisorPage() {
-  return null;
+  return <SupervisorHome />;
 }
