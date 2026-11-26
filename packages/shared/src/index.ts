@@ -4,7 +4,9 @@ export const WEIGHBRIDGE_ID = "WB-01";
 
 /** Body returned by GET /api/health. */
 export interface HealthResponse {
-  status: "ok";
+  /** "degraded" (HTTP 503) when the database is down. */
+  status: "ok" | "degraded";
+  database: "up" | "down";
   service: "trinetra-server";
   /** Server time as an ISO 8601 string in UTC. */
   time: string;

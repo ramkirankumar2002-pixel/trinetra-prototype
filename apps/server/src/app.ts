@@ -1,4 +1,4 @@
-import { WEIGHBRIDGE_ID, type HealthResponse } from "@trinetra/shared";
+import { WEIGHBRIDGE_ID } from "@trinetra/shared";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { DestinationStream } from "pino";
 import { LoginLockout } from "./auth/lockout";
@@ -8,6 +8,7 @@ import { createDb } from "./db/client";
 import { registerErrorHandling, sendError } from "./errors/handler";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { registerHealthRoute } from "./routes/health";
 import { registerTestRoutes } from "./routes/test-routes";
 
 export interface AppOptions {
@@ -33,18 +34,13 @@ export async function buildApp({ env, logger = false, now }: AppOptions): Promis
   const database = createDb(env.DATABASE_URL);
   app.addHook("onClose", () => database.close());
 
+  registerHealthRoute(app, database.sql);
   registerAuthRoutes(app, { env, db: database.db, lockout: new LoginLockout(now) });
   if (env.NODE_ENV === "test") registerTestRoutes(app);
 
   app.addHook("onReady", async () => {
     app.log.info(`Trinetra backend ready for weighbridge ${WEIGHBRIDGE_ID}`);
   });
-
-  app.get("/api/health", async (): Promise<HealthResponse> => ({
-    status: "ok",
-    service: "trinetra-server",
-    time: new Date().toISOString(),
-  }));
 
   return app;
 }
