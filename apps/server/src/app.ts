@@ -12,6 +12,8 @@ import { loadHardwareSettings } from "./hardware/settings";
 import type { HardwareSettings } from "./hardware/state";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { createSocketServer, type SocketServer } from "./realtime/socket-server";
+import { upgradesWithoutSocketIo } from "./realtime/upgrades";
 import { registerDevicePhotoRoute } from "./routes/device-photo";
 import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
 import { registerFileRoutes } from "./routes/files";
@@ -40,6 +42,8 @@ declare module "fastify" {
   interface FastifyInstance {
     /** `ready` settles after the first attempt to read the weighbridge settings. */
     hardware: Hardware;
+    /** Live events to the browsers. */
+    realtime: SocketServer;
   }
 }
 
@@ -54,7 +58,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   await registerSecurityPlugins(app, env);
   registerErrorHandling(app);
-  await app.register(websocket, DEVICE_SOCKET_OPTIONS);
+  await app.register(websocket, {
+    // Only /device here; Socket.IO handles its own connections on the same port.
+    options: { ...DEVICE_SOCKET_OPTIONS.options, server: upgradesWithoutSocketIo(app.server) },
+  });
+  const realtime = createSocketServer(app, env);
+  app.decorate("realtime", realtime);
+  // Before the server closes: it waits for open connections to end.
+  app.addHook("preClose", () => realtime.close());
 
   // Connects on the first query, so building the app does not need the database.
   const database = createDb(env.DATABASE_URL);

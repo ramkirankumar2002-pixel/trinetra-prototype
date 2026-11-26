@@ -99,9 +99,10 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRouteOptio
   });
 
   app.get("/api/auth/socket-token", async (request): Promise<SocketTokenResponse> => {
-    const { userId, role, name } = await readSession(request);
+    const { userId, role, name, exp } = await readSession(request);
     const token = app.jwt.sign(
-      { userId, role, name, use: "socket" },
+      // sessionEndsAt lets the live connection end when the login does.
+      { userId, role, name, use: "socket", ...(exp ? { sessionEndsAt: exp } : {}) },
       { expiresIn: SOCKET_TOKEN_SECONDS },
     );
     return { token, expiresInSeconds: SOCKET_TOKEN_SECONDS };
