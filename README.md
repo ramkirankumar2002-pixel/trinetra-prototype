@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 7 (plate and invoice reading). The backend can read plates and invoices; no ticket or screen uses them yet. The real firmware (Phase 5B) and the screens are not built yet.
+**Current state:** Phase 8 (ticket APIs). A whole truck journey of every type runs through the API (`pnpm journey`). The real firmware (Phase 5B) and the screens are not built yet.
 
 ## Folder layout
 
@@ -125,7 +125,7 @@ Then open <https://local.drizzle.studio>. The page talks to the Studio server ru
 
 ### Changing the tables
 
-Edit [apps/server/src/db/schema.ts](apps/server/src/db/schema.ts), run `pnpm db:generate`, check the new SQL file in `apps/server/drizzle/`, then run `pnpm db:migrate`. Never edit a migration that has already been applied. Two rules are hand-written SQL, in `0001_rules_and_append_only.sql`: trip ranges cannot overlap, and `ticket_events` rows cannot be updated or deleted.
+Edit [apps/server/src/db/schema.ts](apps/server/src/db/schema.ts), run `pnpm db:generate`, check the new SQL file in `apps/server/drizzle/`, then run `pnpm db:migrate`. Never edit a migration that has already been applied. Two rules are hand-written SQL, in `0001_rules_and_append_only.sql`: trip ranges cannot overlap, and `ticket_events` rows cannot be updated or deleted. `0003_demo_reset_delete.sql` lets "Reset demo data" delete the rows of demo tickets only. After pulling new code, run `pnpm db:migrate`.
 
 ### Database tests
 
@@ -143,6 +143,49 @@ Edit [apps/server/src/db/schema.ts](apps/server/src/db/schema.ts), run `pnpm db:
 | `GET /api/files/...`         | Signed link | A stored file (local storage only)                                                                     |
 
 Every error looks like `{ "error": { "code": "...", "message": "..." } }`, some with `details`.
+
+### Tickets
+
+Request and answer types are in [packages/shared/src/tickets.ts](packages/shared/src/tickets.ts). **No request carries a weight:** the backend takes it from the weighbridge.
+
+| Address                                                   | Who                          | What it does                                                                             |
+| --------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `POST /api/anpr`                                          | Kiosk                        | Reads both plates of the truck on the bridge; returns an open or recently blocked ticket |
+| `POST /api/tickets`                                       | Kiosk                        | Starts a ticket, or resumes one younger than 10 minutes                                  |
+| `GET /api/tickets/:id`                                    | Kiosk, its supervisor, store | The ticket with requests, photos and timeline                                            |
+| `POST /api/tickets/:id/upload-link`                       | Kiosk                        | One-time invoice upload link (10 minutes)                                                |
+| `GET` and `POST /api/upload/:code`                        | Whoever has the code         | The driver's phone: plate and language; then the file (JPEG, PNG, WebP or PDF, 8 MB)     |
+| `PATCH /api/tickets/:id/details`                          | Kiosk                        | Material, supplier, transporter, driver; mismatch check                                  |
+| `POST /api/tickets/:id/first-weight` and `/second-weight` | Kiosk                        | Captures the stable weight                                                               |
+| `POST /api/tickets/:id/discard-weight` and `/printed`     | Kiosk                        | "Weigh again" before confirming; logs the Print button                                   |
+| `GET /api/supervisor/tickets?status=`                     | Supervisor                   | Their Type 1 trucks (`pending` or `done`)                                                |
+| `POST /api/supervisor/tickets/:id/photo`                  | Its supervisor               | Live JPEG with optional `lat`, `lng`, `accuracyM` form fields; plate match (3 photos)    |
+| `POST /api/approvals/:id/decide`                          | Supervisor, store            | `APPROVE` or `REJECT`; a decision cannot be changed                                      |
+| `GET /api/store/requests?status=`                         | Store                        | Requests (`pending` or `done`), newest first, and warnings of the last 24 hours          |
+| `POST /api/help`                                          | Kiosk                        | Calls the store officer                                                                  |
+| `GET /api/public/tickets/:ticketNo`                       | Anyone                       | Read-only timeline without phone numbers                                                 |
+| `GET /api/live/summary`                                   | Anyone                       | Counts for the projector screen                                                          |
+| `/api/demo/settings`, `/weight`, `/reset`                 | Kiosk + admin PIN            | Demo switches, simulated weight, delete demo tickets                                     |
+
+A job abandons STARTED tickets with no activity for 10 minutes. The lights, buzzer and display follow the ticket by themselves.
+
+**Idempotency-Key:** any logged-in `POST`, `PATCH` or `PUT` may send this header. A repeat of a successful request gets the first answer again and nothing is done twice (kept in memory for 12 hours).
+
+**Demo routes:** set `ADMIN_PIN` (6 to 12 digits) in `apps/server/.env` and restart the backend; send it in an `x-admin-pin` header. `GET` and `PUT /api/demo/settings`, `POST /api/demo/weight` and `POST /api/demo/reset`. Tickets made while a demo switch is on are tagged demo, and only those are deleted by a reset.
+
+## Journeys
+
+`pnpm journey` runs five full truck journeys through the HTTP API: Type 3 automatic, Type 1 approved by the supervisor, fraud blocked, Type 2 approved by the store, and a tolerance fail resolved by the store. Weights come from the simulator, and plates and invoices from the demo "pick" modes, so no camera or outside service is used. It needs `DEVICE_TOKEN` and `ADMIN_PIN`, and a migrated and seeded database. **It runs "Reset demo data" first.** It uses a backend already running on port 4000, or starts its own.
+
+```powershell
+pnpm journey
+```
+
+To leave a running `pnpm dev` alone, give the journey its own port first:
+
+```powershell
+$env:JOURNEY_SERVER_URL = "http://localhost:4100"
+```
 
 Five wrong PINs lock a username for 1 minute. The lock is kept in memory, so restarting the server clears it. Logging out removes the cookie from that browser; the server keeps no list of sessions.
 
@@ -253,7 +296,7 @@ The backend pushes news to the browsers with **Socket.IO** on the same port as t
 | `kiosk:ready`                 | kiosk                          | ticketId, ticketNo, plate                                           |
 | `invoice:read`                | kiosk                          | ticketId                                                            |
 
-The ticket, approval and invoice events are defined but nothing sends them until Phase 8. The names and types are in [packages/shared/src/realtime.ts](packages/shared/src/realtime.ts).
+The names and types are in [packages/shared/src/realtime.ts](packages/shared/src/realtime.ts).
 
 **Backend code** sends news about saved data only after the save:
 
@@ -346,6 +389,7 @@ Run all commands from the repository root.
 | `pnpm test`            | Runs the tests (Vitest)                                                         |
 | `pnpm test:coverage`   | Tests `packages/shared` and reports coverage; fails below the limits            |
 | `pnpm sim`             | Simulates the main ESP32 and both cameras (see [Simulator](#simulator))         |
+| `pnpm journey`         | Runs the five truck journeys (see [Journeys](#journeys))                        |
 | `pnpm sim:plates`      | Draws the sample plate photos again                                             |
 | `pnpm lint`            | Checks the code with ESLint                                                     |
 | `pnpm typecheck`       | Checks TypeScript types in every package                                        |

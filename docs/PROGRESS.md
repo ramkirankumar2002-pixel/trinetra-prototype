@@ -131,27 +131,35 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 ## Phase 8 — Ticket APIs
 
-- [ ] **61.** `POST /api/anpr` (also finds an open ticket for the plate).
-- [ ] **62.** Start and read tickets.
-- [ ] **63.** Invoice upload: one-time link for the kiosk QR, and the phone upload endpoints (image or PDF up to 8 MB, 10-minute expiry) → Gemini → fields saved → kiosk told live.
-- [ ] **64.** Details endpoint with the mismatch counter and the 5th-attempt store request.
-- [ ] **65.** First weight: type rules, Type 2 hold + store request, trip number in a transaction, unloading point, supervisor request for Type 1.
-- [ ] **66.** Second weight: net, tolerance, HOLD request.
-- [ ] **67.** Discard weight and "slip printed".
-- [ ] **68.** Supervisor endpoints: my trucks, photo → plate read → match.
-- [ ] **69.** Decide endpoint: role check, status move, chosen weight or material.
-- [ ] **70.** Store requests list and driver-help requests.
-- [ ] **71.** Public timeline, live summary, demo endpoints.
-- [ ] **72.** A job every minute that marks old `STARTED` tickets `ABANDONED`.
-- [ ] **73.** Send light, buzzer and display commands: green when ready, red while weighing, orange when done, with the next instruction on the hardware display.
-- [ ] **74.** API tests for every endpoint: success, wrong status, wrong role.
+- [x] **61.** `POST /api/anpr` (also finds an open ticket for the plate).
+- [x] **62.** Start and read tickets.
+- [x] **63.** Invoice upload: one-time link for the kiosk QR, and the phone upload endpoints (image or PDF up to 8 MB, 10-minute expiry) → Gemini → fields saved → kiosk told live.
+- [x] **64.** Details endpoint with the mismatch counter and the 5th-attempt store request.
+- [x] **65.** First weight: type rules, Type 2 hold + store request, trip number in a transaction, unloading point, supervisor request for Type 1.
+- [x] **66.** Second weight: net, tolerance, HOLD request.
+- [x] **67.** Discard weight and "slip printed".
+- [x] **68.** Supervisor endpoints: my trucks, photo → plate read → match.
+- [x] **69.** Decide endpoint: role check, status move, chosen weight or material.
+- [x] **70.** Store requests list and driver-help requests.
+- [x] **71.** Public timeline, live summary, demo endpoints.
+- [x] **72.** A job every minute that marks old `STARTED` tickets `ABANDONED`.
+- [x] **73.** Send light, buzzer and display commands: green when ready, red while weighing, orange when done, with the next instruction on the hardware display.
+- [x] **74.** API tests for every endpoint: success, wrong status, wrong role.
 
 **Also in this phase** (added 2026-11-26, not one of the 120 steps):
 
-- [ ] Close the BLOCKED gap: if a plate had a BLOCKED or REJECTED ticket in the last 24 hours, a new ticket for it cannot reach the first weight until the store officer approves a PLATE_WARNING request. The kiosk says "Not approved earlier. Please go to the store office."
-- [ ] Uploads: keep accepting only JPEG, PNG, WebP and PDF (HEIC photos are converted in the browser, see Phase 10).
+- [x] Close the BLOCKED gap: if a plate had a BLOCKED or REJECTED ticket in the last 24 hours, a new ticket for it cannot reach the first weight until the store officer approves a PLATE_WARNING request. The kiosk says "Not approved earlier. Please go to the store office."
+- [x] Uploads: keep accepting only JPEG, PNG, WebP and PDF (HEIC photos are converted in the browser, see Phase 10).
 
 **Done when:** a script can run a complete truck journey of each type using only API calls.
+
+✅ Passed on 2026-11-26: `pnpm journey` ran five journeys (Type 3 automatic, Type 1 approved, fraud blocked, Type 2 approved, tolerance fail resolved) against the development database, and typecheck, lint, tests and build passed.
+
+- The journeys use the ESP32 simulator and the demo "pick" modes: no camera, Plate Recognizer or Gemini was called. The real readers were last checked in Phase 7.
+- Step 67: "discard weight" works only before a weight is saved (see the decision log).
+- Not part of steps 61–74, and still not built: `GET /api/master`, `GET /api/photos/:id` (ticket answers carry short-lived photo links instead) and the kiosk's "Ready to collect" / "Not approved" lists. Phase 10 needs the first and the lists.
+- Only the API is tested. No screen uses it yet.
+
 
 ## Phase 9 — Frontend foundation
 
