@@ -1,13 +1,7 @@
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+// Small helpers for the database command-line scripts, which need only a database address.
+import { loadEnvFile as loadEnv } from "../config/paths";
 
-/** apps/server/.env, found the same way whatever folder the command is run from. */
-const envFile = fileURLToPath(new URL("../../.env", import.meta.url));
-
-/** Loads apps/server/.env if it exists. Variables already set in the shell win. */
-export function loadEnv(): void {
-  if (existsSync(envFile)) process.loadEnvFile(envFile);
-}
+export { loadEnv };
 
 export function requireEnv(name: string): string {
   const value = process.env[name];
