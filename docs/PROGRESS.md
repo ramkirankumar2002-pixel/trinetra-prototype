@@ -179,6 +179,23 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - Playwright cuts the live connection itself; a real Wi-Fi drop has not been tried.
 - The `/dev` pages are in English only.
 
+## UI update — new design (before Phase 10)
+
+Added 2026-11-26, not one of the 120 steps.
+
+- [x] Two themes as design tokens: kiosk (dark) and dashboard.
+- [x] `KioskShell` and the kiosk components.
+- [x] `DashboardShell`, dashboard components, menus and dashboard homes with sample data.
+- [x] The three login pages restyled.
+- [x] [Style guide](design/STYLE_GUIDE.md).
+- [x] Screenshots in [screenshots/ui-update](screenshots/ui-update) (`pnpm screenshots`).
+  - [ ] The new Hindi text needs your review too (`apps/web/src/i18n/hi.json`).
+
+✅ Passed on 2026-11-26: typecheck, lint, unit tests, Playwright (including the driver rules at 1366×768 and 1920×1080, and the staff pages at 390, 768 and 1440 px wide in both languages) and build. The screens were compared side by side with the references.
+
+- Not checked: a real phone or touchscreen, iPhone Safari.
+- The kiosk screens other than the login and the placeholder page are **samples** (`/dev/ui`); the real ones come in Phase 10.
+
 ## Phase 10 — Kiosk website
 
 - [ ] **81.** Kiosk shell: top bar, bottom bar, step dots, kiosk store (current screen, ticket id, answers).

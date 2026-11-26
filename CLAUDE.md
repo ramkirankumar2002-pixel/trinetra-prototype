@@ -12,6 +12,7 @@ Related docs:
 
 - [docs/PROGRESS.md](docs/PROGRESS.md) — tick each step as it is finished
 - [docs/DECISIONS.md](docs/DECISIONS.md) — add a row for every new or changed decision
+- [docs/design/STYLE_GUIDE.md](docs/design/STYLE_GUIDE.md) — how every screen looks. **Read it before any screen work; Phases 10–14 must follow it.**
 
 ## Working rules
 
@@ -80,13 +81,15 @@ Related docs:
 
 ## Current status
 
-Phase 9 done. Next: Phase 10, or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run.
+Phase 9 done, and the UI update (new design) after it. Next: Phase 10, or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run.
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website. The ticket API's request schemas and answer types are in `src/tickets.ts`.
 
 Backend rules to keep: change a status only through `changeStatus()` (`apps/server/src/tickets/repo.ts`) inside `app.eventTransaction()`; lock the ticket before the approval or the material; a weight comes only from one `canCapture()` answer. `pnpm journey` runs the five scenarios (it runs "Reset demo data" first).
 
-Website rules to keep: call the backend only through `api` (`apps/web/src/lib/api.ts`), on the website's own `/api` (never the backend's address; only Socket.IO connects there). Every screen text goes in both `src/i18n/en.json` and `hi.json` and is read with `useT()`; the Hindi text still needs the user's review. Pages of a role go under `src/app/<role>/(signed-in)/` and are framed by `RoleShell`; use the components in `src/components/ui` (`/dev/ui` shows them). Colour always comes with an icon and a word. The kiosk has little height at 1366×768: check each screen there. `pnpm test:e2e` runs the browser tests (installed Chrome, development database).
+Website rules to keep: call the backend only through `api` (`apps/web/src/lib/api.ts`), on the website's own `/api` (never the backend's address; only Socket.IO connects there). Every screen text goes in both `src/i18n/en.json` and `hi.json` and is read with `useT()`; the Hindi text still needs the user's review. Pages of a role go under `src/app/<role>/(signed-in)/` and are framed by `RoleShell` (which uses `KioskShell` or `DashboardShell`); a staff page is also listed in `src/lib/menus.ts`.
+
+**Phases 10–14 must follow [docs/design/STYLE_GUIDE.md](docs/design/STYLE_GUIDE.md):** two themes (token colour names only), the shared components (`/dev/ui` shows them), status = colour + icon + word, and the driver rules. Every new kiosk screen gets `expectDriverRules()` (`tests/e2e/driver-rules.ts`) at 1366×768 and 1920×1080 in both languages with its longest message showing: at 1366×768 there is little height. `pnpm test:e2e` runs the browser tests (installed Chrome, development database); `pnpm screenshots` retakes `docs/screenshots/ui-update`. The design reference images are on this computer only: do not commit them (public repository) unless the user says so.
 
 Settle before the phases that need it:
 
@@ -94,7 +97,9 @@ Settle before the phases that need it:
 - **Phase 9/10:** the backend keeps "truck on the bridge" and the plate reads in memory, so after a restart `truck:arrived` fires again (safe: it creates nothing) and the plate must be read again. Events missed while disconnected are not resent: pages reload over REST (`useOnReconnect`).
 - **Open:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires. (Such a tab goes to the login when it next gets focus.)
 - **Phase 10:** call `resetKioskLanguage()` whenever the kiosk goes back to Ready (logout already does). Save the driver's language on the ticket.
-- **Phase 10:** replace the kiosk's placeholder page. The "weighbridge light" in the top bar shows only online / offline so far.
+- **Phase 10:** replace the kiosk's placeholder page. The weighbridge light shows only online / offline so far; the plan also wants step dots, the live weight and "Start over" on every screen, which `KioskShell` does not have yet. Add them to the shell and the style guide, and re-check the height.
+- **Phase 10:** connect the kiosk's Help button to `POST /api/help` (it only says "go to the store office" now).
+- **Phases 12/13:** replace the dashboard homes' sample data with real data, delete `src/lib/sample-data.ts`, and make the bell count real alerts.
 - **Phase 10:** send an `Idempotency-Key` with every POST and PATCH (a new key per press, the same key when retrying it).
 - **Phase 10:** weighing: show the live weight and "Correct / Weigh again" **before** calling first-weight or second-weight; "Weigh again" calls discard-weight. A saved weight cannot be discarded.
 - **Phase 10:** still to build: `GET /api/master` and the kiosk's "Ready to collect" / "Not approved" lists. Show `blockedTicket` from `/api/anpr` and `plateCheck` from the ticket as "Not approved".
