@@ -18,6 +18,7 @@
     "db:migrate": "pnpm --filter @trinetra/server run db:migrate",
     "db:seed": "pnpm --filter @trinetra/server run db:seed",
     "sim": "pnpm -C scripts run sim",
+    "journey": "pnpm -C scripts run journey",
     "sim:plates": "pnpm -C scripts run sim:plates",
     "sim:invoices": "pnpm -C scripts run sim:invoices",
     "sim:test-plates": "pnpm -C scripts run sim:test-plates",
