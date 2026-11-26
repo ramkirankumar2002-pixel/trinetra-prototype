@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Uploaded photos (local storage driver)
+uploads/
+
+# Secrets: never commit these
+.env
+.env.*
+!.env.example
+firmware/**/secrets.h
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db

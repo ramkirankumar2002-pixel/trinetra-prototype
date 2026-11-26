@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+coverage
+uploads
+pnpm-lock.yaml
+next-env.d.ts
+# Hand-written project docs keep their own layout
+docs
+CLAUDE.md
