@@ -27,7 +27,7 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [ ] **14.** Create the Next.js app in `apps/web` (TypeScript, Tailwind, App Router) and add shadcn/ui.
 - [ ] **15.** Create the Fastify app in `apps/server` (run with `tsx` in development, build with `tsup`).
 - [ ] **16.** Create `packages/shared` and import it from both apps.
-- [ ] **17.** Make `pnpm dev` start both: website on port 3000, backend on port 4000.
+- [x] **17.** Make `pnpm dev` start both: website on port 3000, backend on port 4000.
 - [ ] **18.** Write the README (how to install and run) and push the first commit.
 
 **Done when:** `localhost:3000` shows a page and `localhost:4000/api/health` answers `ok`.
