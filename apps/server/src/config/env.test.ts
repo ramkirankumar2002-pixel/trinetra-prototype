@@ -17,6 +17,14 @@ describe("parseEnv", () => {
     });
   });
 
+  it("uses the current Gemini Flash model unless another is named", () => {
+    expect(parseEnv(valid).GEMINI_MODEL).toBe("gemini-3.8-flash");
+    expect(parseEnv({ ...valid, GEMINI_MODEL: "gemini-3.5-flash" }).GEMINI_MODEL).toBe(
+      "gemini-3.5-flash",
+    );
+    expect(() => parseEnv({ ...valid, GEMINI_MODEL: "a b/c" })).toThrow(/- GEMINI_MODEL /);
+  });
+
   it("does not need the settings of later phases", () => {
     expect(parseEnv(valid).GEMINI_API_KEY).toBeUndefined();
   });

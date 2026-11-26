@@ -68,6 +68,10 @@ const envSchema = z
     TEST_DATABASE_URL: optional,
     PLATE_RECOGNIZER_TOKEN: optional,
     GEMINI_API_KEY: optional,
+    GEMINI_MODEL: z
+      .string()
+      .regex(/^[a-z0-9.-]+$/, "must be a model name such as gemini-3.8-flash")
+      .default("gemini-3.8-flash"),
     DEVICE_TOKEN: deviceToken,
     CAM_FRONT_TOKEN: deviceToken,
     CAM_BACK_TOKEN: deviceToken,
