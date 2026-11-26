@@ -26,7 +26,6 @@ import { bridgeNotReady } from "./blocked";
 import { isDemoActive, tagDemo } from "./demo";
 import {
   changeStatus,
-  createApproval,
   lockTicket,
   plateCheckOf,
   readNumberSetting,
@@ -140,7 +139,7 @@ export async function sendToUnload(
   const tripNo = await nextTripNumber(tx, materialId, ticket.id);
   const { point, supervisor } = await unloadingFor(tx, materialId, tripNo);
 
-  let saved = await changeStatus(tx, ticket, weight.event, {
+  const saved = await changeStatus(tx, ticket, weight.event, {
     actor: weight.actor,
     ...(weight.context ? { context: weight.context } : {}),
     set: {
@@ -160,11 +159,10 @@ export async function sendToUnload(
       supervisor: supervisor.name,
     },
   });
-  saved = await changeStatus(tx, saved, afterFirstWeightEvent(weight.type), { actor: "system" });
-  if (weight.type === "TYPE_1") {
-    await createApproval(tx, saved, { kind: "SUPERVISOR" }, "system");
-  }
-  return saved;
+  return changeStatus(tx, saved, afterFirstWeightEvent(weight.type), {
+    actor: "system",
+    ...(weight.type === "TYPE_1" ? { request: "SUPERVISOR" } : {}),
+  });
 }
 
 export async function takeFirstWeight(app: FastifyInstance, ticketId: number, actor: Actor) {
@@ -206,8 +204,8 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
         context: move.context,
         set: { type: classified.type, heldWeightKg: kg, firstWeightAt: takenAt },
         data: { kg, source, type: classified.type, why: classified.reason },
+        request: "STORE_TYPE2",
       });
-      await createApproval(tx, ticket, { kind: "STORE_TYPE2" }, "system");
     } else {
       await sendToUnload(tx, ticket, {
         ...move,
@@ -262,7 +260,7 @@ export async function takeSecondWeight(app: FastifyInstance, ticketId: number, a
       !passed,
     );
 
-    ticket = await changeStatus(tx, ticket, secondWeightEvent(passed), {
+    await changeStatus(tx, ticket, secondWeightEvent(passed), {
       actor,
       set: { secondWeightKg: kg, secondWeightAt: new Date(), netKg: net.netKg, variancePct },
       data: {
@@ -274,10 +272,8 @@ export async function takeSecondWeight(app: FastifyInstance, ticketId: number, a
         tolerancePct,
         ...(holdReason ? { holdReason } : {}),
       },
+      ...(passed ? {} : { request: "HOLD" }),
     });
-    if (!passed) {
-      await createApproval(tx, ticket, { kind: "HOLD" }, "system", { holdReason });
-    }
   });
   const saved = await ticketView(app.db, app.storage, ticketId);
   app.hardware.signals.show(saved.status === "COMPLETED" ? SIGNALS.thankYou : SIGNALS.store);

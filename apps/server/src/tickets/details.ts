@@ -10,7 +10,6 @@ import { SIGNALS } from "../hardware/signals";
 import {
   addEvent,
   changeStatus,
-  createApproval,
   lockTicket,
   readNumberSetting,
   updateTicket,
@@ -99,10 +98,10 @@ export async function saveDetails(
         attempt: attempts,
       });
       if (attempts >= limit) {
-        ticket = await changeStatus(tx, ticket, "MISMATCH_LIMIT_REACHED", { actor });
-        await createApproval(tx, ticket, { kind: "MISMATCH" }, actor, {
-          driverSaid: said,
-          invoiceSays: ticket.invoiceMaterial,
+        await changeStatus(tx, ticket, "MISMATCH_LIMIT_REACHED", {
+          actor,
+          data: { driverSaid: said, invoiceSays: ticket.invoiceMaterial },
+          request: "MISMATCH",
         });
       }
     }

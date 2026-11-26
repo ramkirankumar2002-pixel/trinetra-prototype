@@ -94,6 +94,20 @@ describe.skipIf(!testDatabaseUrl)("first weight", { timeout: 30_000 }, () => {
     });
   });
 
+  it("writes one timeline row for the supervisor request", async () => {
+    const id = await weighed({ material: "Cement Bags" });
+    const { timeline, approvals } = await view(id);
+    expect(timeline.slice(-2).map((entry) => entry.type)).toEqual([
+      "FIRST_WEIGHT_SAVED",
+      "SUPERVISOR_REQUESTED",
+    ]);
+    expect(timeline.at(-1)!.data).toMatchObject({
+      approvalId: approvals[0]!.id,
+      kind: "SUPERVISOR",
+    });
+    expect(timeline.map((entry) => entry.type)).not.toContain("APPROVAL_REQUESTED");
+  });
+
   it("weighs a Type 1 truck without an invoice weight", async () => {
     const id = await weighed({ material: "Cement Bags", invoiceKg: null });
     expect((await h.ticketRow(id)).status).toBe("SUPERVISOR_PENDING");

@@ -400,6 +400,24 @@ const decideAsSupervisor = (approvalId: number, body: Record<string, unknown>) =
 
 // ---- The final ticket ----
 
+/** The rows that open a request: the move that needs it, or APPROVAL_REQUESTED. */
+const REQUEST_ROWS = new Set([
+  "APPROVAL_REQUESTED",
+  "MISMATCH_LIMIT_REACHED",
+  "FIRST_WEIGHT_HELD",
+  "SUPERVISOR_REQUESTED",
+  "SECOND_WEIGHT_FAILED",
+]);
+
+function checkOneRowPerRequest(ticket: TicketView): void {
+  for (const { id, kind } of ticket.approvals) {
+    const rows = ticket.timeline.filter(
+      (entry) => REQUEST_ROWS.has(entry.type) && entry.data.approvalId === id,
+    );
+    check(rows.length === 1, `The ${kind} request has ${rows.length} timeline rows, not 1.`);
+  }
+}
+
 async function showTicket(id: number, expected: TicketStatus): Promise<TicketView> {
   const ticket = await api<TicketView>("GET", `/api/tickets/${id}`, { who: STORE });
   check(ticket.status === expected, `Expected ${expected}, got ${ticket.status}.`);
@@ -427,6 +445,7 @@ async function showTicket(id: number, expected: TicketStatus): Promise<TicketVie
   for (const [name, value] of lines) say(`  ${name.padEnd(9)} ${value}`);
   say("  Timeline");
   for (const entry of ticket.timeline) say(`    ${entry.type.padEnd(24)} ${entry.actorName}`);
+  checkOneRowPerRequest(ticket);
   return ticket;
 }
 

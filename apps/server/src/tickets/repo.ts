@@ -103,9 +103,14 @@ export async function changeStatus(
     /** Other columns saved with the move. */
     set?: Omit<TicketChanges, "status">;
     context?: TransitionContext;
+    /**
+     * A request this move opens. The move's timeline row carries it, so there is no
+     * second APPROVAL_REQUESTED row.
+     */
+    request?: ApprovalKind;
   },
 ): Promise<TicketRow> {
-  const { actor, data = {}, set = {}, context } = options;
+  const { actor, data = {}, set = {}, context, request } = options;
   const status = transition(ticket.status, event, context);
   const now = new Date();
   const [row] = await tx
@@ -113,20 +118,28 @@ export async function changeStatus(
     .set({ ...set, status, updatedAt: now, ...(isClosedStatus(status) ? { closedAt: now } : {}) })
     .where(eq(tickets.id, ticket.id))
     .returning();
-  await addEvent(tx, ticket.id, event, actor, { from: ticket.status, to: status, ...data });
+  const approval = request ? await insertApproval(tx, row!, { kind: request }) : undefined;
+  await addEvent(tx, ticket.id, event, actor, {
+    from: ticket.status,
+    to: status,
+    ...data,
+    ...(approval ? { approvalId: approval.id, kind: approval.kind } : {}),
+  });
   emitAfterCommit("ticket:updated", ticketRooms(row!), { ticketId: ticket.id, status });
+  if (approval) announceApproval(row!, approval);
   return row!;
 }
 
-/** Opens a request for a person to decide, and rings the right phone. */
-export async function createApproval(
+interface NewApproval {
+  kind: ApprovalKind;
+  plateWarningReason?: PlateWarningReason;
+}
+
+async function insertApproval(
   tx: Transaction,
   ticket: TicketRow | null,
-  request: { kind: ApprovalKind; plateWarningReason?: PlateWarningReason },
-  actor: Actor,
-  data: Record<string, unknown> = {},
+  { kind, plateWarningReason }: NewApproval,
 ): Promise<ApprovalRow> {
-  const { kind, plateWarningReason } = request;
   const [approval] = await tx
     .insert(approvals)
     .values({
@@ -135,22 +148,39 @@ export async function createApproval(
       ...(plateWarningReason ? { plateWarningReason } : {}),
     })
     .returning();
+  return approval!;
+}
+
+/** Rings the right phone, once the change is saved. */
+function announceApproval(ticket: TicketRow | null, { id, kind }: ApprovalRow): void {
+  const room: Room =
+    kind === "SUPERVISOR" && ticket?.supervisorId ? supervisorRoom(ticket.supervisorId) : "store";
+  emitAfterCommit("approval:new", [room], { approvalId: id, ticketId: ticket?.id ?? null, kind });
+}
+
+/**
+ * Opens a request that comes without a status move (a plate warning, driver help). A
+ * request that comes with a move is opened by changeStatus() instead.
+ */
+export async function createApproval(
+  tx: Transaction,
+  ticket: TicketRow | null,
+  request: NewApproval,
+  actor: Actor,
+  data: Record<string, unknown> = {},
+): Promise<ApprovalRow> {
+  const { kind, plateWarningReason } = request;
+  const approval = await insertApproval(tx, ticket, request);
   if (ticket) {
     await addEvent(tx, ticket.id, "APPROVAL_REQUESTED", actor, {
-      approvalId: approval!.id,
+      approvalId: approval.id,
       kind,
       ...(plateWarningReason ? { plateWarningReason } : {}),
       ...data,
     });
   }
-  const room: Room =
-    kind === "SUPERVISOR" && ticket?.supervisorId ? supervisorRoom(ticket.supervisorId) : "store";
-  emitAfterCommit("approval:new", [room], {
-    approvalId: approval!.id,
-    ticketId: ticket?.id ?? null,
-    kind,
-  });
-  return approval!;
+  announceApproval(ticket, approval);
+  return approval;
 }
 
 /** Where the blocked-plate check stands. The front/back warning never counts here. */
