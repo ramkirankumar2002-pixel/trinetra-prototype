@@ -3,7 +3,7 @@
 // Today's date and the time now, in India (formatIST), whatever the device is set to.
 import { formatIST } from "@trinetra/shared";
 import { cn } from "cn";
-import { CalendarDays, Clock } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 const MINUTE_MS = 60_000;
@@ -32,18 +32,15 @@ export function ClockChip({ className }: { className?: string }) {
       data-testid="clock"
       className={cn(
         "inline-flex items-center gap-3 text-sm whitespace-nowrap",
-        "kiosk:gap-4 kiosk:rounded-2xl kiosk:border kiosk:border-card-border kiosk:bg-card kiosk:px-5 kiosk:py-3 kiosk:text-[2rem] kiosk:leading-none kiosk:shadow-card kiosk:backdrop-blur-md",
+        "kiosk:gap-3 kiosk:rounded-2xl kiosk:border kiosk:border-card-border kiosk:bg-card kiosk:px-4 kiosk:py-3 kiosk:text-[2rem] kiosk:leading-none kiosk:shadow-card kiosk:backdrop-blur-md",
         className,
       )}
     >
       <CalendarDays aria-hidden className="size-6 shrink-0 kiosk:size-9 kiosk:text-highlight" />
-      <span className="flex flex-col leading-tight kiosk:flex-row kiosk:items-center kiosk:gap-4">
+      <span className="flex flex-col leading-tight kiosk:flex-row kiosk:items-center kiosk:gap-3">
         <span>{now?.date ?? "———"}</span>
         <span aria-hidden className="hidden h-8 w-px bg-input kiosk:block" />
-        <span className="flex items-center gap-3 font-bold kiosk:font-semibold">
-          <Clock aria-hidden className="hidden size-9 text-highlight kiosk:block" />
-          {now?.time ?? "——:——"}
-        </span>
+        <span className="font-bold kiosk:font-semibold">{now?.time ?? "——:——"}</span>
       </span>
     </div>
   );

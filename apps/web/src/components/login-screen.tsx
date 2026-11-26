@@ -4,7 +4,7 @@
 // a PIN on a big number pad.
 import type { AuthResponse, AuthUser } from "@trinetra/shared";
 import { cn } from "cn";
-import { LogIn } from "lucide-react";
+import { LogIn, Truck, UserRound } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useT } from "@/i18n/use-t";
 import type { MessageKey } from "@/i18n/translate";
@@ -12,8 +12,10 @@ import { api, ApiError } from "@/lib/api";
 import { AREAS, type AreaName } from "@/lib/areas";
 import { useMe } from "@/lib/session";
 import { LanguageSwitch } from "./language-switch";
-import { PageShell } from "./layout/page-shell";
+import { AuthShell } from "./layout/auth-shell";
+import { KioskShell } from "./layout/kiosk-shell";
 import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 import { NumberPad } from "./ui/number-pad";
 import { Spinner } from "./ui/spinner";
 import { TONE_SOFT } from "./ui/tone";
@@ -165,103 +167,116 @@ export function LoginScreen({
   }
   if (locked) message = t("error.locked", { seconds: secondsLeft });
 
-  return (
-    <PageShell
-      layout={area === "kiosk" ? "kiosk" : "dashboard"}
-      brand={t("app.name")}
-      title={t(`area.${area}`)}
-      bottomBar={<LanguageSwitch />}
+  const kiosk = area === "kiosk";
+  const content = alreadyIn ? (
+    <Spinner label={t("session.checking")} className="flex-1 py-10" />
+  ) : (
+    <form
+      onSubmit={submit}
+      noValidate
+      className="flex w-full flex-col gap-3 kiosk:gap-y-0 kiosk:grid kiosk:grid-cols-2 kiosk:content-center kiosk:items-start kiosk:gap-x-14"
     >
-      {alreadyIn ? (
-        <Spinner label={t("session.checking")} className="flex-1" />
-      ) : (
-        <form
-          onSubmit={submit}
-          noValidate
-          className="mx-auto flex w-full max-w-sm flex-col gap-3 kiosk:my-auto kiosk:grid kiosk:max-w-6xl kiosk:grid-cols-2 kiosk:content-center kiosk:items-start kiosk:gap-x-16"
-        >
-          <div className="flex flex-col gap-3">
-            {/* The kiosk has no height to spare; its top bar already says where this is. */}
-            <h2 className="text-2xl font-bold kiosk:sr-only">{t("login.heading")}</h2>
-            {me.data && !problem && (
-              <p className={cn("rounded-xl border-2 p-3", TONE_SOFT.wait)}>
-                {t("login.otherAccount", {
-                  name: me.data.name,
-                  role: t(`role.${me.data.role}`),
-                  required,
-                })}
-              </p>
-            )}
-            <label className="flex flex-col gap-1 font-semibold">
-              {t("login.username")}
-              <input
-                name="username"
-                disabled={!interactive}
-                value={username}
-                onChange={(event) => setTyped(event.target.value)}
-                autoComplete="username"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={50}
-                className="min-h-14 w-full rounded-xl border-2 border-neutral-400 bg-background px-4 text-2xl font-normal outline-none focus-visible:ring-4 focus-visible:ring-ring/60 kiosk:min-h-24 kiosk:rounded-3xl kiosk:px-6 kiosk:text-5xl"
-              />
-            </label>
-            <div className="flex flex-col gap-1">
-              <span className="font-semibold">
-                {t("login.pin")}{" "}
-                <span className="font-normal text-muted-foreground">({t("login.pinHint")})</span>
-              </span>
-              <div
-                data-testid="pin-dots"
-                className="flex min-h-12 items-center gap-3 kiosk:min-h-16 kiosk:gap-5"
-              >
-                {Array.from({ length: PIN_MAX }, (_, index) => (
-                  <span
-                    key={index}
-                    aria-hidden
-                    className={cn(
-                      "size-5 rounded-full border-2 border-neutral-500 kiosk:size-10",
-                      index < pin.length && "border-foreground bg-foreground",
-                    )}
-                  />
-                ))}
-                <span aria-live="polite" className="sr-only">
-                  {t("login.pinEntered", { count: pin.length })}
-                </span>
-              </div>
-            </div>
-            {message && (
-              <p
-                role="alert"
-                className={cn("rounded-xl border-2 p-3 font-semibold", TONE_SOFT.stop)}
-              >
-                {message}
-              </p>
-            )}
-          </div>
-
-          <div className="kiosk:col-start-2 kiosk:row-span-2 kiosk:row-start-1">
-            <NumberPad
-              value={pin}
-              onChange={setPin}
-              maxLength={PIN_MAX}
-              disabled={!interactive || busy || locked}
-              labels={{
-                pad: t("numberPad.label"),
-                clear: t("numberPad.clear"),
-                backspace: t("numberPad.delete"),
-              }}
+      <div className="flex flex-col gap-3">
+        {/* On the kiosk the page header says this instead: there is no height to spare. */}
+        <h1 className="text-center text-2xl font-bold kiosk:hidden">{t(`login.title.${area}`)}</h1>
+        {me.data && !problem && (
+          <p className={cn("rounded-xl border p-3 kiosk:leading-tight", TONE_SOFT.wait)}>
+            {t("login.otherAccount", {
+              name: me.data.name,
+              role: t(`role.${me.data.role}`),
+              required,
+            })}
+          </p>
+        )}
+        <label className="flex flex-col gap-1 font-semibold">
+          {t("login.username")}
+          <span className="relative flex">
+            <UserRound
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground kiosk:left-5 kiosk:size-10"
             />
+            <input
+              name="username"
+              disabled={!interactive}
+              value={username}
+              onChange={(event) => setTyped(event.target.value)}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={50}
+              className="min-h-13 w-full rounded-lg border border-input bg-field pr-4 pl-11 text-xl font-normal text-foreground outline-none focus-visible:ring-4 focus-visible:ring-ring/60 kiosk:min-h-24 kiosk:rounded-2xl kiosk:border-2 kiosk:pl-20 kiosk:text-5xl"
+            />
+          </span>
+        </label>
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold">
+            {t("login.pin")}{" "}
+            <span className="font-normal text-muted-foreground">({t("login.pinHint")})</span>
+          </span>
+          <div
+            data-testid="pin-dots"
+            className="flex min-h-8 items-center gap-3 kiosk:min-h-14 kiosk:gap-5"
+          >
+            {Array.from({ length: PIN_MAX }, (_, index) => (
+              <span
+                key={index}
+                aria-hidden
+                className={cn(
+                  "size-4 rounded-full border-2 border-input kiosk:size-9",
+                  index < pin.length &&
+                    "border-primary-edge bg-primary kiosk:shadow-[0_0_1rem_var(--primary-edge)]",
+                )}
+              />
+            ))}
+            <span aria-live="polite" className="sr-only">
+              {t("login.pinEntered", { count: pin.length })}
+            </span>
           </div>
+        </div>
+        {message && (
+          <p
+            role="alert"
+            className={cn(
+              "rounded-xl border p-3 font-semibold kiosk:leading-tight",
+              TONE_SOFT.stop,
+            )}
+          >
+            {message}
+          </p>
+        )}
+      </div>
 
-          {/* Under the number pad on a phone; under the fields on the kiosk. */}
-          <Button type="submit" variant="go" size="lg" disabled={!ready}>
-            <LogIn aria-hidden />
-            {t(busy ? "login.busy" : "login.submit")}
-          </Button>
-        </form>
-      )}
-    </PageShell>
+      <div className="kiosk:col-start-2 kiosk:row-span-2 kiosk:row-start-1">
+        <NumberPad
+          value={pin}
+          onChange={setPin}
+          maxLength={PIN_MAX}
+          disabled={!interactive || busy || locked}
+          labels={{
+            pad: t("numberPad.label"),
+            clear: t("numberPad.clear"),
+            backspace: t("numberPad.delete"),
+          }}
+        />
+      </div>
+
+      {/* Under the number pad on a phone; under the fields on the kiosk. */}
+      <Button type="submit" size="lg" disabled={!ready} className="kiosk:mt-3">
+        <LogIn aria-hidden />
+        {t(busy ? "login.busy" : "login.submit")}
+      </Button>
+    </form>
   );
+
+  if (kiosk) {
+    return (
+      <KioskShell
+        header={{ icon: Truck, title: t("login.title.kiosk"), subtitle: t("login.heading") }}
+      >
+        <Card className="my-auto kiosk:p-4">{content}</Card>
+      </KioskShell>
+    );
+  }
+  return <AuthShell footer={<LanguageSwitch onNavy />}>{content}</AuthShell>;
 }

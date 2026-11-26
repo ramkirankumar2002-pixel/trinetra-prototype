@@ -62,7 +62,7 @@ export function KioskShell({ header, status, actions, children }: KioskShellProp
                 <HeaderIcon className="size-12" />
               </span>
               <div className="min-w-0">
-                <h1 className="text-5xl leading-tight font-extrabold tracking-wide uppercase">
+                <h1 className="text-[2.5rem] leading-tight font-extrabold uppercase">
                   {header.title}
                 </h1>
                 {header.subtitle && (

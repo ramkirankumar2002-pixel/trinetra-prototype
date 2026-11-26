@@ -23,7 +23,10 @@
   "role.SUPERVISOR": "सुपरवाइज़र",
   "role.STORE": "स्टोर अधिकारी",
 
-  "login.heading": "लॉग इन करें",
+  "login.title.kiosk": "धर्म कांटा लॉग इन",
+  "login.title.supervisor": "सुपरवाइज़र लॉग इन",
+  "login.title.store": "स्टोर अधिकारी लॉग इन",
+  "login.heading": "आगे बढ़ने के लिए लॉग इन करें",
   "login.username": "यूज़रनेम",
   "login.pin": "पिन",
   "login.pinHint": "4 से 6 अंक",

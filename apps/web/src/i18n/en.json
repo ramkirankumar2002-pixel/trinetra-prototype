@@ -23,7 +23,10 @@
   "role.SUPERVISOR": "supervisor",
   "role.STORE": "store officer",
 
-  "login.heading": "Log in",
+  "login.title.kiosk": "Weighbridge login",
+  "login.title.supervisor": "Supervisor login",
+  "login.title.store": "Store officer login",
+  "login.heading": "Please log in to continue",
   "login.username": "Username",
   "login.pin": "PIN",
   "login.pinHint": "4 to 6 digits",
