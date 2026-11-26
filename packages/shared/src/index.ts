@@ -16,3 +16,4 @@ export * from "./api";
 export * from "./auth";
 export * from "./domain";
 export * from "./rules/plates";
+export * from "./rules/classify";
