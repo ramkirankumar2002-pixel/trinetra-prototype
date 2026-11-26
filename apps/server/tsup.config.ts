@@ -7,5 +7,5 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   // The shared package is plain TypeScript, so it must be bundled into the output.
-  noExternal: ["@trinetra/shared"],
+  noExternal: [/^@trinetra\/shared/],
 });
