@@ -7,18 +7,15 @@ import {
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/guard";
 import type { Env } from "../config/env";
-import { AppError } from "../errors/app-error";
 import { saveDetails } from "../tickets/details";
 import { createUploadLink } from "../tickets/invoice-upload";
 import { getTicket, userActor } from "../tickets/repo";
+import { assertOwnTicket } from "../tickets/supervisor";
 import { discardWeight, logPrinted } from "../tickets/slips";
 import { startTicket } from "../tickets/start";
 import { ticketView } from "../tickets/view";
 import { takeFirstWeight, takeSecondWeight } from "../tickets/weighing";
 import { idOf } from "./params";
-
-export const notYourTicket = () =>
-  new AppError(403, "NOT_YOUR_TICKET", "This truck was not sent to you.");
 
 export function registerTicketRoutes(app: FastifyInstance, env: Env): void {
   const kiosk = { preHandler: requireRole("KIOSK") };
@@ -67,10 +64,7 @@ export function registerTicketRoutes(app: FastifyInstance, env: Env): void {
     async (request, reply) => {
       const id = idOf(request.params);
       if (request.user.role === "SUPERVISOR") {
-        const ticket = await getTicket(app.db, id);
-        if (ticket.type !== "TYPE_1" || ticket.supervisorId !== request.user.userId) {
-          throw notYourTicket();
-        }
+        assertOwnTicket(await getTicket(app.db, id), request.user.userId);
       }
       reply.header("cache-control", "no-store");
       return ticketView(app.db, app.storage, id);

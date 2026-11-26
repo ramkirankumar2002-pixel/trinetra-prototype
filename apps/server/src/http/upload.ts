@@ -10,14 +10,30 @@ export interface Upload {
   contentType: string;
 }
 
-/** Reads the single file of a multipart request. Files over 8 MB fail with status 413. */
+/**
+ * Reads the single file of a multipart request and the form fields beside it, in any
+ * order. Files over 8 MB fail with status 413.
+ */
+export async function readUploadWithFields(
+  request: FastifyRequest,
+): Promise<{ upload: Upload; fields: Record<string, string> }> {
+  const fields: Record<string, string> = {};
+  let upload: Upload | undefined;
+  for await (const part of request.parts()) {
+    if (part.type === "field") {
+      fields[part.fieldname] = String(part.value);
+      continue;
+    }
+    if (!isAcceptedType(part.mimetype)) throw unsupported();
+    const buffer = await part.toBuffer();
+    if (detectFileType(buffer) !== part.mimetype) throw unsupported();
+    upload = { buffer, contentType: part.mimetype };
+  }
+  if (!upload) throw new AppError(400, "NO_FILE", "No file was sent.");
+  return { upload, fields };
+}
+
+/** Reads the single file of a multipart request. */
 export async function readUpload(request: FastifyRequest): Promise<Upload> {
-  const file = await request.file();
-  if (!file) throw new AppError(400, "NO_FILE", "No file was sent.");
-  if (!isAcceptedType(file.mimetype)) throw unsupported();
-
-  const buffer = await file.toBuffer();
-  if (detectFileType(buffer) !== file.mimetype) throw unsupported();
-
-  return { buffer, contentType: file.mimetype };
+  return (await readUploadWithFields(request)).upload;
 }
