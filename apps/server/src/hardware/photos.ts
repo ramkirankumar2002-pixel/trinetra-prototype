@@ -56,6 +56,8 @@ export class PhotoService {
       db: Database;
       log: FastifyBaseLogger;
       timeoutMs?: number;
+      /** Told as each camera's photo is saved. */
+      onSaved?: (camera: CameraId, photo: CameraPhoto) => void;
     },
   ) {}
 
@@ -106,6 +108,7 @@ export class PhotoService {
       );
       const photo = { id: photoId, storagePath: stored.storagePath, sha256: stored.sha256 };
       pending.settle(photo);
+      this.options.onSaved?.(camera, photo);
       return photo;
     } catch (error) {
       pending.settle(null);

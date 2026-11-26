@@ -1,7 +1,7 @@
 // Live events from the backend to the browsers (build plan section 7). The backend and the
 // website both use these names and types. Browsers only listen: they send nothing.
 import type { ApprovalKind, ApprovalStatus, TicketStatus } from "./domain";
-import type { CaptureBlockReason, DeviceId } from "./hardware";
+import type { CameraId, CaptureBlockReason, DeviceId } from "./hardware";
 
 export interface HardwareWeightEvent {
   kg: number;
@@ -47,6 +47,13 @@ export interface KioskReadyEvent {
 }
 
 /** The reading of an uploaded invoice has ended. The values are loaded over REST. */
+/** A camera's photo of the truck on the bridge has just been saved. */
+export interface PhotoArrivedEvent {
+  camera: CameraId;
+  /** Works for a few minutes only. */
+  url: string;
+}
+
 export interface InvoiceReadEvent {
   ticketId: number;
   ok: boolean;
@@ -65,6 +72,7 @@ export interface RealtimeEvents {
   "approval:decided": ApprovalDecidedEvent;
   "kiosk:ready": KioskReadyEvent;
   "invoice:read": InvoiceReadEvent;
+  "photo:arrived": PhotoArrivedEvent;
 }
 
 export type RealtimeEventName = keyof RealtimeEvents;
@@ -96,6 +104,7 @@ export const EVENT_AUDIENCE: Readonly<Record<RealtimeEventName, readonly RoomKin
   "approval:decided": ["kiosk", "supervisor", "store"],
   "kiosk:ready": ["kiosk"],
   "invoice:read": ["kiosk"],
+  "photo:arrived": ["kiosk"],
 };
 
 export const REALTIME_EVENT_NAMES = Object.keys(EVENT_AUDIENCE) as RealtimeEventName[];

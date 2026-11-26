@@ -37,6 +37,7 @@ import { createReaders, type Readers } from "./services/readers";
 import { createStorage, LocalStorage, type StorageService } from "./services/storage";
 import { scheduleAbandonedSweep } from "./tickets/abandon";
 import { AnprSession } from "./tickets/anpr-session";
+import { PHOTO_LINK_SECONDS } from "./tickets/photo-links";
 
 export interface AppOptions {
   env: Env;
@@ -135,7 +136,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     }),
   );
   app.addHook("onReady", () => hardware.start());
-  const forwarding = forwardHardware(hardware, realtime);
+  const forwarding = forwardHardware(
+    hardware,
+    realtime,
+    (path) => storage.getUrl(path, PHOTO_LINK_SECONDS),
+    (error) => app.log.warn({ err: error }, "could not announce a photo"),
+  );
   app.addHook("preClose", () => {
     forwarding.stop();
     hardware.stop();

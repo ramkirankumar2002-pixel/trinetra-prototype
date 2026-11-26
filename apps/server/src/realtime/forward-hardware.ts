@@ -7,7 +7,13 @@ import { throttle } from "./throttle";
 /** hw:weight goes out at most 5 times a second. */
 export const WEIGHT_INTERVAL_MS = 200;
 
-export function forwardHardware(hardware: Hardware, realtime: SocketServer) {
+export function forwardHardware(
+  hardware: Hardware,
+  realtime: SocketServer,
+  /** A short-lived link to a stored photo. */
+  photoUrl: (storagePath: string) => Promise<string>,
+  onError: (error: unknown) => void,
+) {
   const { bus, state } = hardware;
   const timestamp = () => new Date().toISOString();
 
@@ -49,6 +55,13 @@ export function forwardHardware(hardware: Hardware, realtime: SocketServer) {
   bus.on("truck:left", ({ kg }) =>
     realtime.publish("truck:left", ["kiosk"], { kg, at: timestamp() }),
   );
+
+  // So the kiosk can show each photo the moment it arrives, before the plates are read.
+  bus.on("camera:photo", ({ camera, storagePath }) => {
+    photoUrl(storagePath)
+      .then((url) => realtime.publish("photo:arrived", ["kiosk"], { camera, url }))
+      .catch(onError);
+  });
 
   // A screen that has just connected learns which boards are online without waiting
   // for something to change.

@@ -42,6 +42,7 @@ export function createHardware(options: HardwareOptions) {
     storage,
     db,
     log,
+    onSaved: (camera, { storagePath }) => bus.emit("camera:photo", { camera, storagePath }),
     ...(photoTimeoutMs === undefined ? {} : { timeoutMs: photoTimeoutMs }),
   });
 

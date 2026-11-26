@@ -1,4 +1,4 @@
-// "pick" demo mode: no cameras, no files, no network.
+// "pick" demo mode: no reading service, no files, no network.
 import { checkTolerance, classifyType } from "@trinetra/shared";
 import { SAMPLE_INVOICE_IDS, SAMPLE_INVOICES, SEED_MATERIALS } from "@trinetra/shared/seed";
 import type { FastifyBaseLogger } from "fastify";
@@ -59,7 +59,7 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
   });
 
   describe("anpr_mode = pick", () => {
-    it("gives the picked plate from the vehicle list without using the cameras", async () => {
+    it("gives the picked plate from the vehicle list without any reading service", async () => {
       await set({ anpr_mode: "pick", demo_plate: "UP 32 EF 9012" });
       const result = await readers().readPlates(null);
 
@@ -71,8 +71,20 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
         photoId: null,
         cameraFailure: null,
       });
-      expect(requestPhotos).not.toHaveBeenCalled();
+      // The cameras are still asked, so their photos can be shown and kept.
+      expect(requestPhotos).toHaveBeenCalledWith(null);
       expect(apis.calls.plateRecognizer).toHaveLength(0);
+    });
+
+    it("keeps a connected camera's photo, and says why another has none", async () => {
+      await set({ anpr_mode: "pick", demo_plate: "UP32EF9012" });
+      requestPhotos.mockResolvedValueOnce({
+        photos: { front: { id: "a-photo", storagePath: "photos/a.jpg", sha256: "a" } },
+        failed: [{ camera: "back", reason: "OFFLINE" }],
+      } as never);
+      const { cameras } = await readers().readPlates(null);
+      expect(cameras.front).toMatchObject({ photoId: "a-photo", cameraFailure: null });
+      expect(cameras.back).toMatchObject({ photoId: null, cameraFailure: "OFFLINE" });
     });
 
     it("refuses a plate that is not in the vehicle list", async () => {

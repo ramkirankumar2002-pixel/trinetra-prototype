@@ -36,6 +36,9 @@ export type CreateTicketRequest = z.input<typeof createTicketSchema>;
 
 const shortText = z.string().trim().min(1).max(100);
 
+/** An Indian mobile number: 10 digits, starting 6 to 9. */
+export const DRIVER_PHONE_PATTERN = /^[6-9]\d{9}$/;
+
 export const ticketDetailsSchema = z
   .strictObject({
     /** A material name from the list. */
@@ -43,7 +46,9 @@ export const ticketDetailsSchema = z
     supplier: shortText,
     transporter: shortText,
     driverName: shortText,
-    driverPhone: z.string().regex(/^[6-9]\d{9}$/, "Enter a 10 digit mobile number."),
+    driverPhone: z.string().regex(DRIVER_PHONE_PATTERN, "Enter a 10 digit mobile number."),
+    /** The driver switched language: the phone's upload page follows the ticket. */
+    language: z.enum(LANGUAGES),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, "Send at least one value.");
@@ -378,4 +383,27 @@ export interface LiveSummaryResponse {
   /** Tickets that ended blocked or rejected today. */
   blockedOrRejected: number;
   devicesOnline: { main: boolean; front: boolean; back: boolean };
+}
+
+/** GET /api/master: what the kiosk's tiles are made from. */
+export interface MasterResponse {
+  materials: {
+    name: string;
+    /** The type without a weight rule. */
+    type: TicketType;
+    /** If set, the invoice weight is needed to decide the type. */
+    type2AboveKg: number | null;
+    aliasesEn: string[];
+    aliasesHi: string[];
+  }[];
+  suppliers: string[];
+  transporters: string[];
+}
+
+/** GET /api/kiosk/collect: the two lists of the kiosk's Ready screen. */
+export interface KioskCollectResponse {
+  /** Approved by the store officer, and the slip not yet printed. Newest first. */
+  ready: { ticketId: number; ticketNo: string; plate: string; slip: "FIRST" | "FINAL" }[];
+  /** Turned away in the last 10 minutes. */
+  notApproved: { ticketId: number; plate: string; until: string }[];
 }

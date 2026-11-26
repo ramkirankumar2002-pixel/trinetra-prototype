@@ -72,12 +72,12 @@ export function createReaders(deps: ReaderDependencies) {
 
   const badDemoSetting = (message: string) => new AppError(409, "DEMO_SETTING_INVALID", message);
 
-  /** "pick" mode: the chosen plate from the vehicle list stands in for both cameras. */
-  async function pickedPlates(modes: ReaderModes): Promise<PlatesRead> {
+  /** "pick" mode: the chosen plate from the vehicle list stands in for both readings. */
+  async function pickedPlate(modes: ReaderModes): Promise<CameraPlateRead> {
     const plate = normalizePlate(modes.demo_plate ?? "");
     const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.plate, plate));
     if (!vehicle) throw badDemoSetting("demo_plate is not a plate from the vehicle list.");
-    const camera: CameraPlateRead = {
+    return {
       plate,
       source: "demo",
       model: null,
@@ -88,7 +88,26 @@ export function createReaders(deps: ReaderDependencies) {
       photoId: null,
       cameraFailure: null,
     };
-    return { cameras: { front: camera, back: camera }, match: true, plate, demo: true };
+  }
+
+  /**
+   * The picked plate, with the photos of any camera that is connected: they are evidence
+   * and are shown on the kiosk. A camera that is offline fails at once.
+   */
+  async function pickedPlates(modes: ReaderModes, ticketId: number | null): Promise<PlatesRead> {
+    const picked = await pickedPlate(modes);
+    const request = await photos.requestPhotos(ticketId);
+    const camera = (id: CameraId): CameraPlateRead => ({
+      ...picked,
+      photoId: request.photos[id]?.id ?? null,
+      cameraFailure: request.failed.find((failure) => failure.camera === id)?.reason ?? null,
+    });
+    return {
+      cameras: { front: camera("front"), back: camera("back") },
+      match: true,
+      plate: picked.plate,
+      demo: true,
+    };
   }
 
   /**
@@ -97,7 +116,7 @@ export function createReaders(deps: ReaderDependencies) {
    */
   async function readPlates(ticketId: number | null): Promise<PlatesRead> {
     const modes = await loadReaderModes(db);
-    if (modes.anpr_mode === "pick") return pickedPlates(modes);
+    if (modes.anpr_mode === "pick") return pickedPlates(modes, ticketId);
     const request = await photos.requestPhotos(ticketId);
 
     async function readCamera(camera: CameraId): Promise<CameraPlateRead> {
@@ -154,8 +173,8 @@ export function createReaders(deps: ReaderDependencies) {
   async function readSupervisorPlate(jpeg: Buffer): Promise<PlateRead> {
     const modes = await loadReaderModes(db);
     if (modes.anpr_mode !== "pick") return readPlate(jpeg);
-    const { front } = (await pickedPlates(modes)).cameras;
-    const { plate, source, model, confidence, validFormat, ms, problems } = front;
+    const { plate, source, model, confidence, validFormat, ms, problems } =
+      await pickedPlate(modes);
     return { plate, source, model, confidence, validFormat, ms, problems };
   }
 

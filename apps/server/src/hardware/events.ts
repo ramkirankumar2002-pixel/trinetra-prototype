@@ -1,6 +1,6 @@
 // The backend's internal hardware news. Phase 6 forwards it to the browsers.
 import { EventEmitter } from "node:events";
-import type { DeviceId } from "@trinetra/shared";
+import type { CameraId, DeviceId } from "@trinetra/shared";
 
 export interface HardwareEvents {
   /** Every reading from the main ESP32, about 5 times a second. */
@@ -11,6 +11,8 @@ export interface HardwareEvents {
   "truck:arrived": [{ kg: number }];
   /** The truck that arrived has left the bridge. */
   "truck:left": [{ kg: number }];
+  /** A camera's photo has been saved. */
+  "camera:photo": [{ camera: CameraId; storagePath: string }];
 }
 
 export type HardwareBus = EventEmitter<HardwareEvents>;
