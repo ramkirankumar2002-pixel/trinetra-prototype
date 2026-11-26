@@ -6,6 +6,8 @@ import { loadEnvFile } from "./paths";
 const required = z.string({ error: "is required" });
 /** Needed only by a later phase. */
 const optional = z.string().optional();
+/** A device without a token cannot connect. */
+const deviceToken = z.string().min(16, "must be at least 16 characters long").optional();
 
 function isPostgresUrl(value: string): boolean {
   const url = URL.parse(value);
@@ -66,11 +68,25 @@ const envSchema = z
     TEST_DATABASE_URL: optional,
     PLATE_RECOGNIZER_TOKEN: optional,
     GEMINI_API_KEY: optional,
-    DEVICE_TOKEN: optional,
-    CAM_FRONT_TOKEN: optional,
-    CAM_BACK_TOKEN: optional,
+    DEVICE_TOKEN: deviceToken,
+    CAM_FRONT_TOKEN: deviceToken,
+    CAM_BACK_TOKEN: deviceToken,
   })
   .superRefine((env, context) => {
+    // The token is how the backend knows which device is talking, so each needs its own.
+    const seen = new Set<string>();
+    for (const name of ["DEVICE_TOKEN", "CAM_FRONT_TOKEN", "CAM_BACK_TOKEN"] as const) {
+      const token = env[name];
+      if (token && seen.has(token)) {
+        context.addIssue({
+          code: "custom",
+          path: [name],
+          message: "must be different from the other device tokens",
+        });
+      }
+      if (token) seen.add(token);
+    }
+
     if (env.STORAGE_DRIVER !== "supabase") return;
     for (const name of ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "STORAGE_BUCKET"] as const) {
       if (!env[name]) {

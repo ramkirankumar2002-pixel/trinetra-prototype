@@ -42,6 +42,17 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...valid, [name]: value })).toThrow(new RegExp(`- ${name} `));
   });
 
+  it.each(["DEVICE_TOKEN", "CAM_FRONT_TOKEN", "CAM_BACK_TOKEN"])("refuses a short %s", (name) => {
+    expect(() => parseEnv({ ...valid, [name]: "too-short" })).toThrow(new RegExp(`- ${name} `));
+  });
+
+  it("refuses two devices with the same token", () => {
+    const token = "same-token-for-two-devices";
+    expect(() => parseEnv({ ...valid, DEVICE_TOKEN: token, CAM_BACK_TOKEN: token })).toThrow(
+      /CAM_BACK_TOKEN must be different/,
+    );
+  });
+
   it("requires the Supabase settings only for the supabase driver", () => {
     expect(() => parseEnv({ ...valid, STORAGE_DRIVER: "supabase" })).toThrow(
       /SUPABASE_URL is required[\s\S]*SUPABASE_SERVICE_KEY[\s\S]*STORAGE_BUCKET/,

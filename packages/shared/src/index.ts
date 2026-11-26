@@ -23,4 +23,5 @@ export { matchMaterial, type MatchableMaterial, type MaterialMatch } from "./mat
 export { parseDigits, parseYesNo } from "./matching/speech";
 export * from "./rules/ticket-state";
 export * from "./format";
+export * from "./hardware";
 export * from "./weighbridge";

@@ -9,6 +9,7 @@ const SECRET_FIELDS = [
   "authorization",
   "cookie",
   "set-cookie",
+  "x-device-token",
 ];
 
 /** A pino path for one field at one depth: "pin", "*.pin", '*.*["set-cookie"]'. */
