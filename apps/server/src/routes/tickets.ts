@@ -1,4 +1,9 @@
-import { createTicketSchema, emptyBodySchema, ticketDetailsSchema } from "@trinetra/shared";
+import {
+  createTicketSchema,
+  emptyBodySchema,
+  printedSchema,
+  ticketDetailsSchema,
+} from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/guard";
 import type { Env } from "../config/env";
@@ -6,6 +11,7 @@ import { AppError } from "../errors/app-error";
 import { saveDetails } from "../tickets/details";
 import { createUploadLink } from "../tickets/invoice-upload";
 import { getTicket, userActor } from "../tickets/repo";
+import { discardWeight, logPrinted } from "../tickets/slips";
 import { startTicket } from "../tickets/start";
 import { ticketView } from "../tickets/view";
 import { takeFirstWeight, takeSecondWeight } from "../tickets/weighing";
@@ -43,6 +49,16 @@ export function registerTicketRoutes(app: FastifyInstance, env: Env): void {
   app.post("/api/tickets/:id/second-weight", kiosk, async (request) => {
     emptyBodySchema.parse(request.body);
     return takeSecondWeight(app, idOf(request.params), userActor(request.user.userId));
+  });
+
+  app.post("/api/tickets/:id/discard-weight", kiosk, async (request) => {
+    emptyBodySchema.parse(request.body);
+    return discardWeight(app, idOf(request.params), userActor(request.user.userId));
+  });
+
+  app.post("/api/tickets/:id/printed", kiosk, async (request) => {
+    const { kind } = printedSchema.parse(request.body);
+    return logPrinted(app, idOf(request.params), kind, userActor(request.user.userId));
   });
 
   app.get(

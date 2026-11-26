@@ -84,6 +84,11 @@ export class HardwareState {
     this.watchForTrucks(kg, message.pos);
   }
 
+  /** The weight must hold still for the whole window again before it can be captured. */
+  restartStability(): void {
+    this.readings = [];
+  }
+
   /** The connection closed or is being replaced. */
   disconnected(device: DeviceId): void {
     if (this.lastSeen.has(device)) this.goOffline(device);
