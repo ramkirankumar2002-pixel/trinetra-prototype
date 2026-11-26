@@ -9,15 +9,16 @@ import {
   type UploadLinkResponse,
   type UploadResponse,
 } from "@trinetra/shared";
-import { and, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import type { Env } from "../config/env";
 import { UPLOAD_LINK_MS } from "../config/limits";
-import { approvals, materials, tickets, uploadLinks } from "../db/schema";
+import { approvals, materials, ticketEvents, tickets, uploadLinks } from "../db/schema";
 import { AppError } from "../errors/app-error";
+import { ReaderError } from "../services/readers/errors";
 import type { Upload } from "../http/upload";
 import { emitAfterCommit, type Transaction } from "../realtime/after-commit";
-import { storeFile } from "../services/images/pipeline";
+import { storeFile, type StoredFile } from "../services/images/pipeline";
 import { isDemoActive, tagDemo } from "./demo";
 import {
   addEvent,
@@ -68,7 +69,7 @@ export async function createUploadLink(
 
   return {
     code,
-    url: `${env.FRONTEND_ORIGIN}/upload/${code}`,
+    url: `${env.FRONTEND_ORIGIN}/u/${code}`,
     expiresAt: expiresAt.toISOString(),
   };
 }
@@ -132,6 +133,20 @@ async function warnIfDuplicate(
   emitAfterCommit("ticket:updated", ["store"], { ticketId: ticket.id, status: ticket.status });
 }
 
+/**
+ * True if another file was uploaded after this one: its result is the one that counts.
+ * The ticket must be locked.
+ */
+async function isSuperseded(tx: Transaction, ticketId: number, photoId: string) {
+  const [newest] = await tx
+    .select({ data: ticketEvents.data })
+    .from(ticketEvents)
+    .where(and(eq(ticketEvents.ticketId, ticketId), eq(ticketEvents.type, "INVOICE_RECEIVED")))
+    .orderBy(desc(ticketEvents.id))
+    .limit(1);
+  return newest?.data.photoId !== photoId;
+}
+
 /** Saves what was read on the ticket. A new upload replaces the earlier invoice. */
 async function saveInvoice(
   app: FastifyInstance,
@@ -143,7 +158,8 @@ async function saveInvoice(
 
   await app.eventTransaction(async (tx) => {
     let ticket = await lockTicket(tx, ticketId);
-    needsStarted(ticket);
+    // The driver may have been weighed, or have left, while the invoice was being read.
+    if (ticket.status !== "STARTED" || (await isSuperseded(tx, ticketId, photoId))) return;
 
     // A material chosen before must still agree with this invoice, or it is asked again.
     // Not if the store officer chose it.
@@ -207,13 +223,67 @@ async function saveInvoice(
     if (read.invoiceNo && supplier) {
       await warnIfDuplicate(tx, ticket, read.invoiceNo, supplier);
     }
-    emitAfterCommit("invoice:read", ["kiosk"], { ticketId });
+    emitAfterCommit("invoice:read", ["kiosk"], { ticketId, ok: true, error: null });
   });
 }
 
+/** Gives a code back, unless the kiosk has shown a newer one since. */
+async function releaseCode(app: FastifyInstance, linkId: number, ticketId: number) {
+  const [newest] = await app.db
+    .select({ id: uploadLinks.id })
+    .from(uploadLinks)
+    .where(eq(uploadLinks.ticketId, ticketId))
+    .orderBy(desc(uploadLinks.id))
+    .limit(1);
+  if (newest?.id !== linkId) return;
+  await app.db.update(uploadLinks).set({ usedAt: null }).where(eq(uploadLinks.id, linkId));
+}
+
+/** Puts the failure on the ticket and tells the kiosk, so the driver can upload again. */
+async function saveFailure(
+  app: FastifyInstance,
+  ticketId: number,
+  photoId: string,
+  error: string,
+): Promise<void> {
+  await app.eventTransaction(async (tx) => {
+    const ticket = await lockTicket(tx, ticketId);
+    if (ticket.status !== "STARTED" || (await isSuperseded(tx, ticketId, photoId))) return;
+    await updateTicket(tx, ticket, {});
+    await addEvent(tx, ticketId, "INVOICE_READ_FAILED", "system", { photoId, error });
+    emitAfterCommit("invoice:read", ["kiosk"], { ticketId, ok: false, error });
+  });
+}
+
+/** The same codes an HTTP answer would have carried. */
+const errorCode = (error: unknown) => {
+  if (error instanceof ReaderError) return `READER_${error.code}`;
+  return error instanceof AppError ? error.code : "INTERNAL_ERROR";
+};
+
+/** The slow part, after the phone has its answer. */
+async function readAndSave(
+  app: FastifyInstance,
+  link: { id: number; ticketId: number },
+  plate: string,
+  file: StoredFile,
+): Promise<void> {
+  try {
+    const read = await app.readers.readInvoice(file, plate);
+    await saveInvoice(app, link.ticketId, file.id, read);
+  } catch (error) {
+    const code = errorCode(error);
+    if (code === "INTERNAL_ERROR") app.log.error({ err: error }, "could not read an invoice");
+    else app.log.warn({ code }, "could not read an invoice");
+    await releaseCode(app, link.id, link.ticketId);
+    await saveFailure(app, link.ticketId, file.id, code);
+  }
+}
+
 /**
- * Stores the file, reads it and saves the fields. The code works once: it is taken before
- * the slow reading, and given back only if nothing was saved, so the driver can try again.
+ * Stores the file and answers at once; the invoice is read in the background, and the
+ * result or the failure goes to the kiosk as "invoice:read". The code works once: it is
+ * taken before anything slow, and given back only if nothing could be saved or read.
  */
 export async function receiveInvoice(
   app: FastifyInstance,
@@ -241,8 +311,6 @@ export async function receiveInvoice(
 
   try {
     const ticket = await getTicket(app.db, claimed.ticketId);
-    // Reading can take a while, and must not let the ticket be abandoned meanwhile.
-    await app.db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, ticket.id));
     const file = await storeFile(
       { storage: app.storage, db: app.db },
       {
@@ -252,11 +320,19 @@ export async function receiveInvoice(
         ticketId: ticket.id,
       },
     );
-    const read = await app.readers.readInvoice(file, ticket.plate);
-    await saveInvoice(app, ticket.id, file.id, read);
-    return { ok: true, warnings: read.warnings.map((warning) => warning.code) };
+    await app.eventTransaction(async (tx) => {
+      const locked = await lockTicket(tx, ticket.id);
+      needsStarted(locked);
+      // Also counts as activity, so the ticket is not abandoned while we read.
+      await updateTicket(tx, locked, {});
+      await addEvent(tx, ticket.id, "INVOICE_RECEIVED", "system", { photoId: file.id });
+      // The kiosk shows "Reading invoice…".
+      emitAfterCommit("ticket:updated", ["kiosk"], { ticketId: ticket.id, status: locked.status });
+    });
+    app.background.run("read invoice", () => readAndSave(app, claimed, ticket.plate, file));
+    return { ok: true, status: "received" };
   } catch (error) {
-    await app.db.update(uploadLinks).set({ usedAt: null }).where(eq(uploadLinks.id, claimed.id));
+    await releaseCode(app, claimed.id, claimed.ticketId);
     throw error;
   }
 }

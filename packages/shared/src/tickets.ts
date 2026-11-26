@@ -12,7 +12,7 @@ import {
   type TicketStatus,
   type TicketType,
 } from "./domain";
-import type { InvoiceWarning, PlateRead, ReadSource } from "./readers";
+import type { PlateRead, ReadSource } from "./readers";
 import { isValidIndianPlate, normalizePlate } from "./rules/plates";
 import type { PlateCheck } from "./rules/ticket-state";
 
@@ -212,6 +212,9 @@ export interface TicketView {
     material: string | null;
     date: string | null;
     weightKg: number | null;
+    state: InvoiceState;
+    /** With "failed": an error code such as READER_BUSY or INTERRUPTED. */
+    error: string | null;
   };
   /** Type 2 only: the first weight while the store officer decides. */
   heldWeightKg: number | null;
@@ -276,10 +279,14 @@ export interface UploadInfoResponse {
   expiresAt: string;
 }
 
+/** The answer to the phone (202): the file is saved, and is read after this answer. */
 export interface UploadResponse {
   ok: true;
-  warnings: InvoiceWarning["code"][];
+  status: "received";
 }
+
+/** Where the reading of the newest invoice stands. */
+export type InvoiceState = "none" | "reading" | "read" | "failed";
 
 export interface StoreRequestView {
   approval: ApprovalView;

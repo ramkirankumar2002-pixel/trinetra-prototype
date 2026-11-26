@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type { DestinationStream } from "pino";
 import { LoginLockout } from "./auth/lockout";
 import { registerAuthRoutes } from "./auth/routes";
+import { BackgroundTasks } from "./background";
 import type { Env } from "./config/env";
 import { createDb, type Database } from "./db/client";
 import { registerErrorHandling, sendError } from "./errors/handler";
@@ -69,6 +70,8 @@ declare module "fastify" {
     storage: StorageService;
     /** The plate reads of the truck on the bridge now. */
     anpr: AnprSession;
+    /** Work that continues after a request is answered. */
+    background: BackgroundTasks;
   }
 }
 
@@ -93,6 +96,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.decorate("realtime", realtime);
   // Before the server closes: it waits for open connections to end.
   app.addHook("preClose", () => realtime.close());
+
+  const background = new BackgroundTasks(app.log);
+  app.decorate("background", background);
+  // Before the database closes: an invoice being read still has to be saved.
+  app.addHook("preClose", () => background.idle());
 
   // Connects on the first query, so building the app does not need the database.
   const database = createDb(env.DATABASE_URL);

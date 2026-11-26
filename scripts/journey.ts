@@ -250,6 +250,19 @@ async function readPlate(): Promise<AnprResponse> {
   return read;
 }
 
+/** The invoice is read after the phone's upload is answered, as the kiosk sees it. */
+async function waitForInvoice(ticketId: number): Promise<TicketView> {
+  const deadline = Date.now() + 90_000;
+  for (;;) {
+    const ticket = await api<TicketView>("GET", `/api/tickets/${ticketId}`, { who: KIOSK });
+    const { state, error } = ticket.invoice;
+    if (state === "read") return ticket;
+    check(state === "reading", `The invoice was not read: ${state} ${error ?? ""}`);
+    check(Date.now() < deadline, "Timed out waiting for the invoice to be read.");
+    await sleep(200);
+  }
+}
+
 /** Plate, ticket, invoice from the "phone", and the driver's answers. */
 async function checkIn(truck: Truck): Promise<TicketView> {
   await pickDemo(truck);
@@ -270,8 +283,10 @@ async function checkIn(truck: Truck): Promise<TicketView> {
   step(`Kiosk shows the QR. The driver's phone sees only plate ${formatPlate(phone.plate)}.`);
   await api("POST", `/api/upload/${link.code}`, {
     form: await fileForm(`./sample-invoices/${truck.invoice}.jpg`, "image/jpeg"),
+    expect: 202,
   });
-  const withInvoice = await api<TicketView>("GET", `/api/tickets/${ticket.id}`, { who: KIOSK });
+  step("The phone is told at once that the file arrived; it is read after that.");
+  const withInvoice = await waitForInvoice(ticket.id);
   const { invoice } = withInvoice;
   step(
     `Invoice read: ${invoice.number}, ${invoice.material}, ` +

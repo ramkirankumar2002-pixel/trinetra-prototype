@@ -46,8 +46,12 @@ export interface KioskReadyEvent {
   plate: string;
 }
 
+/** The reading of an uploaded invoice has ended. The values are loaded over REST. */
 export interface InvoiceReadEvent {
   ticketId: number;
+  ok: boolean;
+  /** An error code, such as READER_BUSY, when ok is false. */
+  error: string | null;
 }
 
 /** Every event and what it carries. Events only announce: pages load details over REST. */

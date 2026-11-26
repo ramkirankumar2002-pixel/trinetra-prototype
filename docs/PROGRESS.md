@@ -270,7 +270,7 @@ Added 2026-11-26, not one of the 120 steps.
 - [ ] **115.** Run migrations and the seed against the Supabase database.
 - [ ] **116.** **Railway:** new project from the GitHub repo, root `apps/server`, build and start commands, all backend env variables, health check `/api/health`, region closest to India (e.g. Singapore).
 - [ ] **117.** **Vercel:** import the repo, root `apps/web`, env variables, rewrite `/api` to the Railway address.
-  - Set `BACKEND_URL` and `NEXT_PUBLIC_SOCKET_URL` before building. Then check through Vercel that an 8 MB upload and a slow invoice read (up to about 60 s) work: Vercel has its own limits for forwarded requests, which have not been tested.
+  - Set `BACKEND_URL` and `NEXT_PUBLIC_SOCKET_URL` before building. Then check through Vercel that an 8 MB upload works, and a slow plate reading (up to about 28 s): Vercel has its own limits for forwarded requests, which have not been tested. (Invoice reading no longer makes a request wait.)
 - [ ] **118.** Use the free Vercel and Railway addresses (HTTPS is automatic); set `FRONTEND_ORIGIN`; check login cookies and CORS.
 - [ ] **119.** Put the `wss://` backend address and device token in the ESP32 secrets and flash it; connect it to the hotspot.
 - [ ] **120.** Smoke test the four demo scenarios on the deployed site with the real kiosk, two phones and the model; tag the release `v1.0-demo`. From now on, every push to `main` deploys automatically.

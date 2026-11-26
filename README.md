@@ -148,24 +148,24 @@ Every error looks like `{ "error": { "code": "...", "message": "..." } }`, some 
 
 Request and answer types are in [packages/shared/src/tickets.ts](packages/shared/src/tickets.ts). **No request carries a weight:** the backend takes it from the weighbridge.
 
-| Address                                                   | Who                          | What it does                                                                             |
-| --------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
-| `POST /api/anpr`                                          | Kiosk                        | Reads both plates of the truck on the bridge; returns an open or recently blocked ticket |
-| `POST /api/tickets`                                       | Kiosk                        | Starts a ticket, or resumes one younger than 10 minutes                                  |
-| `GET /api/tickets/:id`                                    | Kiosk, its supervisor, store | The ticket with requests, photos and timeline                                            |
-| `POST /api/tickets/:id/upload-link`                       | Kiosk                        | One-time invoice upload link (10 minutes)                                                |
-| `GET` and `POST /api/upload/:code`                        | Whoever has the code         | The driver's phone: plate and language; then the file (JPEG, PNG, WebP or PDF, 8 MB)     |
-| `PATCH /api/tickets/:id/details`                          | Kiosk                        | Material, supplier, transporter, driver; mismatch check                                  |
-| `POST /api/tickets/:id/first-weight` and `/second-weight` | Kiosk                        | Captures the stable weight                                                               |
-| `POST /api/tickets/:id/discard-weight` and `/printed`     | Kiosk                        | "Weigh again" before confirming; logs the Print button                                   |
-| `GET /api/supervisor/tickets?status=`                     | Supervisor                   | Their Type 1 trucks (`pending` or `done`)                                                |
-| `POST /api/supervisor/tickets/:id/photo`                  | Its supervisor               | Live JPEG with optional `lat`, `lng`, `accuracyM` form fields; plate match (3 photos)    |
-| `POST /api/approvals/:id/decide`                          | Supervisor, store            | `APPROVE` or `REJECT`; a decision cannot be changed                                      |
-| `GET /api/store/requests?status=`                         | Store                        | Requests (`pending` or `done`), newest first, and warnings of the last 24 hours          |
-| `POST /api/help`                                          | Kiosk                        | Calls the store officer                                                                  |
-| `GET /api/public/tickets/:ticketNo`                       | Anyone                       | Read-only timeline without phone numbers                                                 |
-| `GET /api/live/summary`                                   | Anyone                       | Counts for the projector screen                                                          |
-| `/api/demo/settings`, `/weight`, `/reset`                 | Kiosk + admin PIN            | Demo switches, simulated weight, delete demo tickets                                     |
+| Address                                                   | Who                          | What it does                                                                                                                                            |
+| --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/anpr`                                          | Kiosk                        | Reads both plates of the truck on the bridge; returns an open or recently blocked ticket                                                                |
+| `POST /api/tickets`                                       | Kiosk                        | Starts a ticket, or resumes one younger than 10 minutes                                                                                                 |
+| `GET /api/tickets/:id`                                    | Kiosk, its supervisor, store | The ticket with requests, photos and timeline                                                                                                           |
+| `POST /api/tickets/:id/upload-link`                       | Kiosk                        | One-time invoice upload link (10 minutes)                                                                                                               |
+| `GET` and `POST /api/upload/:code`                        | Whoever has the code         | The driver's phone: plate and language; then the file (JPEG, PNG, WebP or PDF, 8 MB), answered 202 and read afterwards (`invoice:read` tells the kiosk) |
+| `PATCH /api/tickets/:id/details`                          | Kiosk                        | Material, supplier, transporter, driver; mismatch check                                                                                                 |
+| `POST /api/tickets/:id/first-weight` and `/second-weight` | Kiosk                        | Captures the stable weight                                                                                                                              |
+| `POST /api/tickets/:id/discard-weight` and `/printed`     | Kiosk                        | "Weigh again" before confirming; logs the Print button                                                                                                  |
+| `GET /api/supervisor/tickets?status=`                     | Supervisor                   | Their Type 1 trucks (`pending` or `done`)                                                                                                               |
+| `POST /api/supervisor/tickets/:id/photo`                  | Its supervisor               | Live JPEG with optional `lat`, `lng`, `accuracyM` form fields; plate match (3 photos)                                                                   |
+| `POST /api/approvals/:id/decide`                          | Supervisor, store            | `APPROVE` or `REJECT`; a decision cannot be changed                                                                                                     |
+| `GET /api/store/requests?status=`                         | Store                        | Requests (`pending` or `done`), newest first, and warnings of the last 24 hours                                                                         |
+| `POST /api/help`                                          | Kiosk                        | Calls the store officer                                                                                                                                 |
+| `GET /api/public/tickets/:ticketNo`                       | Anyone                       | Read-only timeline without phone numbers                                                                                                                |
+| `GET /api/live/summary`                                   | Anyone                       | Counts for the projector screen                                                                                                                         |
+| `/api/demo/settings`, `/weight`, `/reset`                 | Kiosk + admin PIN            | Demo switches, simulated weight, delete demo tickets                                                                                                    |
 
 A job abandons STARTED tickets with no activity for 10 minutes. The lights, buzzer and display follow the ticket by themselves.
 

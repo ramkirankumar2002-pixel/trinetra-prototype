@@ -22,11 +22,14 @@ export function registerUploadRoutes(app: FastifyInstance): void {
     return uploadInfo(app, codeOf(request.params));
   });
 
-  app.post("/api/upload/:code", config, async (request) => {
+  app.post("/api/upload/:code", config, async (request, reply) => {
     const code = codeOf(request.params);
     if (!request.isMultipart()) {
       throw new AppError(400, "NO_FILE", "No file was sent.");
     }
-    return receiveInvoice(app, code, () => readUpload(request));
+    const answer = await receiveInvoice(app, code, () => readUpload(request));
+    // "Accepted": the invoice is still being read.
+    reply.status(202);
+    return answer;
   });
 }

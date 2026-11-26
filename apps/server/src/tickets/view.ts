@@ -1,12 +1,14 @@
 // A ticket as the screens see it: the row, its requests, photos and timeline.
 import type {
   ApprovalView,
+  InvoiceState,
   PlateCheck,
   TicketView,
   TicketWarning,
   TimelineEntry,
 } from "@trinetra/shared";
 import { asc, eq, inArray } from "drizzle-orm";
+import { INVOICE_READ_STALE_MS } from "../config/limits";
 import { materials, photos, ticketEvents, unloadingPoints, users } from "../db/schema";
 import { approvals } from "../db/schema";
 import type { StorageService } from "../services/storage";
@@ -54,6 +56,25 @@ function plateCheckFrom(requests: ApprovalRow[]): PlateCheck {
 
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
+const INVOICE_EVENTS = ["INVOICE_RECEIVED", "INVOICE_READ", "INVOICE_READ_FAILED"];
+
+/** Where the newest upload stands, from the timeline (oldest event first). */
+export function invoiceProgress(
+  events: { type: string; data: Record<string, unknown>; createdAt: Date }[],
+  now = new Date(),
+): { state: InvoiceState; error: string | null } {
+  const last = events.filter((row) => INVOICE_EVENTS.includes(row.type)).pop();
+  if (!last) return { state: "none", error: null };
+  if (last.type === "INVOICE_READ") return { state: "read", error: null };
+  if (last.type === "INVOICE_READ_FAILED") {
+    return { state: "failed", error: String(last.data.error) };
+  }
+  // The server stopped while reading: the result will never come.
+  return now.getTime() - last.createdAt.getTime() > INVOICE_READ_STALE_MS
+    ? { state: "failed", error: "INTERRUPTED" }
+    : { state: "reading", error: null };
+}
+
 export async function userNames(db: Reader, ids: number[]) {
   const rows = ids.length === 0 ? [] : await db.select().from(users).where(inArray(users.id, ids));
   return new Map(rows.map((row) => [row.id, row]));
@@ -90,11 +111,8 @@ export function approvalView(
   };
 }
 
-export async function ticketView(
-  db: Reader,
-  storage: StorageService,
-  ticketId: number,
-): Promise<TicketView> {
+/** Everything about a ticket, from the database. */
+async function loadTicket(db: Reader, ticketId: number) {
   const ticket = await getTicket(db, ticketId);
   // One after another: inside a transaction there is only one connection.
   const requests = await db
@@ -126,6 +144,20 @@ export async function ticketView(
       ].filter((id): id is number => typeof id === "number"),
     ),
   ]);
+  return { ticket, requests, events, pictures, materialsById, point, names };
+}
+
+export async function ticketView(
+  db: Reader,
+  storage: StorageService,
+  ticketId: number,
+): Promise<TicketView> {
+  // One snapshot for all the reads: otherwise a save in between could, for example, show
+  // an invoice as read while its values are still the old ones.
+  const { ticket, requests, events, pictures, materialsById, point, names } = await db.transaction(
+    (tx) => loadTicket(tx, ticketId),
+    { isolationLevel: "repeatable read" },
+  );
   const supervisor = ticket.supervisorId ? names.get(ticket.supervisorId) : undefined;
 
   const actorName = (actor: string) => {
@@ -156,6 +188,7 @@ export async function ticketView(
       material: ticket.invoiceMaterial,
       date: ticket.invoiceDate,
       weightKg: ticket.invoiceWeightKg,
+      ...invoiceProgress(events),
     },
     heldWeightKg: ticket.heldWeightKg,
     firstWeightKg: ticket.firstWeightKg,

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { AddressInfo } from "node:net";
 import type {
   CreateTicketResponse,
   TicketView,
@@ -7,11 +8,13 @@ import type {
   UploadResponse,
 } from "@trinetra/shared";
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { photos, uploadLinks } from "../db/schema";
 import { ReaderError } from "../services/readers/errors";
 import { testDatabaseUrl } from "../test/env";
+import { connectLive, socketToken } from "../test/live-client";
 import { OTHER_PLATE, PLATE, useTicketHarness } from "../test/ticket-harness";
+import { invoiceProgress } from "./view";
 
 describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
   const h = useTicketHarness();
@@ -27,10 +30,24 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
   const link = (ticketId: number) =>
     h.call<UploadLinkResponse>("kiosk", "POST", `/api/tickets/${ticketId}/upload-link`);
 
-  async function send(code: string, file?: { data: Buffer; type: string } | null) {
+  async function post(code: string, file?: { data: Buffer; type: string } | null) {
     const body = h.form(file === undefined ? { data: await h.jpeg(), type: "image/jpeg" } : file);
     return h.call<UploadResponse>(null, "POST", `/api/upload/${code}`, body.payload, body.headers);
   }
+
+  /** Sends a file, then waits for the reading that goes on after the answer. */
+  async function send(code: string, file?: { data: Buffer; type: string } | null) {
+    const response = await post(code, file);
+    await h.app.background.idle();
+    return response;
+  }
+
+  /** A reader that fails, as when Gemini is busy. */
+  const readerFails = () => {
+    h.app.readers.readInvoice = async () => {
+      throw new ReaderError("gemini", "BUSY", "busy");
+    };
+  };
 
   async function uploadFor(ticketId: number) {
     return send((await link(ticketId)).body.code);
@@ -48,7 +65,7 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
       const id = await newTicket();
       const { status, body } = await link(id);
       expect(status).toBe(200);
-      expect(body.url).toBe(`http://localhost:3000/upload/${body.code}`);
+      expect(body.url).toBe(`http://localhost:3000/u/${body.code}`);
       const tenMinutes = new Date(body.expiresAt).getTime() - Date.now();
       expect(tenMinutes).toBeGreaterThan(9 * 60_000);
       expect(tenMinutes).toBeLessThanOrEqual(10 * 60_000);
@@ -105,6 +122,18 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
     });
   });
 
+  describe("a reading that never ends", () => {
+    it("counts as failed after a while, as after a restart", () => {
+      const received = [{ type: "INVOICE_RECEIVED", data: {}, createdAt: new Date(0) }];
+      expect(invoiceProgress(received, new Date(60_000)).state).toBe("reading");
+      expect(invoiceProgress(received, new Date(10 * 60_000))).toEqual({
+        state: "failed",
+        error: "INTERRUPTED",
+      });
+      expect(invoiceProgress([])).toEqual({ state: "none", error: null });
+    });
+  });
+
   describe("POST /api/upload/:code", () => {
     it("answers 409 once the ticket has moved on, for both routes", async () => {
       h.invoiceReads();
@@ -122,13 +151,15 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
       const { code } = (await link(id)).body;
       const response = await send(code);
 
-      expect(response).toMatchObject({ status: 200, body: { ok: true, warnings: [] } });
+      expect(response).toMatchObject({ status: 202, body: { ok: true, status: "received" } });
       expect(await view(id)).toMatchObject({
         invoice: {
           number: "INV-1",
           material: "Cement Bags",
           date: "2026-11-26",
           weightKg: 14_310,
+          state: "read",
+          error: null,
         },
         supplier: "Sample Cement Depot",
         isDemo: false,
@@ -144,7 +175,7 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
       h.invoiceReads();
       const { code } = (await link(await newTicket())).body;
       const answers = await Promise.all([send(code), send(code)]);
-      expect(answers.map((answer) => answer.status).sort()).toEqual([200, 410]);
+      expect(answers.map((answer) => answer.status).sort()).toEqual([202, 410]);
     });
 
     it.each([
@@ -156,27 +187,125 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
       h.invoiceReads();
       const { code } = (await link(await newTicket())).body;
       expect((await send(code, file)).status).toBe(status);
-      expect((await send(code)).status).toBe(200);
+      expect((await send(code)).status).toBe(202);
     });
 
-    it("keeps the code usable when the reader fails", async () => {
+    it("saves a failed reading on the ticket and keeps the code usable", async () => {
       const id = await newTicket();
       const { code } = (await link(id)).body;
-      h.app.readers.readInvoice = async () => {
-        throw new ReaderError("gemini", "BUSY", "busy");
-      };
-      const failed = await send(code);
-      expect(failed.status).toBe(502);
-      expect(failed.body.error?.code).toBe("READER_BUSY");
+      readerFails();
+      expect((await send(code)).status).toBe(202);
+      expect((await view(id)).invoice).toMatchObject({
+        number: null,
+        state: "failed",
+        error: "READER_BUSY",
+      });
+      expect(await h.eventTypes(id)).toContain("INVOICE_READ_FAILED");
 
       h.invoiceReads();
-      expect((await send(code)).status).toBe(200);
+      expect((await send(code)).status).toBe(202);
+      expect((await view(id)).invoice).toMatchObject({ state: "read", error: null });
+    });
+
+    it("does not give an old code back when the kiosk shows a newer one", async () => {
+      const id = await newTicket();
+      const old = (await link(id)).body.code;
+      let fail!: () => void;
+      h.app.readers.readInvoice = () =>
+        new Promise((_resolve, reject) => {
+          fail = () => reject(new ReaderError("gemini", "BUSY", "busy"));
+        });
+      await post(old);
+      await link(id);
+      await vi.waitFor(() => expect(fail).toBeDefined());
+      fail();
+      await h.app.background.idle();
+      expect((await h.call(null, "GET", `/api/upload/${old}`)).body.error?.code).toBe("CODE_USED");
+    });
+
+    it("answers before the invoice is read, then tells the kiosk", async () => {
+      await h.app.listen({ host: "127.0.0.1", port: 0 });
+      const { port } = h.app.server.address() as AddressInfo;
+      const kiosk = await connectLive(`http://127.0.0.1:${port}`, {
+        token: socketToken(h.app, "KIOSK"),
+      });
+      try {
+        const id = await newTicket();
+        h.invoiceReads();
+        const read = h.app.readers.readInvoice;
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => (release = resolve));
+        h.app.readers.readInvoice = async (...args) => {
+          await gate;
+          return read(...args);
+        };
+
+        expect((await post((await link(id)).body.code)).status).toBe(202);
+        expect((await view(id)).invoice).toMatchObject({ state: "reading", number: null });
+        expect(kiosk.named("invoice:read")).toEqual([]);
+
+        release();
+        await h.app.background.idle();
+        await vi.waitFor(() =>
+          expect(kiosk.named("invoice:read")).toEqual([{ ticketId: id, ok: true, error: null }]),
+        );
+
+        readerFails();
+        await send((await link(id)).body.code);
+        await vi.waitFor(() =>
+          expect(kiosk.named("invoice:read").at(-1)).toEqual({
+            ticketId: id,
+            ok: false,
+            error: "READER_BUSY",
+          }),
+        );
+      } finally {
+        kiosk.socket.close();
+      }
+    });
+
+    it("keeps the newest upload when an older reading ends later", async () => {
+      const id = await newTicket();
+      h.invoiceReads({ invoice_number: "OLD" });
+      const readOld = h.app.readers.readInvoice;
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      h.app.readers.readInvoice = async (...args) => {
+        await gate;
+        return readOld(...args);
+      };
+      await post((await link(id)).body.code);
+
+      h.invoiceReads({ invoice_number: "NEW" });
+      await post((await link(id)).body.code);
+      await vi.waitFor(async () => expect((await view(id)).invoice.number).toBe("NEW"));
+
+      release();
+      await h.app.background.idle();
+      expect((await view(id)).invoice).toMatchObject({ number: "NEW", state: "read" });
+    });
+
+    it("drops a reading that ends after the ticket has moved on", async () => {
+      const id = await newTicket();
+      h.invoiceReads();
+      const read = h.app.readers.readInvoice;
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      h.app.readers.readInvoice = async (...args) => {
+        await gate;
+        return read(...args);
+      };
+      await post((await link(id)).body.code);
+      await h.db.execute("update tickets set status = 'READY_FOR_SECOND'");
+      release();
+      await h.app.background.idle();
+      expect((await view(id)).invoice.number).toBeNull();
     });
 
     it("warns when the invoice names another truck", async () => {
       h.invoiceReads({ vehicle_number: OTHER_PLATE });
       const id = await newTicket();
-      expect((await uploadFor(id)).body.warnings).toEqual(["VEHICLE_MISMATCH"]);
+      await uploadFor(id);
       const ticket = await view(id);
       expect(ticket.warnings).toMatchObject([{ type: "INVOICE_VEHICLE_MISMATCH" }]);
       // A warning, not a block.

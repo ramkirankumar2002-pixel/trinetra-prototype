@@ -1,7 +1,13 @@
 // Reads one number plate: Plate Recognizer first, then Gemini on the same photo.
-import { isValidIndianPlate, normalizePlate, type PlateRead } from "@trinetra/shared";
+import {
+  isValidIndianPlate,
+  normalizePlate,
+  type PlateRead,
+  type ReadProblem,
+} from "@trinetra/shared";
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
+import { PLATE_READ_DEADLINE_MS } from "../../config/limits";
 import { ReaderError } from "./errors";
 import { filePart, type Gemini } from "./gemini";
 import type { PlateRecognizer } from "./plate-recognizer";
@@ -38,11 +44,17 @@ export function createPlateReader(deps: {
   plateRecognizer: PlateRecognizer;
   gemini: Gemini;
   log: Pick<FastifyBaseLogger, "warn">;
+  /** The longest the whole reading may take. */
+  deadlineMs?: number;
 }) {
-  /** Never throws for a service problem: see `problems` in the answer. */
-  return async function readPlate(jpeg: Buffer): Promise<PlateRead> {
+  const { deadlineMs = PLATE_READ_DEADLINE_MS } = deps;
+
+  async function readWithBothServices(
+    jpeg: Buffer,
+    problems: PlateRead["problems"],
+    asking: (service: ReadProblem["service"]) => void,
+  ): Promise<PlateRead> {
     const started = performance.now();
-    const problems: PlateRead["problems"] = [];
     const done = (
       plate: string | null,
       source: PlateRead["source"],
@@ -64,6 +76,7 @@ export function createPlateReader(deps: {
     };
 
     try {
+      asking("plate_recognizer");
       const guess = await deps.plateRecognizer.read(jpeg);
       if (guess.plate) return done(guess.plate, "plate_recognizer", guess.score);
     } catch (error) {
@@ -71,6 +84,7 @@ export function createPlateReader(deps: {
     }
     // No plate found (or the service failed): ask Gemini to read the same photo.
     try {
+      asking("gemini");
       const { plate, model } = await readPlateWithGemini(deps.gemini, jpeg);
       // Gemini gives no confidence number.
       return done(plate, "gemini", null, model);
@@ -78,6 +92,38 @@ export function createPlateReader(deps: {
       note(error);
     }
     return done(null, null, null);
+  }
+
+  /**
+   * Never throws for a service problem: see `problems` in the answer. A reading that takes
+   * longer than the deadline counts as unread, so the person waiting is not left waiting.
+   */
+  return async function readPlate(jpeg: Buffer): Promise<PlateRead> {
+    const problems: PlateRead["problems"] = [];
+    let service: ReadProblem["service"] = "plate_recognizer";
+    const reading = readWithBothServices(jpeg, problems, (name) => (service = name));
+    let timer: NodeJS.Timeout | undefined;
+    const tooLate = new Promise<PlateRead>((resolve) => {
+      timer = setTimeout(() => {
+        deps.log.warn({ service, deadlineMs }, "reader: the plate took too long");
+        resolve({
+          plate: null,
+          source: null,
+          model: null,
+          confidence: null,
+          validFormat: false,
+          ms: deadlineMs,
+          problems: [...problems, { service, code: "TIMEOUT" }],
+        });
+      }, deadlineMs);
+    });
+    try {
+      return await Promise.race([reading, tooLate]);
+    } finally {
+      clearTimeout(timer);
+      // The late answer is not wanted, and neither is its failure.
+      reading.catch(() => {});
+    }
   };
 }
 

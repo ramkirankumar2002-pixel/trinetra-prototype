@@ -22,5 +22,18 @@ export const SOCKET_TOKEN_SECONDS = 60;
 export const MAX_PIN_FAILURES = 5;
 export const PIN_LOCK_SECONDS = 60;
 
+/**
+ * An invoice still "being read" after this long was interrupted, for example by a restart.
+ * Longer than the slowest reading: two Gemini models of 30 s each, and a retry.
+ */
+export const INVOICE_READ_STALE_MS = 3 * 60 * 1000;
+
+/**
+ * The longest one plate may take to read. POST /api/anpr and the supervisor's photo wait for
+ * it, and must answer within the 30 s the website's forwarding allows (the cameras may
+ * take 10 s of that).
+ */
+export const PLATE_READ_DEADLINE_MS = 17_000;
+
 /** A STARTED ticket with no activity for this long is abandoned, and no longer resumed. */
 export const ABANDON_AFTER_MS = 10 * 60 * 1000;

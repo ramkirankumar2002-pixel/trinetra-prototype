@@ -12,7 +12,12 @@ const KEY = "gemini-secret-key-456";
 
 function setup(
   handlers: Parameters<typeof fakeApis>[0],
-  options: { token?: string | undefined; minIntervalMs?: number; timeoutMs?: number } = {},
+  options: {
+    token?: string | undefined;
+    minIntervalMs?: number;
+    timeoutMs?: number;
+    deadlineMs?: number;
+  } = {},
 ) {
   const apis = fakeApis(handlers);
   const used: string[] = [];
@@ -42,7 +47,12 @@ function setup(
     warnings,
     plateRecognizer,
     gemini,
-    read: createPlateReader({ plateRecognizer, gemini, log }),
+    read: createPlateReader({
+      plateRecognizer,
+      gemini,
+      log,
+      ...(options.deadlineMs ? { deadlineMs: options.deadlineMs } : {}),
+    }),
   };
 }
 
@@ -307,5 +317,19 @@ describe("plate reader with Gemini fallback", () => {
     const { read, plateRecognizer } = setup({});
     vi.spyOn(plateRecognizer, "read").mockRejectedValue(new TypeError("bug"));
     await expect(read(JPEG)).rejects.toThrow("bug");
+  });
+});
+
+describe("the deadline for one plate", () => {
+  it("gives up on a reading that takes too long, and says which service was asked", async () => {
+    const { read } = setup(
+      { plateRecognizer: () => new Promise<Response>(() => {}) },
+      { deadlineMs: 30, timeoutMs: 60_000 },
+    );
+    expect(await read(JPEG)).toMatchObject({
+      plate: null,
+      source: null,
+      problems: [{ service: "plate_recognizer", code: "TIMEOUT" }],
+    });
   });
 });
