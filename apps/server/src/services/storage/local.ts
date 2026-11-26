@@ -41,6 +41,11 @@ export class LocalStorage implements StorageService {
     return { path, sha256: sha256Of(buffer) };
   }
 
+  async read(path: string): Promise<Buffer> {
+    contentTypeOf(path);
+    return readFile(join(this.folder, path));
+  }
+
   /** Returns an address on this server, such as /api/files/a/b.jpg?expires=...&sig=... */
   async getUrl(path: string, expiresInSeconds: number): Promise<string> {
     contentTypeOf(path);

@@ -21,6 +21,13 @@ export class SupabaseStorage implements StorageService {
     return { path, sha256: sha256Of(buffer) };
   }
 
+  async read(path: string): Promise<Buffer> {
+    contentTypeOf(path);
+    const { data, error } = await this.bucket.download(path);
+    if (error) throw new Error(`Supabase download failed: ${error.message}`);
+    return Buffer.from(await data.arrayBuffer());
+  }
+
   async getUrl(path: string, expiresInSeconds: number): Promise<string> {
     contentTypeOf(path);
     assertExpiry(expiresInSeconds);

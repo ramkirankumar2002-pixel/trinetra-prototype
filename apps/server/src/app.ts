@@ -22,6 +22,7 @@ import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
 import { registerKioskRoutes } from "./routes/kiosk";
 import { registerTestRoutes } from "./routes/test-routes";
+import { createReaders, type Readers } from "./services/readers";
 import { createStorage, LocalStorage, type StorageService } from "./services/storage";
 
 export interface AppOptions {
@@ -48,6 +49,8 @@ declare module "fastify" {
     realtime: SocketServer;
     /** A database transaction whose emitAfterCommit() events are sent after it commits. */
     eventTransaction: EventTransaction;
+    /** Number plate and invoice reading. */
+    readers: Readers;
   }
 }
 
@@ -90,6 +93,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         : () => loadHardwareSettings(database.db)),
   });
   app.decorate("hardware", hardware);
+  app.decorate(
+    "readers",
+    createReaders({ env, db: database.db, storage, photos: hardware.photos, log: app.log }),
+  );
   app.addHook("onReady", () => hardware.start());
   const forwarding = forwardHardware(hardware, realtime);
   app.addHook("preClose", () => {

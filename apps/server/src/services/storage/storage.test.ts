@@ -43,6 +43,12 @@ describe("local storage: save", () => {
     expect(await readFile(join(folder, "tickets", "1", "front.jpg"))).toEqual(photo);
   });
 
+  it("reads a saved file back, and refuses an unsafe path", async () => {
+    await storage.save(photo, "read/a.jpg", "image/jpeg");
+    expect(await storage.read("read/a.jpg")).toEqual(photo);
+    await expect(storage.read("../a.jpg")).rejects.toThrow(/storage path/);
+  });
+
   it("never overwrites a saved file", async () => {
     await storage.save(photo, "once.jpg", "image/jpeg");
     await expect(
