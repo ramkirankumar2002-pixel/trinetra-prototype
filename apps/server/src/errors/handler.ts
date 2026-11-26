@@ -1,6 +1,7 @@
 import { WrongStageError, type ErrorResponse, type FieldError } from "@trinetra/shared";
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
+import { ReaderError } from "../services/readers/errors";
 import { AppError } from "./app-error";
 
 const CLIENT_ERROR_CODES: Record<number, string> = {
@@ -18,6 +19,12 @@ function toAppError(error: unknown): AppError | undefined {
 
   // From the shared ticket state machine: the ticket is not at the right step for this.
   if (error instanceof WrongStageError) return new AppError(409, error.code, error.message);
+
+  // A plate or invoice service failed. Its message holds no key or header.
+  if (error instanceof ReaderError) {
+    const unavailable = error.code === "NOT_CONFIGURED" || error.code === "RATE_LIMITED";
+    return new AppError(unavailable ? 503 : 502, `READER_${error.code}`, error.message);
+  }
 
   if (error instanceof ZodError) {
     const details: FieldError[] = error.issues.map((issue) => ({

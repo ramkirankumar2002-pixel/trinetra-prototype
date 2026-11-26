@@ -17,6 +17,7 @@ import { forwardHardware } from "./realtime/forward-hardware";
 import { createSocketServer, type SocketServer } from "./realtime/socket-server";
 import { upgradesWithoutSocketIo } from "./realtime/upgrades";
 import { registerDevicePhotoRoute } from "./routes/device-photo";
+import { registerDevReaderRoutes } from "./routes/dev-readers";
 import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
 import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
@@ -39,6 +40,8 @@ export interface AppOptions {
     loadSettings?: () => Promise<HardwareSettings>;
     photoTimeoutMs?: number;
   };
+  /** For tests: a pretend network for the plate and invoice services. */
+  readers?: { fetch: typeof fetch };
 }
 
 declare module "fastify" {
@@ -95,7 +98,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.decorate("hardware", hardware);
   app.decorate(
     "readers",
-    createReaders({ env, db: database.db, storage, photos: hardware.photos, log: app.log }),
+    createReaders({
+      env,
+      db: database.db,
+      storage,
+      photos: hardware.photos,
+      log: app.log,
+      ...options.readers,
+    }),
   );
   app.addHook("onReady", () => hardware.start());
   const forwarding = forwardHardware(hardware, realtime);
@@ -111,6 +121,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   if (storage instanceof LocalStorage) registerFileRoutes(app, storage);
   registerAuthRoutes(app, { env, db: database.db, lockout: new LoginLockout(now) });
   if (env.NODE_ENV === "test") registerTestRoutes(app);
+  // These spend API quota, so a deployed server must never have them.
+  if (env.NODE_ENV !== "production") registerDevReaderRoutes(app);
 
   app.addHook("onReady", async () => {
     app.log.info(`Trinetra backend ready for weighbridge ${WEIGHBRIDGE_ID}`);
