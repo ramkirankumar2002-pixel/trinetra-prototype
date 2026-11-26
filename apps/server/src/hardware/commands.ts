@@ -14,24 +14,46 @@ export type CommandRefusal =
 
 export type CommandResult = { sent: true } | { sent: false; reason: CommandRefusal };
 
+/** What the ESP32 has been told, on one connection. */
+interface Told {
+  connection: object;
+  light?: LightColour;
+  text?: string;
+}
+
 /** The helpers throw a ZodError for a wrong value, such as an empty display text. */
 export class HardwareCommands {
+  private told: Told | undefined;
+
   constructor(
     private readonly hub: DeviceHub,
     private readonly state: HardwareState,
     private readonly settings: () => HardwareSettings | undefined,
   ) {}
 
+  /** Not sent again if the light already shows this colour. */
   setLight(colour: LightColour): CommandResult {
-    return this.send({ t: "light", c: lightColourSchema.parse(colour) });
+    return this.change("light", lightColourSchema.parse(colour), (c) => ({ t: "light", c }));
   }
 
   buzz(ms: number): CommandResult {
     return this.send({ t: "buzz", ms: buzzMsSchema.parse(ms) });
   }
 
+  /** Not sent again if the display already shows this text. */
   showText(text: string): CommandResult {
-    return this.send({ t: "display", text: displayTextSchema.parse(text) });
+    return this.change("text", displayTextSchema.parse(text), (shown) => ({
+      t: "display",
+      text: shown,
+    }));
+  }
+
+  /**
+   * Forgets what the light and display show, so the next command is sent whatever it is.
+   * For after a silence: the ESP32 may have restarted.
+   */
+  forgetDeviceState(): void {
+    this.told = undefined;
   }
 
   /** Zeroes the scale. Refused unless the bridge is known to be empty. */
@@ -46,6 +68,20 @@ export class HardwareCommands {
     }
     if (reading.kg >= settings.wakeThresholdKg) return { sent: false, reason: "BRIDGE_NOT_EMPTY" };
     return this.send({ t: "tare" });
+  }
+
+  private change<K extends "light" | "text">(
+    part: K,
+    value: NonNullable<Told[K]>,
+    command: (value: NonNullable<Told[K]>) => MainCommand,
+  ): CommandResult {
+    const connection = this.hub.connectionOf("main");
+    if (this.told && this.told.connection !== connection) this.told = undefined;
+    if (this.state.isOnline("main") && this.told?.[part] === value) return { sent: true };
+
+    const result = this.send(command(value));
+    if (result.sent && connection) this.told = { ...this.told, connection, [part]: value };
+    return result;
   }
 
   private send(command: MainCommand): CommandResult {

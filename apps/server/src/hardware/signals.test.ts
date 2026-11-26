@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { HardwareCommands } from "./commands";
+import { HardwareCommands } from "./commands";
 import { createHardwareBus } from "./events";
 import { goTo, SIGNALS, WeighbridgeSignals } from "./signals";
+import type { DeviceHub } from "./hub";
+import type { MainCommand } from "./messages";
 import { HardwareState } from "./state";
 
 const SETTINGS = { wakeThresholdKg: 500, stableWindowMs: 3000, stableSpreadKg: 10 };
@@ -12,6 +14,7 @@ describe("weighbridge signals", () => {
   let state: HardwareState;
   let signals: WeighbridgeSignals;
   let bus: ReturnType<typeof createHardwareBus>;
+  let connection: object;
 
   beforeEach(() => {
     clock = 0;
@@ -22,12 +25,17 @@ describe("weighbridge signals", () => {
       () => SETTINGS,
       () => clock,
     );
-    const ok = { sent: true as const };
-    const commands = {
-      setLight: (c: string) => (sent.push(`light ${c}`), ok),
-      showText: (text: string) => (sent.push(text), ok),
-      buzz: (ms: number) => (sent.push(`buzz ${ms}`), ok),
-    } as unknown as HardwareCommands;
+    connection = {};
+    const hub = {
+      connectionOf: () => connection,
+      send: (_device: string, command: MainCommand) => {
+        if (command.t === "light") sent.push(`light ${command.c}`);
+        else if (command.t === "display") sent.push(command.text);
+        else if (command.t === "buzz") sent.push(`buzz ${command.ms}`);
+        return true;
+      },
+    } as unknown as DeviceHub;
+    const commands = new HardwareCommands(hub, state, () => SETTINGS);
     signals = new WeighbridgeSignals(commands, state, bus, () => clock);
   });
 
@@ -64,7 +72,8 @@ describe("weighbridge signals", () => {
     expect(take()).toEqual([]);
     weigh(32_560);
     // The truck is now fully on: it has arrived, and is being processed.
-    expect(take().at(-1)).toBe("Please wait");
+    // The display already says "Please wait", so only the light changes.
+    expect(take()).toEqual(["light orange", "Please wait", "light red"]);
   });
 
   it("does not sound again at once when the sensor flickers", () => {
@@ -89,9 +98,28 @@ describe("weighbridge signals", () => {
     expect(take()).toEqual(["light orange", "Thank you"]);
   });
 
-  it("can hear truck:arrived twice", () => {
+  it("sends nothing when told to show what is already shown", () => {
+    weigh(32_560);
+    take();
+    // As when a ticket starts just after the truck has arrived.
+    signals.show(SIGNALS.processing);
     bus.emit("truck:arrived", { kg: 32_560 });
-    bus.emit("truck:arrived", { kg: 32_560 });
-    expect(sent).toEqual(["light red", "Please wait", "light red", "Please wait"]);
+    expect(take()).toEqual([]);
+  });
+
+  it("sends only the part that changes", () => {
+    weigh(32_560);
+    signals.show(SIGNALS.wait);
+    take();
+    signals.show(SIGNALS.store);
+    expect(take()).toEqual(["Go to store office"]);
+  });
+
+  it("sends everything again on a new connection", () => {
+    weigh(32_560);
+    take();
+    connection = {};
+    signals.show(SIGNALS.processing);
+    expect(take()).toEqual(["light red", "Please wait"]);
   });
 });

@@ -3,7 +3,8 @@
 // buzzer when a truck is not fully on the bridge.
 //
 // The wanted light and text are remembered, so they can be sent again after the ESP32
-// reconnects: commands are not queued while it is away.
+// reconnects: commands are not queued while it is away. HardwareCommands sends a light or
+// a text only when it changes.
 import type { LightColour } from "@trinetra/shared";
 import type { HardwareCommands } from "./commands";
 import type { HardwareBus } from "./events";
@@ -45,7 +46,9 @@ export class WeighbridgeSignals {
     bus.on("truck:arrived", () => this.show(SIGNALS.processing));
     bus.on("truck:left", () => this.show(SIGNALS.ready));
     bus.on("hw:status", ({ device, online }) => {
-      if (device === "main" && online) this.send(this.alarm ? SIGNALS.badPosition : this.wanted);
+      if (device !== "main" || !online) return;
+      this.commands.forgetDeviceState();
+      this.send(this.alarm ? SIGNALS.badPosition : this.wanted);
     });
     bus.on("hw:weight", () => this.watchPosition());
   }

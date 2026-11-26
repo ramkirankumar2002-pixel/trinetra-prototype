@@ -148,6 +148,9 @@ async function fileForm(
 
 const bridge = new WeightModel();
 const commands: string[] = [];
+/** What the light and the display show, to catch a command that changes nothing. */
+const showing = new Map<string, string>();
+const repeated: string[] = [];
 let sender: NodeJS.Timeout | undefined;
 let esp32: SimDevice | undefined;
 
@@ -174,9 +177,12 @@ async function startWeighbridge(): Promise<void> {
     token: setting("DEVICE_TOKEN"),
     log: () => {},
     onCommand: (command) => {
-      if (command.t === "light") commands.push(`light ${String(command.c)}`);
-      if (command.t === "display") commands.push(`display "${String(command.text)}"`);
       if (command.t === "buzz") commands.push("buzzer");
+      if (command.t !== "light" && command.t !== "display") return;
+      const value = command.t === "light" ? String(command.c) : `"${String(command.text)}"`;
+      if (showing.get(command.t) === value) repeated.push(`${command.t} ${value}`);
+      showing.set(command.t, value);
+      commands.push(`${command.t} ${value}`);
     },
   });
   esp32.connect();
@@ -188,6 +194,7 @@ async function startWeighbridge(): Promise<void> {
 function hardwareSaid(): void {
   const said = commands.splice(0);
   if (said.length > 0) say(`    weighbridge: ${said.join(", ")}`);
+  check(repeated.length === 0, `The weighbridge was told twice: ${repeated.join(", ")}.`);
 }
 
 /** A truck drives on and stands still. */

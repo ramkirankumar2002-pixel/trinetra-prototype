@@ -28,6 +28,11 @@ export class DeviceHub {
     return this.sockets.get(device) === socket;
   }
 
+  /** The device's open connection. A different value means it has connected again. */
+  connectionOf(device: DeviceId): object | undefined {
+    return this.sockets.get(device);
+  }
+
   isConnected(device: DeviceId): boolean {
     return this.sockets.has(device);
   }
