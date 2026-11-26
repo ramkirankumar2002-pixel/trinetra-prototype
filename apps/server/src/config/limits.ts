@@ -15,3 +15,6 @@ export const SOCKET_TOKEN_SECONDS = 60;
 
 export const MAX_PIN_FAILURES = 5;
 export const PIN_LOCK_SECONDS = 60;
+
+/** A STARTED ticket with no activity for this long is abandoned, and no longer resumed. */
+export const ABANDON_AFTER_MS = 10 * 60 * 1000;
