@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 4 (business rules). The rules are written and tested in `packages/shared`, but no screen or API uses them yet. The website shows a simple home page. The backend has login with roles, a health check and file storage, on top of the database. No weighbridge features yet.
+**Current state:** Phase 5A (hardware link, backend side). The backend receives weights and camera photos from devices, and a simulator stands in for the weighbridge. The real firmware (Phase 5B) and the screens are not built yet.
 
 ## Folder layout
 
@@ -21,7 +21,7 @@ trinetra-prototype/
 ├─ firmware/
 │  ├─ esp32/          Weighbridge model code (from Phase 5)
 │  └─ esp32-cam/      Front and back camera code (from Phase 5)
-├─ scripts/           ESP32 simulator and demo helpers (from Phase 5)
+├─ scripts/           @trinetra/scripts: ESP32 and camera simulator, sample plate photos
 ├─ tests/e2e/         Playwright demo scenarios (added in a later phase)
 └─ docs/              Build plan, progress and decisions
 ```
@@ -158,6 +158,81 @@ Invoke-RestMethod -Uri http://localhost:4000/api/auth/me -WebSession $trinetra
 
 To try the role guard, start the server with `NODE_ENV=test`. That adds `/api/test/kiosk`, `/api/test/supervisor` and `/api/test/store`, which do not exist otherwise.
 
+## Simulator
+
+The simulator acts as the whole weighbridge: the main ESP32 **and** both cameras. It needs the three device tokens in `apps/server/.env` (see [Device tokens](#device-tokens)).
+
+Start the backend (or `pnpm dev`), then in a second terminal:
+
+```powershell
+pnpm sim
+```
+
+| Key | What happens                                                           |
+| --- | ---------------------------------------------------------------------- |
+| `a` | A truck arrives: the weight climbs, wobbles, then settles at 32,560 kg |
+| `e` | An empty truck arrives and settles at 18,250 kg                        |
+| `l` | The truck leaves: back to 0                                            |
+| `p` | Switches "position OK" off or on                                       |
+| `u` | Switches an unstable wobble on or off                                  |
+| `o` | All three boards go offline for 5 seconds                              |
+| `m` | Switches between the matching and the mismatched plate photos          |
+| `h` | Shows the keys                                                         |
+| `q` | Quits                                                                  |
+
+It prints every command it receives (light, buzzer, display, tare). On "snap", each camera uploads a sample photo from [scripts/sample-plates](scripts/sample-plates): `match-*.jpg` show MH 12 AB 1234 front and back; `mismatch-back.jpg` shows MH 14 CD 5678. `pnpm sim:plates` draws them again. These are drawings for testing the connection, not for judging plate reading.
+
+To start with the mismatched pair, or to use a backend on another address:
+
+```powershell
+pnpm -C scripts sim --mismatch --url ws://localhost:4000/device
+```
+
+### Watching the weight
+
+`GET /api/kiosk/state` (kiosk login) shows the live weight, which boards are online and whether a weight may be captured. With `pnpm dev` running:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:4000/api/auth/login -ContentType "application/json" -Body '{"username":"wb01","pin":"3001"}' -SessionVariable kiosk
+```
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:4000/api/kiosk/state -WebSession $kiosk | ConvertTo-Json -Depth 4
+```
+
+With `NODE_ENV=test` the backend also has `POST /api/test/photos` (asks both cameras for photos) and `POST /api/test/command` (for example `{"t":"light","c":"green"}`), both for the kiosk login.
+
+## Device connection
+
+The firmware (Phase 5B) and the simulator speak this protocol.
+
+- **WebSocket** `/device` (`wss://` when deployed), with the board's secret in an `x-device-token` header. A wrong or missing token is closed at once (code 1008). A new connection replaces the board's old one (code 4000). Messages are at most 4 KB of JSON; bad ones are ignored and logged.
+- **Main ESP32 sends** `{"t":"w","kg":32560,"stable":true,"pos":true}` about every 200 ms, and `{"t":"hb"}` every 5 s. It is **offline after 3 s** without a message.
+- **Main ESP32 receives** `{"t":"light","c":"green"|"red"|"orange"}`, `{"t":"buzz","ms":1000}`, `{"t":"display","text":"Go to CH-6"}` (1 to 80 characters) and `{"t":"tare"}`. Tare is only sent when the bridge is empty.
+- **Cameras send** `{"t":"hello","cam":"front"}` (or `"back"`) after connecting, then `{"t":"hb"}` every 5 s. A camera is **offline after 15 s** without a message. A hello that does not match the token is refused.
+- **Cameras receive** `{"t":"snap","id":"<photo-id>"}` and upload with `POST /api/device/photo/<photo-id>`: header `x-device-token`, header `content-type: image/jpeg`, the JPEG itself as the body (not a form), at most 8 MB. Success is `201`. A photo id works once and only for the camera it was sent to. If nothing arrives in 5 s, the same id is sent once more.
+
+### When a weight can be captured
+
+`canCapture` is true only when all of these hold. Otherwise its reason is the first that fails:
+
+| Reason                | Meaning                                                             |
+| --------------------- | ------------------------------------------------------------------- |
+| `SETTINGS_NOT_LOADED` | The backend has not read the weighbridge settings from the database |
+| `DEVICE_OFFLINE`      | The main ESP32 is offline                                           |
+| `STALE_READING`       | The newest weight is 1 second old or more                           |
+| `NO_TRUCK`            | The weight is not above the wake threshold                          |
+| `POSITION_NOT_OK`     | The truck is not fully on the bridge                                |
+| `NOT_STABLE`          | The weight has not held still for 3 seconds with the stable flag on |
+
+### Device tokens
+
+Put a different random value (at least 16 characters) in each of `DEVICE_TOKEN`, `CAM_FRONT_TOKEN` and `CAM_BACK_TOKEN` in `apps/server/.env`. A board with no token cannot connect. This prints one value:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+```
+
 ## Environment files
 
 The backend checks its settings when it starts and lists anything missing or wrong. It requires `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN` and `STORAGE_DRIVER`; `STORAGE_DRIVER=supabase` also needs the three Supabase settings. `PORT` defaults to 4000 and `TZ` to Asia/Kolkata. The files are:
@@ -179,6 +254,8 @@ Run all commands from the repository root.
 | `pnpm build`           | Builds the website and the backend for production                               |
 | `pnpm test`            | Runs the tests (Vitest)                                                         |
 | `pnpm test:coverage`   | Tests `packages/shared` and reports coverage; fails below the limits            |
+| `pnpm sim`             | Simulates the main ESP32 and both cameras (see [Simulator](#simulator))         |
+| `pnpm sim:plates`      | Draws the sample plate photos again                                             |
 | `pnpm lint`            | Checks the code with ESLint                                                     |
 | `pnpm typecheck`       | Checks TypeScript types in every package                                        |
 | `pnpm format`          | Formats files with Prettier (`docs/` and `CLAUDE.md` are left as written)       |

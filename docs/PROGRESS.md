@@ -87,9 +87,18 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [ ] **46.** Position sensors (e.g. one IR sensor at each end of the bridge) → position OK flag.
 - [ ] **47.** Outputs: traffic light LEDs, buzzer, and the hardware display (shows text sent by the backend).
 - [ ] **48.** WebSocket client to `/device` with the device token: send weight every 200 ms, heartbeat every 5 s, act on commands.
-- [ ] **49.** Backend `/device` endpoint: check token, keep the latest reading in memory, mark offline after 3 s, forward `hw:weight` to the kiosk about 5 times a second.
-- [ ] **50.** Write an ESP32 simulator script so we can develop without the model plugged in. ESP32-CAM firmware (front and back): Wi-Fi, connect to `/device` as front or back, on "snap" take a JPEG with flash and upload it over HTTPS; tune resolution and JPEG quality for plate reading; give each board a stable 5 V supply so it does not reset.
+- [x] **49.** Backend `/device` endpoint: check token, keep the latest reading in memory, mark offline after 3 s, forward `hw:weight` to the kiosk about 5 times a second.
+- [x] **50.** Write an ESP32 simulator script so we can develop without the model plugged in. ESP32-CAM firmware (front and back): Wi-Fi, connect to `/device` as front or back, on "snap" take a JPEG with flash and upload it over HTTPS; tune resolution and JPEG quality for plate reading; give each board a stable 5 V supply so it does not reset.
 - [ ] **51.** Test the real model: weight on the bridge shows in `GET /api/kiosk/state`.
+
+**Phase 5A (backend and simulator) done on 2026-11-26. Phase 5 is NOT finished** until 5B passes.
+
+- Step 49: `/device`, tokens, latest reading and 3 s offline are done. Forwarding `hw:weight` to browsers comes in Phase 6 (the backend already emits it internally).
+- Step 50: only the **simulator** is done. The ESP32-CAM firmware named in step 50 is listed under 5B below.
+
+**Phase 5B** (needs the hardware and the existing ESP32 code), steps 42–48 and 51, plus:
+
+- [ ] ESP32-CAM firmware, front and back (the rest of step 50): Wi-Fi, connect to `/device` with its own token, say hello, heartbeat, on "snap" take a JPEG with flash and upload it; tune for plate reading; stable 5 V supply.
 
 **Done when:** a weight placed on the model shows in the backend within half a second; lights, buzzer and display respond to commands.
 
