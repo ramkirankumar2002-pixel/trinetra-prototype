@@ -12,6 +12,7 @@ import { loadHardwareSettings } from "./hardware/settings";
 import type { HardwareSettings } from "./hardware/state";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { registerDevicePhotoRoute } from "./routes/device-photo";
 import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
 import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
@@ -31,6 +32,7 @@ export interface AppOptions {
   hardware?: {
     settings?: HardwareSettings;
     loadSettings?: () => Promise<HardwareSettings>;
+    photoTimeoutMs?: number;
   };
 }
 
@@ -59,8 +61,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.addHook("onClose", () => database.close());
 
   const fixedSettings = options.hardware?.settings;
+  const photoTimeoutMs = options.hardware?.photoTimeoutMs;
   const hardware = createHardware({
     log: app.log,
+    db: database.db,
+    storage,
+    ...(photoTimeoutMs === undefined ? {} : { photoTimeoutMs }),
     loadSettings:
       options.hardware?.loadSettings ??
       (fixedSettings
@@ -72,6 +78,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.addHook("preClose", () => hardware.stop());
   registerDeviceSocket(app, { env, hub: hardware.hub, listener: hardware.listener });
   registerKioskRoutes(app, hardware.state);
+  await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
 
   registerHealthRoute(app, database.sql);
   if (storage instanceof LocalStorage) registerFileRoutes(app, storage);

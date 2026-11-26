@@ -1,6 +1,6 @@
 // Messages on the /device WebSocket (build plan section 7). Everything from a device is
 // checked here; anything else is ignored. A camera cannot send a weight: it has its own schema.
-import { CAMERA_IDS, LIGHT_COLOURS, type CameraId, type LightColour } from "@trinetra/shared";
+import { CAMERA_IDS, LIGHT_COLOURS, type LightColour } from "@trinetra/shared";
 import { z } from "zod";
 
 /** Far above any real truck: a reading outside this is a fault, not a weight. */
@@ -41,8 +41,7 @@ export interface SnapCommand {
 
 export const buzzMsSchema = z.number().int().min(1).max(10_000);
 export const displayTextSchema = z.string().min(1).max(80);
-export const lightColourSchema: z.ZodType<LightColour> = z.enum(LIGHT_COLOURS);
-export type { CameraId };
+export const lightColourSchema: z.ZodType<LightColour, LightColour> = z.enum(LIGHT_COLOURS);
 
 /** Returns the message, or undefined if it is not valid JSON of a known shape. */
 export function parseMessage<T>(schema: z.ZodType<T>, text: string): T | undefined {

@@ -31,7 +31,8 @@ function toAppError(error: unknown): AppError | undefined {
   // Anything else is unexpected, even if it carries a status code.
   const { code, statusCode, message } = (error ?? {}) as Partial<FastifyError>;
   if (code?.startsWith("FST_") && statusCode && statusCode >= 400 && statusCode < 500) {
-    if (code === "FST_REQ_FILE_TOO_LARGE") {
+    // The same limit for form uploads and for a camera's raw photo.
+    if (code === "FST_REQ_FILE_TOO_LARGE" || code === "FST_ERR_CTP_BODY_TOO_LARGE") {
       return new AppError(413, "FILE_TOO_LARGE", "The file is larger than 8 MB.");
     }
     return new AppError(statusCode, CLIENT_ERROR_CODES[statusCode] ?? "BAD_REQUEST", message ?? "");

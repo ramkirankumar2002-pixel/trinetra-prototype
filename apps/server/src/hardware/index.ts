@@ -1,9 +1,12 @@
 // Puts the hardware parts together and runs their timers.
 import type { FastifyBaseLogger } from "fastify";
+import type { Database } from "../db/client";
+import type { StorageService } from "../services/storage";
 import type { DeviceListener } from "../routes/device-socket";
 import { HardwareCommands } from "./commands";
 import { createHardwareBus } from "./events";
 import { DeviceHub } from "./hub";
+import { PhotoService } from "./photos";
 import { HardwareState, type HardwareSettings } from "./state";
 
 const TICK_MS = 250;
@@ -14,11 +17,15 @@ const SETTINGS_REFRESH_MS = 30_000;
 export interface HardwareOptions {
   loadSettings: () => Promise<HardwareSettings>;
   log: FastifyBaseLogger;
+  db: Database;
+  storage: StorageService;
   /** Replaced by tests. */
   now?: () => number;
+  photoTimeoutMs?: number;
 }
 
-export function createHardware({ loadSettings, log, now }: HardwareOptions) {
+export function createHardware(options: HardwareOptions) {
+  const { loadSettings, log, db, storage, now, photoTimeoutMs } = options;
   let settings: HardwareSettings | undefined;
   const currentSettings = () => settings;
 
@@ -26,6 +33,13 @@ export function createHardware({ loadSettings, log, now }: HardwareOptions) {
   const hub = new DeviceHub();
   const state = new HardwareState(bus, currentSettings, now);
   const commands = new HardwareCommands(hub, state, currentSettings);
+  const photos = new PhotoService({
+    hub,
+    storage,
+    db,
+    log,
+    ...(photoTimeoutMs === undefined ? {} : { timeoutMs: photoTimeoutMs }),
+  });
 
   const listener: DeviceListener = {
     mainMessage: (message) => {
@@ -63,6 +77,7 @@ export function createHardware({ loadSettings, log, now }: HardwareOptions) {
     hub,
     state,
     commands,
+    photos,
     listener,
     ready,
     start(): void {
@@ -74,6 +89,7 @@ export function createHardware({ loadSettings, log, now }: HardwareOptions) {
       stopped = true;
       clearInterval(tick);
       clearTimeout(settingsTimer);
+      photos.stop();
     },
   };
 }
