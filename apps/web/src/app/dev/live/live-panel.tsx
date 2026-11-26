@@ -12,7 +12,6 @@ import {
 } from "@trinetra/shared";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { apiUrl } from "@/lib/config";
 import { socketClient } from "@/lib/socket";
 import { useOnReconnect, useSocketEvent, useSocketStatus } from "@/lib/socket-hooks";
 
@@ -42,7 +41,7 @@ const clockTime = (date: Date) =>
   `${date.toLocaleTimeString("en-GB")}.${String(date.getMilliseconds()).padStart(3, "0")}`;
 
 const callApi = (path: string, body?: object) =>
-  fetch(`${apiUrl()}${path}`, {
+  fetch(path, {
     credentials: "include",
     cache: "no-store",
     ...(body
@@ -107,7 +106,7 @@ export function LivePanel() {
       .then(async (response) => {
         if (response.ok && !cancelled) start(((await response.json()) as AuthResponse).user);
       })
-      .catch(() => setError(`Cannot reach the backend at ${apiUrl()}.`));
+      .catch(() => setError("Cannot reach the backend."));
     return () => {
       cancelled = true;
       socketClient().disconnect();
@@ -151,8 +150,8 @@ export function LivePanel() {
     event.preventDefault();
     setError("");
     const response = await callApi("/api/auth/login", { username, pin }).catch(() => undefined);
-    if (!response) return setError(`Cannot reach the backend at ${apiUrl()}.`);
-    const body = await response.json();
+    const body = await response?.json().catch(() => undefined);
+    if (!response || !body) return setError("Cannot reach the backend.");
     if (!response.ok) return setError((body as ErrorResponse).error.message);
     setPin("");
     setLog([]);

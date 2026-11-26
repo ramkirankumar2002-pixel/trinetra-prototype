@@ -2,7 +2,7 @@
 // and nothing the browser holds is ever sent back as a weight.
 import type { ClientToServerEvents, ServerToClientEvents } from "@trinetra/shared";
 import { io, type Socket } from "socket.io-client";
-import { apiUrl, socketUrl } from "./config";
+import { socketUrl } from "./config";
 
 export type LiveSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -28,7 +28,6 @@ export interface SocketClient {
 
 export interface SocketClientOptions {
   socketUrl: string;
-  apiUrl: string;
   /** "live" is the read-only room that needs no login (the projector screen). */
   mode?: "user" | "live";
   fetch?: typeof fetch;
@@ -57,7 +56,8 @@ export function createSocketClient(options: SocketClientOptions): SocketClient {
   /** A socket token lasts 60 seconds, so a new one is fetched for every connection. */
   async function fetchToken(): Promise<string> {
     const send = options.fetch ?? fetch;
-    const response = await send(`${options.apiUrl}/api/auth/socket-token`, {
+    // On the website's own address, so the login cookie goes with it.
+    const response = await send("/api/auth/socket-token", {
       credentials: "include",
       cache: "no-store",
     });
@@ -147,6 +147,6 @@ let shared: SocketClient | undefined;
 
 /** The one logged-in connection a page shares. Use in the browser only. */
 export function socketClient(): SocketClient {
-  shared ??= createSocketClient({ socketUrl: socketUrl(), apiUrl: apiUrl() });
+  shared ??= createSocketClient({ socketUrl: socketUrl() });
   return shared;
 }

@@ -44,7 +44,6 @@ const fakeFetch = (async (input: string, init?: RequestInit) => {
 function start(options: Partial<SocketClientOptions> = {}) {
   client = createSocketClient({
     socketUrl: url,
-    apiUrl: "http://api.test",
     fetch: fakeFetch,
     retryMs: 20,
     ...options,
@@ -60,7 +59,7 @@ describe("socket client", () => {
   it("gets a socket token with the login cookie and connects with it", async () => {
     await connected(start());
 
-    expect(tokenCalls[0]!.url).toBe("http://api.test/api/auth/socket-token");
+    expect(tokenCalls[0]!.url).toBe("/api/auth/socket-token");
     expect(tokenCalls[0]!.init).toMatchObject({ credentials: "include" });
     expect(auths).toEqual([{ token: "token-1" }]);
   });
@@ -161,7 +160,7 @@ describe("socket client", () => {
   });
 
   it("tells status listeners until they unsubscribe", async () => {
-    const c = createSocketClient({ socketUrl: url, apiUrl: "x", fetch: fakeFetch });
+    const c = createSocketClient({ socketUrl: url, fetch: fakeFetch });
     client = c;
     const seen: string[] = [];
     const stop = c.subscribeStatus(() => seen.push(c.getStatus()));

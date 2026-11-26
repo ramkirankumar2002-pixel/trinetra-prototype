@@ -11,10 +11,9 @@ import type {
 import { formatKg, formatPlate } from "@trinetra/shared";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { apiUrl } from "@/lib/config";
 
 const callApi = (path: string, init: RequestInit = {}) =>
-  fetch(`${apiUrl()}${path}`, { credentials: "include", cache: "no-store", ...init });
+  fetch(path, { credentials: "include", cache: "no-store", ...init });
 
 interface Answer<T> {
   result: T;
@@ -155,7 +154,7 @@ export function ReadersPanel() {
   const [pin, setPin] = useState("");
   const [loginError, setLoginError] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
-  const unreachable = `Cannot reach the backend at ${apiUrl()}.`;
+  const unreachable = "Cannot reach the backend.";
 
   useEffect(() => {
     void callApi("/api/auth/me")
@@ -173,8 +172,8 @@ export function ReadersPanel() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ username, pin }),
     }).catch(() => undefined);
-    if (!response) return setLoginError(unreachable);
-    const body = await response.json();
+    const body = await response?.json().catch(() => undefined);
+    if (!response || !body) return setLoginError(unreachable);
     if (!response.ok) return setLoginError((body as ErrorResponse).error.message);
     setPin("");
     setUser((body as AuthResponse).user);

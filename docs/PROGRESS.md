@@ -164,7 +164,7 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 ## Phase 9 — Frontend foundation
 
 - [x] **75.** Base layout, fonts (Noto Sans + Devanagari), Tailwind theme: colours, big sizes, kiosk and phone layouts.
-- [ ] **76.** Next.js rewrite so `/api/*` goes to the backend.
+- [x] **76.** Next.js rewrite so `/api/*` goes to the backend.
 - [ ] **77.** API client (one fetch wrapper with error messages) + TanStack Query.
 - [ ] **78.** Login pages and route protection per role.
 - [ ] **79.** Translation files `en.json`, `hi.json` and the `t()` helper; language saved per kiosk session.
