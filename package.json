@@ -1,0 +1,21 @@
+{
+  "name": "trinetra-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @trinetra/web --filter @trinetra/server run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "pnpm -r run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @trinetra/server run db:migrate",
+    "db:seed": "pnpm --filter @trinetra/server run db:seed"
+  }
+}
