@@ -17,6 +17,7 @@ import { forwardHardware } from "./realtime/forward-hardware";
 import { createSocketServer, type SocketServer } from "./realtime/socket-server";
 import { upgradesWithoutSocketIo } from "./realtime/upgrades";
 import { registerAnprRoutes } from "./routes/anpr";
+import { registerApprovalRoutes } from "./routes/approvals";
 import { registerDevicePhotoRoute } from "./routes/device-photo";
 import { registerDevReaderRoutes } from "./routes/dev-readers";
 import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
@@ -133,6 +134,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerTicketRoutes(app, env);
   registerUploadRoutes(app);
   registerSupervisorRoutes(app);
+  registerApprovalRoutes(app);
   await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
 
   registerHealthRoute(app, database.sql);
