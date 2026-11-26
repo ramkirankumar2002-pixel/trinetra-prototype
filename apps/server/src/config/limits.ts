@@ -7,6 +7,9 @@ export const GENERAL_RATE_LIMIT = { max: 300, timeWindow: "1 minute" };
 /** Stricter limit on login, on top of the per-username lock. */
 export const LOGIN_RATE_LIMIT = { max: 20, timeWindow: "1 minute" };
 
+/** The kiosk may read the live state up to 20 times a second. */
+export const KIOSK_STATE_RATE_LIMIT = { max: 1200, timeWindow: "1 minute" };
+
 export const SESSION_SECONDS = 12 * 60 * 60;
 export const SOCKET_TOKEN_SECONDS = 60;
 

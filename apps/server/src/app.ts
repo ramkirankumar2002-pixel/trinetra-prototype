@@ -1,3 +1,4 @@
+import websocket from "@fastify/websocket";
 import { WEIGHBRIDGE_ID } from "@trinetra/shared";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { DestinationStream } from "pino";
@@ -6,10 +7,15 @@ import { registerAuthRoutes } from "./auth/routes";
 import type { Env } from "./config/env";
 import { createDb } from "./db/client";
 import { registerErrorHandling, sendError } from "./errors/handler";
+import { createHardware, type Hardware } from "./hardware";
+import { loadHardwareSettings } from "./hardware/settings";
+import type { HardwareSettings } from "./hardware/state";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
 import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
+import { registerKioskRoutes } from "./routes/kiosk";
 import { registerTestRoutes } from "./routes/test-routes";
 import { createStorage, LocalStorage, type StorageService } from "./services/storage";
 
@@ -21,6 +27,18 @@ export interface AppOptions {
   now?: () => number;
   /** Defaults to the driver named by STORAGE_DRIVER. */
   storage?: StorageService;
+  /** For tests: fixed settings or another loader instead of the settings table. */
+  hardware?: {
+    settings?: HardwareSettings;
+    loadSettings?: () => Promise<HardwareSettings>;
+  };
+}
+
+declare module "fastify" {
+  interface FastifyInstance {
+    /** `ready` settles after the first attempt to read the weighbridge settings. */
+    hardware: Hardware;
+  }
 }
 
 /** Builds the app without listening, so tests can call it with app.inject(). */
@@ -34,10 +52,26 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   await registerSecurityPlugins(app, env);
   registerErrorHandling(app);
+  await app.register(websocket, DEVICE_SOCKET_OPTIONS);
 
   // Connects on the first query, so building the app does not need the database.
   const database = createDb(env.DATABASE_URL);
   app.addHook("onClose", () => database.close());
+
+  const fixedSettings = options.hardware?.settings;
+  const hardware = createHardware({
+    log: app.log,
+    loadSettings:
+      options.hardware?.loadSettings ??
+      (fixedSettings
+        ? () => Promise.resolve(fixedSettings)
+        : () => loadHardwareSettings(database.db)),
+  });
+  app.decorate("hardware", hardware);
+  app.addHook("onReady", () => hardware.start());
+  app.addHook("preClose", () => hardware.stop());
+  registerDeviceSocket(app, { env, hub: hardware.hub, listener: hardware.listener });
+  registerKioskRoutes(app, hardware.state);
 
   registerHealthRoute(app, database.sql);
   if (storage instanceof LocalStorage) registerFileRoutes(app, storage);
