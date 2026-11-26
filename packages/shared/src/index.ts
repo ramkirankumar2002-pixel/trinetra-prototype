@@ -1,7 +1,5 @@
 export const APP_NAME = "Trinetra Systems";
 
-export const WEIGHBRIDGE_ID = "WB-01";
-
 /** Body returned by GET /api/health. */
 export interface HealthResponse {
   /** "degraded" (HTTP 503) when the database is down. */
@@ -24,3 +22,5 @@ export { matchFromList, type ListMatch } from "./matching/list";
 export { matchMaterial, type MatchableMaterial, type MaterialMatch } from "./matching/material";
 export { parseDigits, parseYesNo } from "./matching/speech";
 export * from "./rules/ticket-state";
+export * from "./format";
+export * from "./weighbridge";

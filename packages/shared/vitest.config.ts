@@ -6,7 +6,7 @@ export default defineConfig({
       provider: "v8",
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.test.ts", "src/test/**"],
-      reporter: ["text", "text-summary"],
+      reporter: [["text", { skipFull: false }], "text-summary"],
       // "pnpm test:coverage" fails if coverage drops below these.
       thresholds: { statements: 95, branches: 90, functions: 95, lines: 95 },
     },
