@@ -79,6 +79,10 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
   describe("GET /api/upload/:code", () => {
     it("tells the phone the plate and language, and nothing private", async () => {
       const id = await newTicket();
+      await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, {
+        driverName: "Ravi",
+        driverPhone: "9876543210",
+      });
       const { code } = (await link(id)).body;
       const { status, body } = await h.call<UploadInfoResponse>(null, "GET", `/api/upload/${code}`);
       expect(status).toBe(200);
@@ -190,6 +194,14 @@ describe.skipIf(!testDatabaseUrl)("invoice upload", { timeout: 30_000 }, () => {
       h.invoiceReads({ supplier: "Shree Ram Crushers", vehicle_number: OTHER_PLATE });
       await uploadFor(second);
       expect((await view(second)).warnings).toEqual([]);
+    });
+
+    it("asks for the material again if the new invoice disagrees with it", async () => {
+      const id = await newTicket();
+      await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Sand" });
+      h.invoiceReads();
+      await uploadFor(id);
+      expect((await view(id)).material).toBeNull();
     });
   });
 });
