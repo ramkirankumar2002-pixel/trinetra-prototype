@@ -1,0 +1,62 @@
+[
+  {
+    "file": "01-clear.jpg",
+    "plate": "MH12AB1234",
+    "condition": "clear",
+    "readable": true
+  },
+  {
+    "file": "02-tilt-right.jpg",
+    "plate": "MH14CD5678",
+    "condition": "tilted 6°",
+    "readable": true
+  },
+  {
+    "file": "03-tilt-left.jpg",
+    "plate": "UP32EF9012",
+    "condition": "tilted -8° and seen from the side",
+    "readable": true
+  },
+  {
+    "file": "04-blur.jpg",
+    "plate": "UP70GH3456",
+    "condition": "blurred",
+    "readable": true
+  },
+  {
+    "file": "05-dim.jpg",
+    "plate": "MP09JK7890",
+    "condition": "dim light",
+    "readable": true
+  },
+  {
+    "file": "06-far.jpg",
+    "plate": "RJ14LM2345",
+    "condition": "far away (small plate)",
+    "readable": true
+  },
+  {
+    "file": "07-dim-blur.jpg",
+    "plate": "DL01NP6789",
+    "condition": "dim, blurred and noisy",
+    "readable": true
+  },
+  {
+    "file": "08-two-lines.jpg",
+    "plate": "BR06QR4321",
+    "condition": "two-line truck plate",
+    "readable": true
+  },
+  {
+    "file": "09-tilt-blur.jpg",
+    "plate": "MH12AB1234",
+    "condition": "tilted, blurred, a little far",
+    "readable": true
+  },
+  {
+    "file": "10-hidden.jpg",
+    "plate": "MH14CD5678",
+    "condition": "number (last 4 digits) hidden",
+    "readable": false
+  }
+]

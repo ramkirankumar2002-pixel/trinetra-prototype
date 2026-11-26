@@ -7,6 +7,7 @@
     "sim": "tsx esp32-sim.ts",
     "sim:plates": "tsx generate-sample-plates.ts",
     "sim:invoices": "tsx generate-sample-invoices.ts",
+    "sim:test-plates": "tsx generate-test-plates.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

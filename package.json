@@ -20,6 +20,8 @@
     "sim": "pnpm -C scripts run sim",
     "sim:plates": "pnpm -C scripts run sim:plates",
     "sim:invoices": "pnpm -C scripts run sim:invoices",
+    "sim:test-plates": "pnpm -C scripts run sim:test-plates",
+    "check:readers": "pnpm -C apps/server run check:readers",
     "db:create": "pnpm --filter @trinetra/server run db:create",
     "db:generate": "pnpm --filter @trinetra/server run db:generate",
     "db:studio": "pnpm --filter @trinetra/server run db:studio",
