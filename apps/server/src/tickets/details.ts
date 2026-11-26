@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify";
 import type { z } from "zod";
 import { approvals, materials } from "../db/schema";
 import { AppError } from "../errors/app-error";
+import { SIGNALS } from "../hardware/signals";
 import {
   addEvent,
   changeStatus,
@@ -108,5 +109,7 @@ export async function saveDetails(
     return { materialMatched, attemptsLeft: Math.max(0, limit - attempts) };
   });
 
-  return { ...result, ticket: await ticketView(app.db, app.storage, ticketId) };
+  const saved = await ticketView(app.db, app.storage, ticketId);
+  if (saved.status === "MISMATCH_PENDING") app.hardware.signals.show(SIGNALS.store);
+  return { ...result, ticket: saved };
 }

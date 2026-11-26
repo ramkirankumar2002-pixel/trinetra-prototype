@@ -15,7 +15,7 @@ describe.skipIf(!testDatabaseUrl)("abandoned tickets", { timeout: 30_000 }, () =
   it("abandons STARTED tickets idle for 10 minutes, with a timeline row", async () => {
     const stale = await started();
     const fresh = await started({ plate: OTHER_PLATE });
-    await idleFor(stale, "10 minutes");
+    await idleFor(stale, "10 minutes 1 second");
     await idleFor(fresh, "9 minutes 50 seconds");
 
     expect(await sweepAbandoned(h.app)).toBe(1);

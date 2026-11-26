@@ -18,6 +18,7 @@ import {
 } from "@trinetra/shared";
 import { and, count, eq, gte, isNotNull, ne } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
+import { goTo, SIGNALS } from "../hardware/signals";
 import { materials, tickets, unloadingPoints, unloadingRules, users } from "../db/schema";
 import { AppError } from "../errors/app-error";
 import type { Transaction } from "../realtime/after-commit";
@@ -212,7 +213,10 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
       });
     }
   });
-  return ticketView(app.db, app.storage, ticketId);
+  const saved = await ticketView(app.db, app.storage, ticketId);
+  // A Type 2 truck waits aside; the others are told where to unload.
+  app.hardware.signals.show(saved.unloadingPoint ? goTo(saved.unloadingPoint.code) : SIGNALS.wait);
+  return saved;
 }
 
 /** What the kiosk is told when the truck may not be weighed the second time. */
@@ -270,5 +274,7 @@ export async function takeSecondWeight(app: FastifyInstance, ticketId: number, a
       await createApproval(tx, ticket, { kind: "HOLD" }, "system", { holdReason });
     }
   });
-  return ticketView(app.db, app.storage, ticketId);
+  const saved = await ticketView(app.db, app.storage, ticketId);
+  app.hardware.signals.show(saved.status === "COMPLETED" ? SIGNALS.thankYou : SIGNALS.store);
+  return saved;
 }

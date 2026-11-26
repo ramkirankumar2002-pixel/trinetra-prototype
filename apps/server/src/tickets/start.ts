@@ -9,6 +9,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import type { z } from "zod";
 import { ABANDON_AFTER_MS } from "../config/limits";
+import { SIGNALS } from "../hardware/signals";
 import { tickets, transporters, vehicles } from "../db/schema";
 import { AppError } from "../errors/app-error";
 import { emitAfterCommit, type Transaction } from "../realtime/after-commit";
@@ -156,5 +157,8 @@ export async function startTicket(
   });
 
   app.anpr.clear();
-  return { resumed, ticket: await ticketView(app.db, app.storage, ticketId) };
+  const ticket = await ticketView(app.db, app.storage, ticketId);
+  const blocked = ticket.plateCheck === "PENDING";
+  app.hardware.signals.show(blocked ? SIGNALS.store : SIGNALS.processing);
+  return { resumed, ticket };
 }

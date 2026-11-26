@@ -149,6 +149,12 @@ describe("events and commands over the connection", () => {
     const { commands, state } = app.hardware;
     main.send({ t: "w", kg: 3, stable: true, pos: true });
     await waitFor(() => state.isOnline("main"));
+    // On coming online it is told to show "ready" first.
+    await waitFor(() => main.received.length === 2);
+    expect(main.received.splice(0)).toEqual([
+      { t: "light", c: "green" },
+      { t: "display", text: "Drive on" },
+    ]);
 
     expect(commands.setLight("orange")).toEqual({ sent: true });
     expect(commands.buzz(1000)).toEqual({ sent: true });
@@ -179,7 +185,10 @@ describe("events and commands over the connection", () => {
     await waitFor(() => app.hardware.state.currentReading()?.kg === kg);
 
     expect(app.hardware.commands.tare()).toEqual({ sent: false, reason: "BRIDGE_NOT_EMPTY" });
-    expect(main.received).toEqual([]);
+    // Anything wrongly sent would arrive before this marker.
+    app.hardware.commands.showText("marker");
+    await waitFor(() => main.received.some((command) => command.text === "marker"));
+    expect(main.received.filter((command) => command.t === "tare")).toEqual([]);
   });
 
   it("refuses to tare without a fresh weight", async () => {

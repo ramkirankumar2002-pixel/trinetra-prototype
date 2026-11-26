@@ -7,6 +7,7 @@ import { HardwareCommands } from "./commands";
 import { createHardwareBus } from "./events";
 import { DeviceHub } from "./hub";
 import { PhotoService } from "./photos";
+import { WeighbridgeSignals } from "./signals";
 import { SimulatedWeight } from "./simulated-weight";
 import { HardwareState, type HardwareSettings } from "./state";
 
@@ -35,6 +36,7 @@ export function createHardware(options: HardwareOptions) {
   const state = new HardwareState(bus, currentSettings, now);
   const commands = new HardwareCommands(hub, state, currentSettings);
   const simulatedWeight = new SimulatedWeight(state);
+  const signals = new WeighbridgeSignals(commands, state, bus);
   const photos = new PhotoService({
     hub,
     storage,
@@ -86,6 +88,7 @@ export function createHardware(options: HardwareOptions) {
     commands,
     photos,
     simulatedWeight,
+    signals,
     listener,
     ready,
     start(): void {
