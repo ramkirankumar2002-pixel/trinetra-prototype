@@ -32,12 +32,13 @@ export function WeighbridgeStatusLight() {
   // The backend also sends it as soon as the kiosk connects.
   useSocketEvent("hw:status", (event) => setOnline(event.main));
 
-  // Without a connection, the last news may be old.
-  const known = connected ? online : null;
+  // Without a connection the last news may be old, and the connection light says why.
+  if (!connected) return null;
+  const known = online;
   return (
     <StatusLight
       data-testid="weighbridge"
-      tone={known === null ? "neutral" : known ? "go" : "stop"}
+      tone={known === null ? "idle" : known ? "go" : "stop"}
       label={t(
         known === null
           ? "weighbridge.checking"

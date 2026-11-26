@@ -18,9 +18,10 @@ export interface NumberPadProps {
 }
 
 const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-const KEY = "min-h-16 text-2xl kiosk:min-h-24 kiosk:text-5xl";
+const KEY =
+  "min-h-14 border-input bg-field text-2xl text-foreground shadow-none kiosk:min-h-24 kiosk:text-5xl kiosk:shadow-[inset_0_1px_0_rgb(160_210_255/12%),0_0_0.75rem_rgb(30_110_255/14%)]";
 const WORD_KEY =
-  "min-h-16 flex-col gap-0 px-1 text-sm leading-tight whitespace-nowrap kiosk:px-1 kiosk:leading-none kiosk:[&_svg:not([class*='size-'])]:size-8";
+  "min-h-14 border-input text-muted-foreground flex-col gap-0 px-1 text-xs leading-tight whitespace-nowrap kiosk:px-1 kiosk:leading-none kiosk:[&_svg:not([class*='size-'])]:size-8";
 
 export function NumberPad(props: NumberPadProps) {
   const { value, onChange, maxLength, labels, disabled, className } = props;
@@ -65,7 +66,7 @@ export function NumberPad(props: NumberPadProps) {
     >
       {DIGITS.map(digit)}
       <Button
-        variant="secondary"
+        variant="outline"
         className={WORD_KEY}
         disabled={disabled || value === ""}
         onClick={() => onChange("")}
@@ -75,7 +76,7 @@ export function NumberPad(props: NumberPadProps) {
       </Button>
       {digit("0")}
       <Button
-        variant="secondary"
+        variant="outline"
         className={WORD_KEY}
         disabled={disabled || value === ""}
         onClick={() => onChange(value.slice(0, -1))}

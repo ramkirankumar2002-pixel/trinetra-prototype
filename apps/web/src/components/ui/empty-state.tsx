@@ -12,7 +12,10 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-      <Icon aria-hidden className="size-14 text-muted-foreground kiosk:size-32" />
+      <Icon
+        aria-hidden
+        className="size-14 text-muted-foreground kiosk:size-24 kiosk:text-highlight"
+      />
       <h2 className="text-xl font-bold kiosk:text-6xl">{title}</h2>
       {children && <div className="text-muted-foreground">{children}</div>}
     </div>

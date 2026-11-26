@@ -13,7 +13,15 @@ import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
 import { TONE_SOFT } from "./ui/tone";
 import { YesNo } from "./ui/yes-no";
 
-export function LogoutButton({ area }: { area: AreaName }) {
+export function LogoutButton({
+  area,
+  variant = "outline",
+  className,
+}: {
+  area: AreaName;
+  variant?: "outline" | "dark" | "nav-danger";
+  className?: string;
+}) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -45,7 +53,7 @@ export function LogoutButton({ area }: { area: AreaName }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant={variant} className={className}>
           <LogOut aria-hidden />
           {t("shell.logout")}
         </Button>

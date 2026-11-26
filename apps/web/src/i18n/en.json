@@ -4,6 +4,12 @@
 
   "common.yes": "Yes",
   "common.no": "No",
+  "common.ok": "OK",
+
+  "kiosk.systemName": "Smart Weighbridge Automation System",
+  "kiosk.help": "Help",
+  "kiosk.helpTitle": "Need help?",
+  "kiosk.helpText": "Please go to the store office.",
 
   "language.label": "Language",
   "language.en": "English",

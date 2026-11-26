@@ -1,8 +1,8 @@
 import { cn } from "cn";
 import type { ComponentProps } from "react";
-import { TONE_ICONS, TONE_SOLID, type Tone } from "./tone";
+import { TONE_GLOW, TONE_ICONS, TONE_SOLID, type Tone } from "./tone";
 
-/** A round light with an icon, and the word beside it. */
+/** A round light with an icon, and the word beside it: something that is live. */
 export function StatusLight({
   tone,
   label,
@@ -15,7 +15,8 @@ export function StatusLight({
       role="status"
       data-tone={tone}
       className={cn(
-        "inline-flex items-center gap-2 text-sm font-semibold kiosk:gap-3 kiosk:text-[2rem]",
+        "inline-flex items-center gap-2 text-sm font-semibold",
+        "kiosk:gap-3 kiosk:rounded-full kiosk:border kiosk:border-border kiosk:bg-card kiosk:py-0.5 kiosk:pr-5 kiosk:pl-2 kiosk:text-[2rem] kiosk:leading-tight",
         className,
       )}
       {...props}
@@ -23,11 +24,12 @@ export function StatusLight({
       <span
         aria-hidden
         className={cn(
-          "inline-flex size-6 shrink-0 items-center justify-center rounded-full kiosk:size-12",
+          "inline-flex size-5 shrink-0 items-center justify-center rounded-full kiosk:size-9",
           TONE_SOLID[tone],
+          TONE_GLOW[tone],
         )}
       >
-        <Icon className="size-4 kiosk:size-8" strokeWidth={3} />
+        <Icon className="size-3.5 kiosk:size-6" strokeWidth={3.5} />
       </span>
       {label}
     </span>

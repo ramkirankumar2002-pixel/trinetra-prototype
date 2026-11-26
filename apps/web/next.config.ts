@@ -20,6 +20,9 @@ const PROXY_TIMEOUT_MS = 120_000;
 const nextConfig: NextConfig = {
   // Stops `next dev` from writing AGENTS.md; this project's rules live in CLAUDE.md.
   agentRules: false,
+  // The floating dev-tools badge sits over the bottom-left corner, where the language and
+  // Logout buttons are. Error messages still appear.
+  devIndicators: false,
   // The shared package is plain TypeScript, so Next compiles it itself.
   transpilePackages: ["@trinetra/shared"],
   experimental: { proxyTimeout: PROXY_TIMEOUT_MS },

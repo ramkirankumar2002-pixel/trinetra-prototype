@@ -2,6 +2,7 @@
 // and is refused on the other roles' pages.
 import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import { SEED_USERS } from "@trinetra/shared/seed";
+import { expectDriverRules } from "./driver-rules";
 import { WEB_URL } from "./playwright.config";
 
 const ROLES = [
@@ -107,6 +108,7 @@ for (const role of ROLES) {
       await expect(page.getByText(`Logged in: ${user.name}`)).toBeVisible();
       await expect(page.getByTestId("connection")).toHaveText("Online");
       await expect(page.getByText(role.english)).toBeVisible();
+      if (role.path === "kiosk") await expectDriverRules(page);
 
       // The login cookie belongs to the website, and scripts cannot read it.
       const cookie = (await context.cookies(WEB_URL)).find(
@@ -122,9 +124,11 @@ for (const role of ROLES) {
       await expect(page.getByText(role.hindi)).toBeVisible();
       await expect(page.getByTestId("connection")).toHaveText("ऑनलाइन");
       await expect(page.locator("html")).toHaveAttribute("lang", "hi");
+      if (role.path === "kiosk") await expectDriverRules(page);
       await page.reload();
       await expect(page.getByText(role.path === "kiosk" ? role.english : role.hindi)).toBeVisible();
-      await page.getByRole("button", { name: "English" }).click();
+      // The kiosk starts in English again, and its one button offers only the other one.
+      if (role.path !== "kiosk") await page.getByRole("button", { name: "English" }).click();
       await expect(page.getByText(role.english)).toBeVisible();
 
       // The live connection drops, and comes back.

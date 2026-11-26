@@ -20,7 +20,7 @@ export function useToast() {
   return show;
 }
 
-/** Put it inside PageShell, so the messages take the page's layout. */
+/** Put it inside a shell, so the messages take the shell's theme. */
 export function ToastProvider({ children, label }: { children: ReactNode; label: string }) {
   const theme = useTheme();
   const [toasts, setToasts] = useState<(ToastMessage & { id: number })[]>([]);
