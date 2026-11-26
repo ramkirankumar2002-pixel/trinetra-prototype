@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { CameraId } from "@trinetra/shared";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
+import sharp from "sharp";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { buildApp } from "../app";
 import { MAX_UPLOAD_BYTES } from "../config/limits";
@@ -24,8 +25,18 @@ import {
 import { testDatabaseUrl, testEnv } from "../test/env";
 
 const TIMEOUT_MS = 300;
-const jpeg = (text = "photo") =>
-  Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.from(text)]);
+/** A real little picture; different colours give different files. */
+const picture = (background: string) =>
+  sharp({ create: { width: 64, height: 48, channels: 3, background } })
+    .jpeg()
+    .toBuffer();
+const PICTURES = {
+  photo: await picture("#808080"),
+  front: await picture("#ff0000"),
+  back: await picture("#0000ff"),
+  another: await picture("#00ff00"),
+};
+const jpeg = (name: keyof typeof PICTURES = "photo") => PICTURES[name];
 
 describe.skipIf(!testDatabaseUrl)("camera photos", { timeout: 20_000 }, () => {
   let folder: string;
@@ -119,7 +130,9 @@ describe.skipIf(!testDatabaseUrl)("camera photos", { timeout: 20_000 }, () => {
       ] as const) {
         const photo = result.photos[name]!;
         const bytes = await readFile(join(folder, photo.storagePath));
-        expect(bytes).toEqual(jpeg(name));
+        // Re-encoded by the image pipeline: the same picture, and the hash is of the saved file.
+        const { dominant } = await sharp(bytes).stats();
+        expect(dominant.r > dominant.b).toBe(name === "front");
         expect(photo.sha256).toBe(createHash("sha256").update(bytes).digest("hex"));
         const [row] = await connection.db.select().from(photos).where(eq(photos.id, photo.id));
         expect(row).toMatchObject({ ticketId: ticket!.id, kind, sha256: photo.sha256 });
@@ -271,6 +284,15 @@ describe.skipIf(!testDatabaseUrl)("camera photos", { timeout: 20_000 }, () => {
     ])("refuses %s", async (_label, type) => {
       const response = await upload(randomUUID(), jpeg(), TEST_DEVICE_TOKENS.front, type);
       expect(response.statusCode).toBe(415);
+    });
+
+    it("reports a damaged JPEG as not saved", async () => {
+      const { frontId, backId, done } = await openRequest();
+      const damaged = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.from("junk")]);
+
+      expect((await upload(frontId, damaged)).json().error.code).toBe("INVALID_IMAGE");
+      await upload(backId, jpeg(), TEST_DEVICE_TOKENS.back);
+      expect((await done).failed).toEqual([{ camera: "front", reason: "SAVE_FAILED" }]);
     });
 
     it("refuses bytes that are not a JPEG, and still takes a good photo after", async () => {

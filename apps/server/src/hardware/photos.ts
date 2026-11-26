@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import { CAMERA_IDS, type CameraId, type PhotoKind } from "@trinetra/shared";
 import type { FastifyBaseLogger } from "fastify";
 import type { Database } from "../db/client";
-import { photos } from "../db/schema";
 import { AppError } from "../errors/app-error";
+import { storeFile } from "../services/images/pipeline";
 import type { StorageService } from "../services/storage";
 import type { DeviceHub } from "./hub";
 
@@ -44,9 +44,6 @@ interface Pending {
 }
 
 const isJpeg = (data: Buffer) => data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
-
-/** "20261126": groups stored photos by day. */
-const dayFolder = (date: Date) => date.toISOString().slice(0, 10).replaceAll("-", "");
 
 export class PhotoService {
   /** Photo ids that may still be uploaded. Each works once, for one camera. */
@@ -96,16 +93,18 @@ export class PhotoService {
     pending.claimed = true;
 
     try {
-      const path = `photos/${dayFolder(new Date())}/${photoId}.jpg`;
-      const saved = await this.options.storage.save(data, path, "image/jpeg");
-      await this.options.db.insert(photos).values({
-        id: photoId,
-        ticketId: pending.ticketId,
-        kind: PHOTO_KIND[camera],
-        storagePath: saved.path,
-        sha256: saved.sha256,
-      });
-      const photo = { id: photoId, storagePath: saved.path, sha256: saved.sha256 };
+      const { storage, db } = this.options;
+      const stored = await storeFile(
+        { storage, db },
+        {
+          data,
+          contentType: "image/jpeg",
+          kind: PHOTO_KIND[camera],
+          ticketId: pending.ticketId,
+          id: photoId,
+        },
+      );
+      const photo = { id: photoId, storagePath: stored.storagePath, sha256: stored.sha256 };
       pending.settle(photo);
       return photo;
     } catch (error) {
