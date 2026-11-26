@@ -1,3 +1,4 @@
+import { APP_NAME } from "@trinetra/shared";
 import type { Metadata } from "next";
 // Fonts come from npm so the kiosk does not depend on Google Fonts on a weak network.
 import "@fontsource-variable/noto-sans";
@@ -5,7 +6,7 @@ import "@fontsource-variable/noto-sans-devanagari";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Trinetra Systems",
+  title: APP_NAME,
   description: "Smart weighbridge prototype",
 };
 
