@@ -6,7 +6,8 @@
   "common.no": "नहीं",
   "common.ok": "ठीक है",
 
-  "kiosk.systemName": "स्मार्ट धर्म कांटा ऑटोमेशन सिस्टम",
+  "kiosk.systemName": "स्मार्ट धर्म कांटा",
+  "kiosk.systemNameSecond": "ऑटोमेशन सिस्टम",
   "kiosk.help": "मदद",
   "kiosk.helpTitle": "मदद चाहिए?",
   "kiosk.helpText": "कृपया स्टोर ऑफ़िस जाएँ।",

@@ -97,7 +97,7 @@ These are measured by `expectDriverRules()` in [tests/e2e/driver-rules.ts](../..
 
 - **One screen, one question.** One sentence and one action.
 - **No scrolling** at 1366×768.
-- **Text at least 32 px. Buttons at least 96 px tall.**
+- **Text at least 32 px. Buttons at least 96 px tall.** The one exception is the product's name under the logo in the rail (`data-brand-tagline`): it is branding, two short lines of about 17 px, as in the references.
 - **No keyboard** for drivers: only the number pad (phone number) and, as a last resort, a plate keypad.
 - **Yes and No** are `YesNo`: green ✓ left, red ✕ right, in the bottom bar.
 - **At most three buttons in the bottom bar**, in this order: wrong or stop (`danger`), neutral (`dark`), the way forward (`primary`, rightmost).

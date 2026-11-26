@@ -33,7 +33,10 @@ export async function expectDriverRules(page: Page) {
       );
       if (ownText) {
         const size = parseFloat(getComputedStyle(element).fontSize);
-        if (size < 32) problems.push(`text ${size}px: ${name(element)}`);
+        // The product's name under the logo is branding: no driver has to read it.
+        if (size < 32 && !element.closest("[data-brand-tagline]")) {
+          problems.push(`text ${size}px: ${name(element)}`);
+        }
         if (box.bottom > innerHeight + 1 || box.right > innerWidth + 1) {
           problems.push(`off the screen: ${name(element)}`);
         }

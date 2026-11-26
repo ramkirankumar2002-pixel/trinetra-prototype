@@ -5,7 +5,7 @@
 //   top row      the page header, and the date and time
 //   middle       one question; it must fit 1366×768 without scrolling
 //   bottom bar   up to three big buttons
-import type { LucideIcon } from "lucide-react";
+import { Truck, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useT } from "@/i18n/use-t";
 import { ClockChip } from "../clock-chip";
@@ -34,7 +34,17 @@ function Rail() {
         <span>Trinetra</span>
         <span className="font-semibold tracking-[0.16em]">Systems</span>
       </p>
-      <p className="text-[2rem] leading-[1.15] text-highlight">{t("kiosk.systemName")}</p>
+      {/*
+       * The product's name, as a tag under the logo: two short lines like the reference.
+       * It is branding, not something a driver has to read, so it may be under 32 px.
+       */}
+      <div data-brand-tagline className="flex flex-col items-center gap-1">
+        <Truck aria-hidden className="size-10 text-highlight" strokeWidth={1.5} />
+        <p className="flex flex-col text-[1.0625rem] leading-snug font-semibold tracking-wide uppercase">
+          <span className="whitespace-nowrap text-nav-foreground">{t("kiosk.systemName")}</span>
+          <span className="whitespace-nowrap text-highlight">{t("kiosk.systemNameSecond")}</span>
+        </p>
+      </div>
       <div className="mt-auto flex w-full flex-col gap-3">
         <LanguageToggle className="w-full px-2" />
         <HelpButton className="w-full px-2" />
