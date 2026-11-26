@@ -26,4 +26,5 @@ export * from "./format";
 export * from "./hardware";
 export * from "./readers";
 export * from "./realtime";
+export * from "./tickets";
 export * from "./weighbridge";

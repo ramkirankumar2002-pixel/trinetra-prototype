@@ -80,6 +80,11 @@ const envSchema = z
     DEVICE_TOKEN: deviceToken,
     CAM_FRONT_TOKEN: deviceToken,
     CAM_BACK_TOKEN: deviceToken,
+    /** Guards the demo settings, on top of the kiosk login. Without it they are switched off. */
+    ADMIN_PIN: z
+      .string()
+      .regex(/^\d{6,12}$/, "must be 6 to 12 digits")
+      .optional(),
   })
   .superRefine((env, context) => {
     // The token is how the backend knows which device is talking, so each needs its own.

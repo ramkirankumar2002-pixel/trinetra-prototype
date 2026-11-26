@@ -7,6 +7,7 @@ import { HardwareCommands } from "./commands";
 import { createHardwareBus } from "./events";
 import { DeviceHub } from "./hub";
 import { PhotoService } from "./photos";
+import { SimulatedWeight } from "./simulated-weight";
 import { HardwareState, type HardwareSettings } from "./state";
 
 const TICK_MS = 250;
@@ -33,6 +34,7 @@ export function createHardware(options: HardwareOptions) {
   const hub = new DeviceHub();
   const state = new HardwareState(bus, currentSettings, now);
   const commands = new HardwareCommands(hub, state, currentSettings);
+  const simulatedWeight = new SimulatedWeight(state);
   const photos = new PhotoService({
     hub,
     storage,
@@ -43,11 +45,16 @@ export function createHardware(options: HardwareOptions) {
 
   const listener: DeviceListener = {
     mainMessage: (message) => {
+      // In demo mode the ESP32 still takes commands, but its readings are set aside.
+      if (simulatedWeight.current()) return;
       if (message.t === "w") state.addWeight(message);
       else state.seen("main");
     },
     cameraMessage: (camera) => state.seen(camera),
-    disconnected: (device) => state.disconnected(device),
+    disconnected: (device) => {
+      if (device === "main" && simulatedWeight.current()) return;
+      state.disconnected(device);
+    },
   };
 
   let tick: NodeJS.Timeout | undefined;
@@ -78,6 +85,7 @@ export function createHardware(options: HardwareOptions) {
     state,
     commands,
     photos,
+    simulatedWeight,
     listener,
     ready,
     start(): void {
@@ -90,6 +98,7 @@ export function createHardware(options: HardwareOptions) {
       clearInterval(tick);
       clearTimeout(settingsTimer);
       photos.stop();
+      simulatedWeight.stopTimer();
     },
   };
 }

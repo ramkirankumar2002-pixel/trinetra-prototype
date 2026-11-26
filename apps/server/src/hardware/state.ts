@@ -1,5 +1,6 @@
 // What the backend knows about the weighbridge right now. THE BACKEND OWNS THE WEIGHT:
-// the only way a weight gets in here is a checked message from the main ESP32.
+// a weight gets in here only as a checked message from the main ESP32, or from demo mode
+// (simulated-weight.ts: kiosk login plus the admin PIN, and its tickets are tagged demo).
 import {
   DEVICE_IDS,
   isStable,
@@ -108,10 +109,10 @@ export class HardwareState {
   }
 
   /**
-   * May a weight be captured now? If so, `kg` is the weight to save: whoever captures
-   * must take it from this same answer.
+   * Is a truck standing fully on the bridge now? It need not be still. This is the part
+   * of canCapture() that reading the number plate also needs.
    */
-  canCapture(): CaptureDecision {
+  truckCheck(): CaptureDecision {
     const no = (reason: CaptureBlockReason) => ({ ok: false as const, reason });
     const settings = this.settings();
     if (!settings) return no("SETTINGS_NOT_LOADED");
@@ -121,10 +122,21 @@ export class HardwareState {
     if (!reading || reading.ageMs >= MAX_CAPTURE_AGE_MS) return no("STALE_READING");
     if (reading.kg <= settings.wakeThresholdKg) return no("NO_TRUCK");
     if (!reading.positionOk) return no("POSITION_NOT_OK");
-    if (!isStable(this.readings, settings.stableWindowMs, settings.stableSpreadKg)) {
-      return no("NOT_STABLE");
-    }
     return { ok: true, reason: null, kg: reading.kg };
+  }
+
+  /**
+   * May a weight be captured now? If so, `kg` is the weight to save: whoever captures
+   * must take it from this same answer.
+   */
+  canCapture(): CaptureDecision {
+    const truck = this.truckCheck();
+    if (!truck.ok) return truck;
+    const settings = this.settings()!;
+    if (!isStable(this.readings, settings.stableWindowMs, settings.stableSpreadKg)) {
+      return { ok: false, reason: "NOT_STABLE" };
+    }
+    return truck;
   }
 
   snapshot(): KioskStateResponse {

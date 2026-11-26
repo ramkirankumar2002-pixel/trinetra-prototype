@@ -6,6 +6,7 @@ import {
   type CameraId,
   type CameraPlateRead,
   type InvoiceRead,
+  type PlateRead,
   type PlatesRead,
 } from "@trinetra/shared";
 import { SAMPLE_INVOICES } from "@trinetra/shared/seed";
@@ -149,7 +150,16 @@ export function createReaders(deps: ReaderDependencies) {
     return readInvoiceWithGemini(gemini, file, { lists, ticketPlate });
   }
 
-  return { readPlate, readPlates, readInvoice, usage, model: gemini.model };
+  /** Reads the supervisor's live photo. In "pick" mode it shows the chosen demo plate. */
+  async function readSupervisorPlate(jpeg: Buffer): Promise<PlateRead> {
+    const modes = await loadReaderModes(db);
+    if (modes.anpr_mode !== "pick") return readPlate(jpeg);
+    const { front } = (await pickedPlates(modes)).cameras;
+    const { plate, source, model, confidence, validFormat, ms, problems } = front;
+    return { plate, source, model, confidence, validFormat, ms, problems };
+  }
+
+  return { readPlate, readPlates, readSupervisorPlate, readInvoice, usage, model: gemini.model };
 }
 
 export type Readers = ReturnType<typeof createReaders>;

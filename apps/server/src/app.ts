@@ -5,7 +5,7 @@ import type { DestinationStream } from "pino";
 import { LoginLockout } from "./auth/lockout";
 import { registerAuthRoutes } from "./auth/routes";
 import type { Env } from "./config/env";
-import { createDb } from "./db/client";
+import { createDb, type Database } from "./db/client";
 import { registerErrorHandling, sendError } from "./errors/handler";
 import { createHardware, type Hardware } from "./hardware";
 import { loadHardwareSettings } from "./hardware/settings";
@@ -16,6 +16,7 @@ import { createEventTransaction, type EventTransaction } from "./realtime/after-
 import { forwardHardware } from "./realtime/forward-hardware";
 import { createSocketServer, type SocketServer } from "./realtime/socket-server";
 import { upgradesWithoutSocketIo } from "./realtime/upgrades";
+import { registerAnprRoutes } from "./routes/anpr";
 import { registerDevicePhotoRoute } from "./routes/device-photo";
 import { registerDevReaderRoutes } from "./routes/dev-readers";
 import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
@@ -25,6 +26,7 @@ import { registerKioskRoutes } from "./routes/kiosk";
 import { registerTestRoutes } from "./routes/test-routes";
 import { createReaders, type Readers } from "./services/readers";
 import { createStorage, LocalStorage, type StorageService } from "./services/storage";
+import { AnprSession } from "./tickets/anpr-session";
 
 export interface AppOptions {
   env: Env;
@@ -54,6 +56,10 @@ declare module "fastify" {
     eventTransaction: EventTransaction;
     /** Number plate and invoice reading. */
     readers: Readers;
+    db: Database;
+    storage: StorageService;
+    /** The plate reads of the truck on the bridge now. */
+    anpr: AnprSession;
   }
 }
 
@@ -80,6 +86,8 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   // Connects on the first query, so building the app does not need the database.
   const database = createDb(env.DATABASE_URL);
   app.addHook("onClose", () => database.close());
+  app.decorate("db", database.db);
+  app.decorate("storage", storage);
   app.decorate("eventTransaction", createEventTransaction(database.db, realtime.publish, app.log));
 
   const fixedSettings = options.hardware?.settings;
@@ -115,6 +123,10 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
   registerDeviceSocket(app, { env, hub: hardware.hub, listener: hardware.listener });
   registerKioskRoutes(app, hardware.state);
+  const anpr = new AnprSession();
+  app.decorate("anpr", anpr);
+  hardware.bus.on("truck:left", () => anpr.clear());
+  registerAnprRoutes(app);
   await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
 
   registerHealthRoute(app, database.sql);

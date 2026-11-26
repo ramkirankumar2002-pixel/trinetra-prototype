@@ -19,7 +19,7 @@ const modesSchema = z.object({
 export type ReaderModes = z.infer<typeof modesSchema>;
 
 /** A missing mode means real. A misspelled value throws: it must not silently do something else. */
-export async function loadReaderModes(db: Database): Promise<ReaderModes> {
+export async function loadReaderModes(db: Pick<Database, "select">): Promise<ReaderModes> {
   const rows = await db
     .select()
     .from(settings)
