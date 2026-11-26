@@ -7,6 +7,7 @@ import {
   HOLD_WEIGHT_CHOICES,
   LANGUAGES,
   PHOTO_KINDS,
+  PLATE_WARNING_REASONS,
   TICKET_STATUSES,
   TICKET_TYPES,
   USER_ROLES,
@@ -34,6 +35,7 @@ export const ticketStatus = pgEnum("ticket_status", TICKET_STATUSES);
 export const ticketType = pgEnum("ticket_type", TICKET_TYPES);
 export const approvalKind = pgEnum("approval_kind", APPROVAL_KINDS);
 export const approvalStatus = pgEnum("approval_status", APPROVAL_STATUSES);
+export const plateWarningReason = pgEnum("plate_warning_reason", PLATE_WARNING_REASONS);
 export const holdWeightChoice = pgEnum("hold_weight_choice", HOLD_WEIGHT_CHOICES);
 export const userRole = pgEnum("user_role", USER_ROLES);
 export const photoKind = pgEnum("photo_kind", PHOTO_KINDS);
@@ -245,6 +247,8 @@ export const approvals = pgTable(
     ticketId: integer("ticket_id").references(() => tickets.id),
     kind: approvalKind().notNull(),
     status: approvalStatus().notNull().default("PENDING"),
+    /** Set on PLATE_WARNING requests only: whether it blocks the first weight. */
+    plateWarningReason: plateWarningReason("plate_warning_reason"),
     decidedBy: integer("decided_by").references(() => users.id),
     reason: text(),
     chosenWeight: holdWeightChoice("chosen_weight"),
@@ -258,6 +262,11 @@ export const approvals = pgTable(
   },
   (t) => [
     index("approvals_ticket").on(t.ticketId),
+    // Every plate warning says why, and nothing else carries a plate warning reason.
+    check(
+      "approvals_plate_warning_reason",
+      sql`(${t.kind} = 'PLATE_WARNING') = (${t.plateWarningReason} is not null)`,
+    ),
     index("approvals_status_kind").on(t.status, t.kind),
     check("approvals_ticket_required", sql`${t.ticketId} is not null or ${t.kind} = 'DRIVER_HELP'`),
   ],

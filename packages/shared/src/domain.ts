@@ -39,6 +39,13 @@ export const APPROVAL_KINDS = [
 ] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 
+/**
+ * Why a PLATE_WARNING request exists. BLOCKED_HISTORY stops the first weight until the store
+ * officer approves it. FRONT_BACK_MISMATCH is only a warning and never blocks.
+ */
+export const PLATE_WARNING_REASONS = ["BLOCKED_HISTORY", "FRONT_BACK_MISMATCH"] as const;
+export type PlateWarningReason = (typeof PLATE_WARNING_REASONS)[number];
+
 export const APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 

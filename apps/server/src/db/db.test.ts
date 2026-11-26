@@ -215,6 +215,33 @@ describe.skipIf(!url)("database", { timeout: 60_000 }, () => {
   });
 
   describe("approvals", () => {
+    it.each(["BLOCKED_HISTORY", "FRONT_BACK_MISMATCH"] as const)(
+      "stores a plate warning with the reason %s",
+      async (plateWarningReason) => {
+        const [ticket] = await newTicket("MH12AB1234");
+        await expect(
+          connection.db
+            .insert(schema.approvals)
+            .values({ ticketId: ticket!.id, kind: "PLATE_WARNING", plateWarningReason }),
+        ).resolves.toBeDefined();
+      },
+    );
+
+    it("refuses a plate warning without a reason, and a reason on anything else", async () => {
+      const [ticket] = await newTicket("MH12AB1234");
+      const ticketId = ticket!.id;
+      await expectRefused(
+        connection.db.insert(schema.approvals).values({ ticketId, kind: "PLATE_WARNING" }),
+        "approvals_plate_warning_reason",
+      );
+      await expectRefused(
+        connection.db
+          .insert(schema.approvals)
+          .values({ ticketId, kind: "HOLD", plateWarningReason: "BLOCKED_HISTORY" }),
+        "approvals_plate_warning_reason",
+      );
+    });
+
     it("needs a ticket, except for driver help", async () => {
       await expect(
         connection.db.insert(schema.approvals).values({ kind: "DRIVER_HELP" }),

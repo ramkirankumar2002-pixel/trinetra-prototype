@@ -15,6 +15,13 @@
       "when": 1795678069393,
       "tag": "0001_rules_and_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795684247131,
+      "tag": "0002_plate_warning_reason",
+      "breakpoints": true
     }
   ]
 }
