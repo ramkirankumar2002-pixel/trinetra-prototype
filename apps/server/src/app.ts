@@ -24,6 +24,7 @@ import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-soc
 import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
 import { registerKioskRoutes } from "./routes/kiosk";
+import { registerStoreRoutes } from "./routes/store";
 import { registerSupervisorRoutes } from "./routes/supervisor";
 import { registerTestRoutes } from "./routes/test-routes";
 import { registerTicketRoutes } from "./routes/tickets";
@@ -135,6 +136,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerUploadRoutes(app);
   registerSupervisorRoutes(app);
   registerApprovalRoutes(app);
+  registerStoreRoutes(app);
   await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
 
   registerHealthRoute(app, database.sql);
