@@ -67,6 +67,96 @@
 
   "empty.title": "यह पेज अभी बन रहा है",
   "empty.kiosk": "ड्राइवर की स्क्रीन यहाँ दिखेंगी।",
-  "empty.supervisor": "आपके ट्रक यहाँ दिखेंगे।",
-  "empty.store": "स्टोर के लिए अनुरोध यहाँ दिखेंगे।"
+
+  "menu.label": "मेनू",
+  "menu.open": "मेनू खोलें",
+  "menu.close": "मेनू बंद करें",
+  "menu.tabs": "मुख्य पेज",
+  "menu.dashboard": "डैशबोर्ड",
+  "menu.trucks": "जाँचने वाले ट्रक",
+  "menu.requests": "अनुरोध",
+  "menu.done": "आज पूरे हुए",
+  "menu.profile": "प्रोफ़ाइल",
+
+  "tab.dashboard": "होम",
+  "tab.trucks": "जाँच",
+  "tab.requests": "अनुरोध",
+  "tab.done": "पूरे हुए",
+  "tab.profile": "प्रोफ़ाइल",
+
+  "page.supervisor.subtitle": "माल उतारने की जगह पर ट्रक जाँचें",
+  "page.store.subtitle": "धर्म कांटे के अनुरोधों पर फ़ैसला करें",
+  "page.trucks.subtitle": "आपकी जाँच का इंतज़ार करते ट्रक",
+  "page.requests.subtitle": "आपके फ़ैसले का इंतज़ार करते अनुरोध",
+  "page.done.subtitle": "आज हुए फ़ैसले",
+  "page.profile.subtitle": "आपका अकाउंट",
+
+  "topbar.alerts": "सूचनाएँ: {count}",
+
+  "sample.tag": "नमूना",
+  "sample.notice": "इस पेज के आँकड़े और ट्रक नमूने हैं, असली नहीं।",
+  "sample.nothingDone": "यह नमूना है। कुछ भी बदला नहीं गया।",
+
+  "banner.welcome": "स्वागत है,",
+  "banner.unloadingPoint": "माल उतारने की जगह",
+  "banner.place": "जगह",
+  "banner.storeOffice": "स्टोर ऑफ़िस",
+
+  "kpi.waiting": "इंतज़ार में",
+  "kpi.verified": "आज जाँचे गए",
+  "kpi.rejected": "आज अस्वीकार",
+  "kpi.averageWait": "औसत इंतज़ार",
+  "kpi.pending": "बाकी अनुरोध",
+  "kpi.type2": "टाइप 2 जाँच",
+  "kpi.hold": "होल्ड पर",
+  "kpi.minutes": "{count} मिनट",
+  "kpi.moreThanYesterday": "कल से {count} ज़्यादा",
+  "kpi.lessThanYesterday": "कल से {count} मिनट कम",
+
+  "table.trucksForMe": "मेरे ट्रक",
+  "table.requests": "फ़ैसले के अनुरोध",
+
+  "column.ticket": "टिकट",
+  "column.vehicle": "गाड़ी",
+  "column.material": "माल",
+  "column.waiting": "इंतज़ार",
+  "column.status": "स्थिति",
+  "column.request": "अनुरोध",
+  "column.action": "काम",
+
+  "status.waiting": "इंतज़ार में",
+  "status.arrived": "पहुँच गया",
+  "status.completed": "पूरा हुआ",
+  "status.rejected": "अस्वीकार",
+  "status.notStarted": "शुरू नहीं हुआ",
+
+  "request.type2": "टाइप 2 जाँच",
+  "request.hold": "वज़न होल्ड",
+  "request.mismatch": "माल मेल नहीं खाता",
+
+  "action.verify": "जाँचें",
+  "action.view": "देखें",
+  "action.approve": "मंज़ूर",
+  "action.reject": "अस्वीकार करें",
+  "action.viewAll": "सभी देखें",
+
+  "alerts.title": "ताज़ा सूचनाएँ",
+
+  "alert.waitingLong.title": "ट्रक इंतज़ार में है",
+  "alert.waitingLong.detail": "{plate} {minutes} मिनट से रुका है",
+  "alert.noMatch.title": "नंबर प्लेट मेल नहीं खाई",
+  "alert.noMatch.detail": "{plate}: फिर से फ़ोटो लें",
+  "alert.newTruck.title": "आपके लिए नया ट्रक",
+  "alert.newTruck.detail": "{plate} रास्ते में है",
+  "alert.hold.title": "वज़न होल्ड पर है",
+  "alert.hold.detail": "{plate} का वज़न बिल से मेल नहीं खाता",
+  "alert.type2.title": "टाइप 2 जाँच",
+  "alert.type2.detail": "{plate} धर्म कांटे पर रुका है",
+  "alert.help.title": "ड्राइवर ने मदद माँगी",
+  "alert.help.detail": "धर्म कांटे पर",
+
+  "empty.trucks": "जाँचने वाले ट्रक यहाँ दिखेंगे।",
+  "empty.requests": "अनुरोध यहाँ दिखेंगे।",
+  "empty.done": "आज के फ़ैसले यहाँ दिखेंगे।",
+  "empty.profile": "आपके अकाउंट की जानकारी यहाँ दिखेगी।"
 }

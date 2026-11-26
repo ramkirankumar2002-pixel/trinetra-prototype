@@ -18,15 +18,15 @@ const ROLES = [
     path: "supervisor",
     username: "amit",
     size: { width: 390, height: 760 },
-    english: "Your trucks will appear here.",
-    hindi: "आपके ट्रक यहाँ दिखेंगे।",
+    english: "Trucks for me",
+    hindi: "मेरे ट्रक",
   },
   {
     path: "store",
     username: "ram",
     size: { width: 390, height: 760 },
-    english: "Requests for the store will appear here.",
-    hindi: "स्टोर के लिए अनुरोध यहाँ दिखेंगे।",
+    english: "Requests to decide",
+    hindi: "फ़ैसले के अनुरोध",
   },
 ] as const;
 
@@ -74,6 +74,20 @@ async function liveLink(page: Page) {
   };
 }
 
+/**
+ * Runs `action` where the language switch and Logout are: in the bar on the kiosk, in
+ * the drawer on a phone (which is closed again if it is still open).
+ */
+async function inMenu(page: Page, area: string, action: () => Promise<void>) {
+  if (area === "kiosk") return action();
+  await page.getByRole("button", { name: /^(Open menu|मेनू खोलें)$/ }).click();
+  const close = page.getByRole("button", { name: /^(Close menu|मेनू बंद करें)$/ });
+  await expect(close).toBeVisible();
+  await action();
+  if (await close.isVisible()) await close.click();
+  await expect(close).toHaveCount(0);
+}
+
 async function logIn(page: Page, username: string, pin: string) {
   await page.getByLabel("Username").fill(username);
   const pad = page.getByRole("group", { name: "Number pad" });
@@ -105,7 +119,12 @@ for (const role of ROLES) {
 
       // The shell: who is logged in and the live connection.
       await expect(page).toHaveURL(pageAt(`/${role.path}`));
-      await expect(page.getByText(`Logged in: ${user.name}`)).toBeVisible();
+      await expect(
+        page.getByText(role.path === "kiosk" ? `Logged in: ${user.name}` : "Welcome,"),
+      ).toBeVisible();
+      if (role.path !== "kiosk") {
+        await expect(page.getByRole("heading", { name: `Welcome, ${user.name}` })).toBeVisible();
+      }
       await expect(page.getByTestId("connection")).toHaveText("Online");
       await expect(page.getByText(role.english)).toBeVisible();
       if (role.path === "kiosk") await expectDriverRules(page);
@@ -120,7 +139,7 @@ for (const role of ROLES) {
       expect([...new Set(apiCalls)]).toEqual([WEB_URL]);
 
       // The language switch changes the shell, and is remembered for staff only.
-      await page.getByRole("button", { name: "हिंदी" }).click();
+      await inMenu(page, role.path, () => page.getByRole("button", { name: "हिंदी" }).click());
       await expect(page.getByText(role.hindi)).toBeVisible();
       await expect(page.getByTestId("connection")).toHaveText("ऑनलाइन");
       await expect(page.locator("html")).toHaveAttribute("lang", "hi");
@@ -128,7 +147,9 @@ for (const role of ROLES) {
       await page.reload();
       await expect(page.getByText(role.path === "kiosk" ? role.english : role.hindi)).toBeVisible();
       // The kiosk starts in English again, and its one button offers only the other one.
-      if (role.path !== "kiosk") await page.getByRole("button", { name: "English" }).click();
+      if (role.path !== "kiosk") {
+        await inMenu(page, role.path, () => page.getByRole("button", { name: "English" }).click());
+      }
       await expect(page.getByText(role.english)).toBeVisible();
 
       // The live connection drops, and comes back.
@@ -148,12 +169,18 @@ for (const role of ROLES) {
 
       // Log out asks first.
       await page.goto(`/${role.path}`);
-      await page.getByRole("button", { name: "Log out" }).click();
-      const dialog = page.getByRole("dialog");
-      await dialog.getByRole("button", { name: "No" }).click();
-      await expect(dialog).toHaveCount(0);
-      await page.getByRole("button", { name: "Log out" }).click();
-      await dialog.getByRole("button", { name: "Yes" }).click();
+      await expect(page.getByTestId("connection")).toHaveText("Online");
+      const dialog = page.getByRole("dialog", { name: "Log out?" });
+      // On a phone the drawer is a dialog too; only it holds the Logout button.
+      const logout = page.getByRole("button", { name: "Log out" });
+      await inMenu(page, role.path, async () => {
+        await logout.click();
+        await dialog.getByRole("button", { name: "No" }).click();
+        await expect(dialog).toHaveCount(0);
+        await logout.click();
+        await dialog.getByRole("button", { name: "Yes" }).click();
+        await expect(page).toHaveURL(pageAt(`/${role.path}/login`));
+      });
       await expect(page).toHaveURL(pageAt(`/${role.path}/login`));
       expect(await context.cookies(WEB_URL)).toEqual([]);
 

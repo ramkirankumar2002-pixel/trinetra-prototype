@@ -67,6 +67,96 @@
 
   "empty.title": "This page is being built",
   "empty.kiosk": "The screens for drivers will appear here.",
-  "empty.supervisor": "Your trucks will appear here.",
-  "empty.store": "Requests for the store will appear here."
+
+  "menu.label": "Menu",
+  "menu.open": "Open menu",
+  "menu.close": "Close menu",
+  "menu.tabs": "Main pages",
+  "menu.dashboard": "Dashboard",
+  "menu.trucks": "Trucks to verify",
+  "menu.requests": "Requests",
+  "menu.done": "Done today",
+  "menu.profile": "Profile",
+
+  "tab.dashboard": "Home",
+  "tab.trucks": "To verify",
+  "tab.requests": "Requests",
+  "tab.done": "Done",
+  "tab.profile": "Profile",
+
+  "page.supervisor.subtitle": "Check trucks at the unloading point",
+  "page.store.subtitle": "Decide requests from the weighbridge",
+  "page.trucks.subtitle": "Trucks waiting for your check",
+  "page.requests.subtitle": "Requests waiting for your decision",
+  "page.done.subtitle": "What was decided today",
+  "page.profile.subtitle": "Your account",
+
+  "topbar.alerts": "Alerts: {count}",
+
+  "sample.tag": "Sample",
+  "sample.notice": "The numbers and trucks on this page are samples, not real data.",
+  "sample.nothingDone": "This is sample data. Nothing was changed.",
+
+  "banner.welcome": "Welcome,",
+  "banner.unloadingPoint": "Unloading point",
+  "banner.place": "Place",
+  "banner.storeOffice": "Store office",
+
+  "kpi.waiting": "Waiting",
+  "kpi.verified": "Verified today",
+  "kpi.rejected": "Rejected today",
+  "kpi.averageWait": "Average wait",
+  "kpi.pending": "Pending requests",
+  "kpi.type2": "Type 2 checks",
+  "kpi.hold": "On HOLD",
+  "kpi.minutes": "{count} min",
+  "kpi.moreThanYesterday": "{count} more than yesterday",
+  "kpi.lessThanYesterday": "{count} min less than yesterday",
+
+  "table.trucksForMe": "Trucks for me",
+  "table.requests": "Requests to decide",
+
+  "column.ticket": "Ticket",
+  "column.vehicle": "Vehicle",
+  "column.material": "Material",
+  "column.waiting": "Waiting",
+  "column.status": "Status",
+  "column.request": "Request",
+  "column.action": "Action",
+
+  "status.waiting": "Waiting",
+  "status.arrived": "Arrived",
+  "status.completed": "Completed",
+  "status.rejected": "Rejected",
+  "status.notStarted": "Not started",
+
+  "request.type2": "Type 2 check",
+  "request.hold": "Weight HOLD",
+  "request.mismatch": "Material mismatch",
+
+  "action.verify": "Verify",
+  "action.view": "View",
+  "action.approve": "Approve",
+  "action.reject": "Reject",
+  "action.viewAll": "View all",
+
+  "alerts.title": "Recent alerts",
+
+  "alert.waitingLong.title": "Truck waiting",
+  "alert.waitingLong.detail": "{plate} has waited {minutes} minutes",
+  "alert.noMatch.title": "Plate did not match",
+  "alert.noMatch.detail": "{plate}: take the photo again",
+  "alert.newTruck.title": "New truck for you",
+  "alert.newTruck.detail": "{plate} is on the way",
+  "alert.hold.title": "Weight on HOLD",
+  "alert.hold.detail": "{plate} does not match its invoice",
+  "alert.type2.title": "Type 2 check",
+  "alert.type2.detail": "{plate} is waiting at the weighbridge",
+  "alert.help.title": "Driver asked for help",
+  "alert.help.detail": "At the weighbridge",
+
+  "empty.trucks": "Trucks to check will appear here.",
+  "empty.requests": "Requests will appear here.",
+  "empty.done": "Today's decisions will appear here.",
+  "empty.profile": "Your account details will appear here."
 }

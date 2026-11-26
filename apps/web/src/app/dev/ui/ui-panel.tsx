@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { PageShell } from "@/components/layout/page-shell";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { StatusLight } from "@/components/ui/status-light";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ToastProvider, useToast } from "@/components/ui/toast";
 import { YesNo } from "@/components/ui/yes-no";
+import { MENUS } from "@/lib/menus";
 
 function Samples() {
   const toast = useToast();
@@ -66,15 +67,20 @@ function Samples() {
 
 export function UiPanel({ kioskLinks }: { kioskLinks: ReactNode }) {
   return (
-    <PageShell
-      layout="dashboard"
-      brand="Trinetra"
+    <DashboardShell
       title="Design system"
-      bottomBar={<nav className="flex flex-wrap gap-3">Kiosk screens: {kioskLinks}</nav>}
+      subtitle="Development only"
+      menu={MENUS.supervisor}
+      active="/supervisor"
+      user={{ name: "Sample User", role: "Supervisor", profileHref: "/dev/ui" }}
+      status={<StatusLight tone="go" label="Online" />}
+      alerts={{ count: 3, href: "/dev/ui" }}
+      logout={<Button variant="nav-danger">Log out</Button>}
     >
+      <nav className="flex flex-wrap gap-3">Kiosk screens: {kioskLinks}</nav>
       <ToastProvider label="Notification">
         <Samples />
       </ToastProvider>
-    </PageShell>
+    </DashboardShell>
   );
 }
