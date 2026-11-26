@@ -17,6 +17,7 @@ Related docs:
 
 - Commit after every step.
 - Run typecheck, lint and tests before each commit.
+- **Never commit when typecheck, lint or tests fail.** Gate every commit on a check script that stops at the first failing exit code; do not rely on `set -e` or on `;` between the checks and `git commit`.
 - **The backend owns the weight.** The browser never sends a weight number.
 - Only the backend holds secrets.
 - Never commit `.env` files or `firmware/**/secrets.h`.
