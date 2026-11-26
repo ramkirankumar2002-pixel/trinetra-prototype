@@ -19,3 +19,4 @@ export * from "./rules/plates";
 export * from "./rules/classify";
 export * from "./rules/unloading";
 export * from "./rules/weight";
+export * from "./rules/stability";
