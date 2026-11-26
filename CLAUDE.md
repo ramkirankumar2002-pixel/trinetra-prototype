@@ -84,12 +84,12 @@ Phase 3 done. Next: Phase 4.
 
 Settle before the phases that need it:
 
-- **In Phase 8 (decided):** if a plate has a `BLOCKED` or `REJECTED` ticket in the last 24 hours, a new ticket for it starts with a `PLATE_WARNING` request to the store officer. It warns; it does not stop the truck. Still open: rule 3 and kiosk screen 13 also expect a returning blocked truck to see "not approved".
-- **Before Phase 8:** phones may send HEIC photos. Uploads accept only JPEG, PNG, WebP and PDF.
+- **In Phase 8 (decided):** if a plate had a `BLOCKED` or `REJECTED` ticket in the last 24 hours, a new ticket cannot reach the first weight until the store officer approves a `PLATE_WARNING` request. The kiosk says "Not approved earlier. Please go to the store office." Keep it apart from the front/back mismatch `PLATE_WARNING`, which only warns.
+- **Phase 8/10 (decided):** the phone upload page converts photos to JPEG in the browser (HEIC); the server accepts only JPEG, PNG, WebP and PDF.
 - **Before Phase 8:** "Reset demo data" must delete demo tickets, but the `ticket_events` trigger refuses DELETE.
-- **Before Phase 16:** the demo PINs are public in the repository. Use different PINs on the deployed site.
+- **Before Phase 16:** change the demo usernames and PINs; they are public in the repository.
 - **Before Phase 16:** set `NODE_ENV=production` on Railway (otherwise the login cookie is not `Secure`).
-- **Before Phase 16:** behind Vercel and Railway every user may look like one address, so they would share the rate limits (login: 20 a minute). Configure Fastify's `trustProxy` safely.
+- **Before Phase 16:** configure Fastify's `trustProxy` safely for Railway, so rate limits use the real client address (otherwise all users may share the limits; login: 20 a minute).
 - **Before Phase 16:** test the Supabase storage driver against the real bucket.
 
 *(Update this section at the end of every phase.)*

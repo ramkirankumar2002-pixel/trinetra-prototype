@@ -129,7 +129,8 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 **Also in this phase** (added 2026-11-26, not one of the 120 steps):
 
-- [ ] Close the BLOCKED gap: if a plate has a BLOCKED or REJECTED ticket in the last 24 hours, a new ticket for it starts with a PLATE_WARNING request to the store officer.
+- [ ] Close the BLOCKED gap: if a plate had a BLOCKED or REJECTED ticket in the last 24 hours, a new ticket for it cannot reach the first weight until the store officer approves a PLATE_WARNING request. The kiosk says "Not approved earlier. Please go to the store office."
+- [ ] Uploads: keep accepting only JPEG, PNG, WebP and PDF (HEIC photos are converted in the browser, see Phase 10).
 
 **Done when:** a script can run a complete truck journey of each type using only API calls.
 
@@ -160,6 +161,11 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [ ] **92.** Screens 13–15 second visit: status check, second weighing, final result.
 - [ ] **93.** Inactivity timers, Start over, Help button.
 - [ ] **94.** First and final slip layouts, QR code, Print button with print-friendly CSS.
+
+**Also in this phase** (added 2026-11-26, not one of the 120 steps):
+
+- [ ] Phone upload page: convert photos to JPEG in the browser before upload, so HEIC photos work.
+- [ ] Kiosk: show "Not approved earlier. Please go to the store office." while a blocked-plate PLATE_WARNING waits for the store officer.
 
 **Done when:** a full first and second visit of every type works by touch, using the ESP32 simulator.
 
@@ -216,5 +222,11 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - [ ] **118.** Use the free Vercel and Railway addresses (HTTPS is automatic); set `FRONTEND_ORIGIN`; check login cookies and CORS.
 - [ ] **119.** Put the `wss://` backend address and device token in the ESP32 secrets and flash it; connect it to the hotspot.
 - [ ] **120.** Smoke test the four demo scenarios on the deployed site with the real kiosk, two phones and the model; tag the release `v1.0-demo`. From now on, every push to `main` deploys automatically.
+
+**Also in this phase** (added 2026-11-26, not one of the 120 steps):
+
+- [ ] Change the demo usernames and PINs (the current ones are public in the repository).
+- [ ] Set `NODE_ENV=production`, so the login cookie is `Secure`.
+- [ ] Configure trust proxy for Railway, so rate limits use the real client address.
 
 **Done when:** all four scenarios pass on the live website over the mobile hotspot.
