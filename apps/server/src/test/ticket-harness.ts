@@ -84,7 +84,7 @@ export function useTicketHarness() {
     if (folder) await rm(folder, { recursive: true, force: true });
   });
 
-  async function startApp() {
+  async function startApp(beforeReady?: (app: FastifyInstance) => void) {
     app = await buildApp({
       env: testEnv({ ...deviceTokenEnv, ADMIN_PIN }),
       storage,
@@ -92,6 +92,7 @@ export function useTicketHarness() {
         settings: { wakeThresholdKg: 500, stableWindowMs: STABLE_MS, stableSpreadKg: 10 },
       },
     });
+    beforeReady?.(app);
     await app.ready();
   }
 
@@ -300,11 +301,11 @@ export function useTicketHarness() {
       return connection.db;
     },
     userId: (who: Who) => accounts.get(who)!.id,
-    restart: async () => {
+    restart: async (beforeReady?: (app: FastifyInstance) => void) => {
       clearInterval(feeder);
       feeder = undefined;
       await app.close();
-      await startApp();
+      await startApp(beforeReady);
     },
     weigh,
     settle,

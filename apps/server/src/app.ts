@@ -33,6 +33,7 @@ import { registerTicketRoutes } from "./routes/tickets";
 import { registerUploadRoutes } from "./routes/upload";
 import { createReaders, type Readers } from "./services/readers";
 import { createStorage, LocalStorage, type StorageService } from "./services/storage";
+import { scheduleAbandonedSweep } from "./tickets/abandon";
 import { AnprSession } from "./tickets/anpr-session";
 
 export interface AppOptions {
@@ -141,6 +142,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerStoreRoutes(app);
   registerPublicRoutes(app);
   registerDemoRoutes(app, env, now);
+  scheduleAbandonedSweep(app);
   await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
 
   registerHealthRoute(app, database.sql);
