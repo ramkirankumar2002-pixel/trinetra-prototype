@@ -72,6 +72,28 @@ describe.skipIf(!testDatabaseUrl)("the kiosk's lists", { timeout: 30_000 }, () =
     expect((await lists()).ready).toEqual([]);
   });
 
+  it("lists a final slip the store officer allowed, until it is printed", async () => {
+    const id = await heldTruck(PLATE);
+    await storeDecides(id, "APPROVE");
+    await h.call("kiosk", "POST", `/api/tickets/${id}/printed`, { kind: "FIRST" });
+    // 1,500 kg on the invoice, but only 1,400 kg came off: on hold.
+    await h.settle(18_350);
+    const weighed = await h.call<TicketView>("kiosk", "POST", `/api/tickets/${id}/second-weight`);
+    expect(weighed.body.status).toBe("HOLD_PENDING");
+    expect((await lists()).ready).toEqual([]);
+
+    const list = await h.call<StoreRequestsResponse>("store", "GET", "/api/store/requests");
+    const hold = list.body.requests.find((item) => item.approval.kind === "HOLD")!;
+    await h.call("store", "POST", `/api/approvals/${hold.approval.id}/decide`, {
+      decision: "APPROVE",
+      chosenWeight: "NET",
+    });
+    expect((await lists()).ready).toMatchObject([{ ticketId: id, slip: "FINAL" }]);
+
+    await h.call("kiosk", "POST", `/api/tickets/${id}/printed`, { kind: "FINAL" });
+    expect((await lists()).ready).toEqual([]);
+  });
+
   it("shows a rejected truck for 10 minutes", async () => {
     const id = await heldTruck(OTHER_PLATE);
     await storeDecides(id, "REJECT");

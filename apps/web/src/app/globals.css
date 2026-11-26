@@ -278,6 +278,83 @@
   }
 
   /*
+   * The printed slip (components/kiosk/slip.tsx). On screen it is not shown. In the print
+   * dialog it is the only thing: black on white, sized in points, and as wide as the
+   * paper, so 80 mm rolls and A4 are both readable.
+   */
+  .print-slip {
+    display: none;
+  }
+  @media print {
+    @page {
+      margin: 4mm;
+    }
+    html,
+    html:has([data-theme="kiosk"]) {
+      font-size: 16px;
+    }
+    html,
+    body {
+      background: #ffffff;
+      color: #000000;
+      min-height: 0;
+    }
+    body:has(> .print-slip) > :not(.print-slip) {
+      display: none !important;
+    }
+    .print-slip {
+      display: block;
+      width: 100%;
+      max-width: 120mm;
+      margin: 0 auto;
+      font-size: 10pt;
+      line-height: 1.35;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    .print-slip h1 {
+      font-size: 14pt;
+      font-weight: 800;
+    }
+    .print-slip h2,
+    .print-slip-number {
+      font-size: 11pt;
+      font-weight: 700;
+    }
+    .print-slip-mark {
+      margin: 1mm 0;
+      border: 0.4mm solid #000000;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .print-slip img {
+      width: 30mm;
+      height: 30mm;
+      margin: 2mm auto 0;
+    }
+    .print-slip table {
+      width: 100%;
+      margin-top: 2mm;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .print-slip th,
+    .print-slip td {
+      border-top: 0.2mm solid #000000;
+      padding: 1mm 0;
+      vertical-align: top;
+    }
+    .print-slip th {
+      width: 45%;
+      padding-right: 2mm;
+      font-weight: 400;
+    }
+    .print-slip td {
+      font-weight: 700;
+    }
+  }
+
+  /*
    * A larger kiosk screen (1920×1080) shows the same layout, larger. Everything on the
    * kiosk is sized in rem, so raising the base size scales it evenly.
    */

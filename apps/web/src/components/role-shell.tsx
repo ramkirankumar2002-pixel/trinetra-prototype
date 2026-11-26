@@ -1,19 +1,16 @@
 "use client";
 
-// The frame of a logged-in page: the kiosk gets KioskShell, the supervisor and the store
-// officer get DashboardShell. Both show who is logged in, the live connection, the
-// language switch and "Log out".
-import { Truck } from "lucide-react";
+// The frame of a logged-in staff page (the supervisor and the store officer): who is
+// logged in, the live connection, the language switch and "Log out". The weighbridge's
+// screens have their own frame (components/kiosk/frame.tsx).
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useT } from "@/i18n/use-t";
-import type { AreaName } from "@/lib/areas";
 import { MENUS, type StaffArea } from "@/lib/menus";
 import { SAMPLE_ALERTS } from "@/lib/sample-data";
 import { useOnReconnect } from "@/lib/socket-hooks";
-import { ConnectionStatusLight, WeighbridgeStatusLight } from "./connection-status";
+import { ConnectionStatusLight } from "./connection-status";
 import { DashboardShell } from "./layout/dashboard-shell";
-import { KioskShell } from "./layout/kiosk-shell";
 import { LogoutButton } from "./logout-button";
 import { useCurrentUser } from "./require-role";
 import { ToastProvider, useToast } from "./ui/toast";
@@ -33,29 +30,6 @@ function Messages({ children }: { children: ReactNode }) {
       <BackOnlineMessage />
       {children}
     </ToastProvider>
-  );
-}
-
-function KioskPage({ children }: { children: ReactNode }) {
-  const t = useT();
-  const user = useCurrentUser();
-  return (
-    <KioskShell
-      header={{
-        icon: Truck,
-        title: t("area.kiosk"),
-        subtitle: t("shell.loggedInAs", { name: user.name }),
-      }}
-      status={
-        <>
-          <WeighbridgeStatusLight />
-          <ConnectionStatusLight />
-        </>
-      }
-      actions={<LogoutButton area="kiosk" variant="dark" />}
-    >
-      <Messages>{children}</Messages>
-    </KioskShell>
   );
 }
 
@@ -84,10 +58,6 @@ function StaffPage({ area, children }: { area: StaffArea; children: ReactNode })
   );
 }
 
-export function RoleShell({ area, children }: { area: AreaName; children: ReactNode }) {
-  return area === "kiosk" ? (
-    <KioskPage>{children}</KioskPage>
-  ) : (
-    <StaffPage area={area}>{children}</StaffPage>
-  );
+export function RoleShell({ area, children }: { area: StaffArea; children: ReactNode }) {
+  return <StaffPage area={area}>{children}</StaffPage>;
 }

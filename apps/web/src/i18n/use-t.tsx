@@ -35,7 +35,7 @@ export function useLanguage() {
   return { language, setLanguage };
 }
 
-/** const t = useT(); t("shell.loggedInAs", { name }) */
+/** const t = useT(); t("kiosk.step", { current, total }) */
 export function useT(): Translate {
   const { language } = useLanguage();
   return useCallback((key, params) => translate(language, key, params), [language]);
