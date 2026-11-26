@@ -80,7 +80,7 @@ Related docs:
 
 ## Current status
 
-Phase 6 done. Next: Phase 5B (needs hardware code) or Phase 7. Phase 5 is still open.
+Phase 7 done. Next: Phase 8, or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run.
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website.
 
@@ -94,7 +94,9 @@ Settle before the phases that need it:
 - **Before Phase 16:** the "live" room has no limit on how many viewers can connect.
 - **Phase 8:** to capture a weight, call `app.hardware.state.canCapture()` once and save the `kg` from that same answer. Never take a weight from a request.
 - **Phase 8:** a `PLATE_WARNING` needs `plateWarningReason`. Only `BLOCKED_HISTORY` goes into `plateCheck`; `FRONT_BACK_MISMATCH` never blocks.
-- **Phase 7/8:** `app.hardware.photos.requestPhotos(ticketId)` takes the plate photos (`ticketId` null before a ticket exists; link the photo rows to the ticket when it starts). Photos are saved as received; resizing with sharp is step 56.
+- **Phase 8:** read plates with `app.readers.readPlates(ticketId)` (it takes the photos itself; `ticketId` null before a ticket exists, then link the photo rows to the ticket). For an uploaded invoice use `storeFile()` (kind INVOICE), then `app.readers.readInvoice(file, ticketPlate)`; it throws `ReaderError`, and the driver then uploads again or enters the values. Mark the ticket `isDemo` when a result says `demo` or source "demo".
+- **Phase 8/10:** a high plate confidence is not proof (a 99% read was wrong in the Phase 7 check). The driver must always confirm the plate.
+- **To decide:** (1) `gemini-3.8-flash` was unavailable on the free tier during Phase 7; choose another `GEMINI_MODEL`, or add a fallback model. (2) Whether to ask Gemini for a second opinion when Plate Recognizer's read is not in the vehicle list or front and back differ.
 - **Phase 8:** change status only through `transition()`. The first weight needs `plateCheck` (use `needsPlateApproval()`, then the state of that PLATE_WARNING). The state machine does not check the ticket type: pick events with `firstWeightEvent()` and `afterFirstWeightEvent()`.
 - **Phase 8:** when sending a new light or display text matters after a reconnect, send it again: the backend does not repeat commands yet.
 - **In Phase 8 (decided):** if a plate had a `BLOCKED` or `REJECTED` ticket in the last 24 hours, a new ticket cannot reach the first weight until the store officer approves a `PLATE_WARNING` request. The kiosk says "Not approved earlier. Please go to the store office." Keep it apart from the front/back mismatch `PLATE_WARNING`, which only warns.

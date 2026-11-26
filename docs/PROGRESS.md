@@ -98,6 +98,7 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 **Phase 5B** (needs the hardware and the existing ESP32 code), steps 42–48 and 51, plus:
 
+- [ ] Real plate-reading test with ESP32-CAM photos of the model plates (target: 9 of 10 read correctly).
 - [ ] ESP32-CAM firmware, front and back (the rest of step 50): Wi-Fi, connect to `/device` with its own token, say hello, heartbeat, on "snap" take a JPEG with flash and upload it; tune for plate reading; stable 5 V supply.
 
 **Done when:** a weight placed on the model shows in the backend within half a second; lights, buzzer and display respond to commands.
@@ -115,13 +116,18 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 ## Phase 7 — ANPR and invoice OCR
 
-- [ ] **56.** ESP32-CAM photo request + upload endpoint, and image pipeline: resize and compress with sharp, compute SHA-256, save to storage.
-- [ ] **57.** Plate Recognizer client (region India), take the best plate and confidence, 8-second timeout, one retry; if it finds no plate (small model plates), ask Gemini to read the plate from the same photo.
-- [ ] **58.** Gemini invoice reader: send the image, ask for strict JSON, check it with Zod; unreadable fields come back empty, never guessed; convert tonnes to kg.
-- [ ] **59.** Demo replacements: pick a plate, pick a sample invoice.
-- [ ] **60.** Test with our printed plates and sample invoices; adjust camera position and lighting.
+- [x] **56.** ESP32-CAM photo request + upload endpoint, and image pipeline: resize and compress with sharp, compute SHA-256, save to storage.
+- [x] **57.** Plate Recognizer client (region India), take the best plate and confidence, 8-second timeout, one retry; if it finds no plate (small model plates), ask Gemini to read the plate from the same photo.
+- [x] **58.** Gemini invoice reader: send the image, ask for strict JSON, check it with Zod; unreadable fields come back empty, never guessed; convert tonnes to kg.
+- [x] **59.** Demo replacements: pick a plate, pick a sample invoice.
+- [x] **60.** Test with our printed plates and sample invoices; adjust camera position and lighting.
 
 **Done when:** at least 9 of 10 plate reads are correct on our models, and all sample invoices read correctly.
+
+✅ Software done on 2026-11-26. **The plate target has NOT been proven**: there are no photos of the model plates yet, so step 60's printed-plate test and camera adjustment moved to Phase 5B.
+
+- Sample invoices: **4 of 4** read correctly (2 PDF, 2 JPEG), with `gemini-3.5-flash-lite`. The default `gemini-3.8-flash` answered "high demand" (503) every time that day, so it has not read anything yet.
+- 10 synthetic test images (not the real test): **8 of 10** passed. Plate Recognizer misread two sharp plates (99% and 90% confidence); the hidden plate gave only its visible part. Gemini read both misread plates correctly in a follow-up.
 
 ## Phase 8 — Ticket APIs
 

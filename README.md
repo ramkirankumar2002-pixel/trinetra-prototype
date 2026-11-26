@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 6 (live events). The backend pushes weights and board status to browsers, and `/dev/live` shows them using the simulator. The real firmware (Phase 5B) and the screens are not built yet.
+**Current state:** Phase 7 (plate and invoice reading). The backend can read plates and invoices; no ticket or screen uses them yet. The real firmware (Phase 5B) and the screens are not built yet.
 
 ## Folder layout
 
@@ -284,6 +284,45 @@ A development-only test page (a 404 in production builds).
 
 3. Open <http://localhost:3000/dev/live>. Use `localhost`, not `127.0.0.1` or the computer's IP address: the backend allows only the website address in `FRONTEND_ORIGIN`.
 4. Log in as `wb01` with the kiosk demo PIN (printed by `pnpm db:seed`).
+
+## Plate and invoice reading
+
+The backend reads number plates with **Plate Recognizer** (region India) and asks **Gemini** about the same photo if no plate is found or the service fails. **Gemini** reads invoices (photo or PDF). Put `PLATE_RECOGNIZER_TOKEN` and `GEMINI_API_KEY` in `apps/server/.env`.
+
+- `GEMINI_MODEL` chooses the model (default `gemini-3.8-flash`). If Google answers "high demand", set another one, for example `GEMINI_MODEL=gemini-3.5-flash-lite`, and restart the backend.
+- Gemini is called with storage turned off. On the free tier, still use **sample invoices only**.
+- Plate Recognizer's free plan allows 2,500 lookups a month and **1 a second**, so the two photos of a truck are read about a second apart.
+- Calls are counted per day in the `settings` table (`api_usage:...`), with a warning in the log near the limits. The services' own dashboards are the truth.
+- Anything unreadable comes back empty. Photos are turned upright, shrunk to 1600 px wide, saved as JPEG and stripped of hidden details such as GPS.
+
+### Try it: /dev/readers
+
+With `pnpm dev` running, open <http://localhost:3000/dev/readers> and log in as the kiosk. Upload a photo to read a plate, or a photo or PDF to read an invoice. **Each read uses your free quota.** Nothing is saved. The page and its routes do not exist in production.
+
+### Demo mode ("pick")
+
+If a service fails on stage, these settings replace it. They are in [default-data.ts](packages/shared/src/seed/default-data.ts); edit them and run `pnpm db:seed` (a settings page comes in Phase 14). Running `pnpm db:seed` also puts them back to whatever the file says.
+
+| Setting     | Values         | Effect of `pick`                                                                                |
+| ----------- | -------------- | ----------------------------------------------------------------------------------------------- |
+| `anpr_mode` | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                |
+| `ocr_mode`  | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand` or `aggregate` |
+
+### Sample invoices and the real check
+
+[scripts/sample-invoices](scripts/sample-invoices) holds four made-up **SAMPLE** invoices as PDF and JPEG, one per demo scenario (`pnpm sim:invoices` draws them). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
+
+This reads them all with the **real services** (about 10 plate lookups and 4 Gemini requests):
+
+```powershell
+pnpm check:readers
+```
+
+For your own photos, put them in `scripts/test-photos/` (never committed), name each after its plate such as `MH12AB1234-1.jpg`, and run:
+
+```powershell
+pnpm check:readers --plates-only --folder scripts/test-photos
+```
 
 ## Environment files
 
