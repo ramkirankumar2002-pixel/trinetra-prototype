@@ -12,6 +12,7 @@ import { loadHardwareSettings } from "./hardware/settings";
 import type { HardwareSettings } from "./hardware/state";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { forwardHardware } from "./realtime/forward-hardware";
 import { createSocketServer, type SocketServer } from "./realtime/socket-server";
 import { upgradesWithoutSocketIo } from "./realtime/upgrades";
 import { registerDevicePhotoRoute } from "./routes/device-photo";
@@ -86,7 +87,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
   app.decorate("hardware", hardware);
   app.addHook("onReady", () => hardware.start());
-  app.addHook("preClose", () => hardware.stop());
+  const forwarding = forwardHardware(hardware, realtime);
+  app.addHook("preClose", () => {
+    forwarding.stop();
+    hardware.stop();
+  });
   registerDeviceSocket(app, { env, hub: hardware.hub, listener: hardware.listener });
   registerKioskRoutes(app, hardware.state);
   await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
