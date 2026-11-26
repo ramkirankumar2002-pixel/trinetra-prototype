@@ -8,8 +8,10 @@ import { createDb } from "./db/client";
 import { registerErrorHandling, sendError } from "./errors/handler";
 import { loggerOptions } from "./logger";
 import { registerSecurityPlugins } from "./plugins/security";
+import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
 import { registerTestRoutes } from "./routes/test-routes";
+import { createStorage, LocalStorage, type StorageService } from "./services/storage";
 
 export interface AppOptions {
   env: Env;
@@ -17,10 +19,13 @@ export interface AppOptions {
   logger?: boolean | DestinationStream;
   /** The clock for the login lock. Tests replace it. */
   now?: () => number;
+  /** Defaults to the driver named by STORAGE_DRIVER. */
+  storage?: StorageService;
 }
 
 /** Builds the app without listening, so tests can call it with app.inject(). */
-export async function buildApp({ env, logger = false, now }: AppOptions): Promise<FastifyInstance> {
+export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
+  const { env, logger = false, now, storage = createStorage(options.env) } = options;
   const app = Fastify({
     logger: logger === false ? false : loggerOptions(logger === true ? undefined : logger),
     // Errors found before a route is chosen, such as a badly encoded address.
@@ -35,6 +40,7 @@ export async function buildApp({ env, logger = false, now }: AppOptions): Promis
   app.addHook("onClose", () => database.close());
 
   registerHealthRoute(app, database.sql);
+  if (storage instanceof LocalStorage) registerFileRoutes(app, storage);
   registerAuthRoutes(app, { env, db: database.db, lockout: new LoginLockout(now) });
   if (env.NODE_ENV === "test") registerTestRoutes(app);
 
