@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 3 (backend foundation). The website shows a simple home page. The backend has login with roles, a health check and file storage, on top of the database. No weighbridge features yet.
+**Current state:** Phase 4 (business rules). The rules are written and tested in `packages/shared`, but no screen or API uses them yet. The website shows a simple home page. The backend has login with roles, a health check and file storage, on top of the database. No weighbridge features yet.
 
 ## Folder layout
 
@@ -178,6 +178,7 @@ Run all commands from the repository root.
 | `pnpm dev`             | Runs the website (:3000) and the backend (:4000) together, reloading on changes |
 | `pnpm build`           | Builds the website and the backend for production                               |
 | `pnpm test`            | Runs the tests (Vitest)                                                         |
+| `pnpm test:coverage`   | Tests `packages/shared` and reports coverage; fails below the limits            |
 | `pnpm lint`            | Checks the code with ESLint                                                     |
 | `pnpm typecheck`       | Checks TypeScript types in every package                                        |
 | `pnpm format`          | Formats files with Prettier (`docs/` and `CLAUDE.md` are left as written)       |

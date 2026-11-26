@@ -65,16 +65,18 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 
 ## Phase 4 — Business rules (with tests)
 
-- [ ] **34.** `normalizePlate` and `formatPlate`.
-- [ ] **35.** `classifyType(material, invoiceKg)`.
-- [ ] **36.** `resolveUnloadingPoint(material, tripNo, rules)` with default point.
-- [ ] **37.** `computeNet` and `checkTolerance` (0.5%).
-- [ ] **38.** `isStable` for the 3-second window.
-- [ ] **39.** Voice matching helpers: aliases, yes/no words, spoken digits (in `shared`, used by the kiosk).
-- [ ] **40.** Ticket state machine: table of allowed moves and `transition()`, which refuses wrong moves.
-- [ ] **41.** Unit tests with Vitest for all of these, including edge cases: zero weight, negative net, invoice exactly at a threshold (500 / 1,000 kg), trip number past every range, plates with spaces and dashes.
+- [x] **34.** `normalizePlate` and `formatPlate`.
+- [x] **35.** `classifyType(material, invoiceKg)`.
+- [x] **36.** `resolveUnloadingPoint(material, tripNo, rules)` with default point.
+- [x] **37.** `computeNet` and `checkTolerance` (0.5%).
+- [x] **38.** `isStable` for the 3-second window.
+- [x] **39.** Voice matching helpers: aliases, yes/no words, spoken digits (in `shared`, used by the kiosk).
+- [x] **40.** Ticket state machine: table of allowed moves and `transition()`, which refuses wrong moves.
+- [x] **41.** Unit tests with Vitest for all of these, including edge cases: zero weight, negative net, invoice exactly at a threshold (500 / 1,000 kg), trip number past every range, plates with spaces and dashes.
 
 **Done when:** all unit tests pass.
+
+✅ Passed on 2026-11-26: 548 tests in `packages/shared`; coverage 100% of lines and functions (`pnpm test:coverage`).
 
 ## Phase 5 — ESP32 and hardware link
 

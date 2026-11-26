@@ -80,10 +80,15 @@ Related docs:
 
 ## Current status
 
-Phase 3 done. Next: Phase 4.
+Phase 4 done. Next: Phase 5.
+
+Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website.
 
 Settle before the phases that need it:
 
+- **Phase 5/8:** `isStable()` judges the readings only. Before capturing a weight, also check that the newest reading is fresh, the truck is above the wake threshold and the position is OK.
+- **Phase 8:** change status only through `transition()`. The first weight needs `plateCheck` (use `needsPlateApproval()`, then the state of that PLATE_WARNING). The state machine does not check the ticket type: pick events with `firstWeightEvent()` and `afterFirstWeightEvent()`.
+- **Phase 8:** the server's error handler must turn `WrongStageError` into 409 `WRONG_STAGE`; today it would answer 500.
 - **In Phase 8 (decided):** if a plate had a `BLOCKED` or `REJECTED` ticket in the last 24 hours, a new ticket cannot reach the first weight until the store officer approves a `PLATE_WARNING` request. The kiosk says "Not approved earlier. Please go to the store office." Keep it apart from the front/back mismatch `PLATE_WARNING`, which only warns.
 - **Phase 8/10 (decided):** the phone upload page converts photos to JPEG in the browser (HEIC); the server accepts only JPEG, PNG, WebP and PDF.
 - **Before Phase 8:** "Reset demo data" must delete demo tickets, but the `ticket_events` trigger refuses DELETE.
