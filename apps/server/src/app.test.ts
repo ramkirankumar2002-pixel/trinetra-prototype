@@ -1,10 +1,15 @@
-import { afterAll, describe, expect, it } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "./app";
+import { testEnv } from "./test/env";
+
+let app: FastifyInstance;
+beforeAll(async () => {
+  app = await buildApp({ env: testEnv() });
+});
+afterAll(() => app.close());
 
 describe("GET /api/health", () => {
-  const app = buildApp();
-  afterAll(() => app.close());
-
   it("answers ok", async () => {
     const response = await app.inject({ method: "GET", url: "/api/health" });
 

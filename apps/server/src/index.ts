@@ -10,7 +10,12 @@ try {
   process.exit(1);
 }
 
-const app = buildApp({ logger: true });
+const app = await buildApp({ env, logger: true });
+
+// Hosts stop the server with SIGTERM: finish open requests first.
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => void app.close().then(() => process.exit(0)));
+}
 
 try {
   await app.listen({ port: env.PORT, host: "0.0.0.0" });
