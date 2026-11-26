@@ -198,27 +198,39 @@ Added 2026-11-26, not one of the 120 steps.
 
 ## Phase 10 — Kiosk website
 
-- [ ] **81.** Kiosk shell: top bar, bottom bar, step dots, kiosk store (current screen, ticket id, answers).
-- [ ] **82.** Camera module: show the ESP32-CAM photos as they arrive, with each camera's online status.
-- [ ] **83.** Screen 1 Ready, with the "Ready to collect" list.
-- [ ] **84.** Screen 2 Language.
-- [ ] **85.** Screen 3 Position check.
-- [ ] **86.** Screen 4 Number plate (auto photo, confirm, retry, keypad fallback, open-ticket detection).
-- [ ] **87.** Screen 5 Invoice upload: QR on the kiosk, the phone upload page (Take photo / Choose file, in the driver's language), live update back to the kiosk.
-- [ ] **88.** Screens 6–9: one reusable question screen (big tiles) for material, supplier, transporter, phone and name; mismatch messages.
-- [ ] **89.** Screen 10 Check all answers.
-- [ ] **90.** Screen 11 Weighing: live weight, stability ring, confirm / weigh again.
-- [ ] **91.** Screen 12 Results for Type 1/3, Type 2 and mismatch.
-- [ ] **92.** Screens 13–15 second visit: status check, second weighing, final result.
-- [ ] **93.** Inactivity timers, Start over, Help button.
-- [ ] **94.** First and final slip layouts, QR code, Print button with print-friendly CSS.
+- [x] **81.** Kiosk shell: top bar, bottom bar, step dots, kiosk store (current screen, ticket id, answers).
+- [x] **82.** Camera module: show the ESP32-CAM photos as they arrive, with each camera's online status.
+- [x] **83.** Screen 1 Ready, with the "Ready to collect" list.
+- [x] **84.** Screen 2 Language.
+- [x] **85.** Screen 3 Position check.
+- [x] **86.** Screen 4 Number plate (auto photo, confirm, retry, keypad fallback, open-ticket detection).
+- [x] **87.** Screen 5 Invoice upload: QR on the kiosk, the phone upload page (Take photo / Choose file, in the driver's language), live update back to the kiosk.
+- [x] **88.** Screens 6–9: one reusable question screen (big tiles) for material, supplier, transporter, phone and name; mismatch messages.
+- [x] **89.** Screen 10 Check all answers.
+- [x] **90.** Screen 11 Weighing: live weight, stability ring, confirm / weigh again.
+- [x] **91.** Screen 12 Results for Type 1/3, Type 2 and mismatch.
+- [x] **92.** Screens 13–15 second visit: status check, second weighing, final result.
+- [x] **93.** Inactivity timers, Start over, Help button.
+- [x] **94.** First and final slip layouts, QR code, Print button with print-friendly CSS.
 
 **Also in this phase** (added 2026-11-26, not one of the 120 steps):
 
-- [ ] Phone upload page: convert photos to JPEG in the browser before upload, so HEIC photos work.
-- [ ] Kiosk: show "Not approved earlier. Please go to the store office." while a blocked-plate PLATE_WARNING waits for the store officer.
+- [x] Phone upload page: convert photos to JPEG in the browser before upload, so HEIC photos work. (HEIC only where the browser can open it, as Safari does; not yet tried on an iPhone.)
+- [x] Kiosk: show "Not approved earlier. Please go to the store office." while a blocked-plate PLATE_WARNING waits for the store officer.
+
+- [x] Invoice reading made asynchronous (added 2026-11-27): the phone is answered at once.
+- [x] Kiosk rail: the system name as a small two-line tag.
+- [ ] The new Hindi text needs your review: [HINDI_REVIEW.md](HINDI_REVIEW.md).
 
 **Done when:** a full first and second visit of every type works by touch, using the ESP32 simulator.
+
+✅ Passed on 2026-11-27. Playwright drives the real screens by touch with the ESP32 simulator, both simulated cameras and the demo "pick" modes, with the driver's phone page in a second browser: Type 3 automatic, Type 1 approved, fraud blocked, Type 2 approved and tolerance fail resolved, each with both visits where there is one. Supervisor and store decisions go through the API (their screens are Phases 12 and 13). A second test file shows the fallback screens. The driver rules are checked at 1366×768 and 1920×1080 in both languages; pictures are in [screenshots/phase10](screenshots/phase10). Typecheck, lint, unit tests, `pnpm journey` and the build passed.
+
+- Some fallback screens (a failed or slow reading, plates that differ, a visit that timed out) are shown by replacing one answer in the browser. The dialogs (Help, Start over, the staff's, and the 3-minute "Start over?") are only pictured, in English at 1366×768: the driver-rule check does not measure dialogs. The 1-minute reminder is checked there in English only.
+- No real camera, Plate Recognizer or Gemini was used through the screens.
+- Not checked: a real touchscreen or phone, "Take photo" with a phone camera, an iPhone HEIC photo, a real printer or the real print dialog (the paper layout was checked in Chrome's print view at 80 mm and A4).
+- The QR code on a slip opens `/t/<ticket-no>`, which is built in Phase 14.
+
 
 ## Phase 11 — Voice (optional, built last, after Phase 16)
 

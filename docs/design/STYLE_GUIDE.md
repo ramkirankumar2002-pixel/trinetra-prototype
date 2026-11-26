@@ -101,7 +101,7 @@ These are measured by `expectDriverRules()` in [tests/e2e/driver-rules.ts](../..
 - **No keyboard** for drivers: only the number pad (phone number) and, as a last resort, a plate keypad.
 - **Yes and No** are `YesNo`: green ✓ left, red ✕ right, in the bottom bar.
 - **At most three buttons in the bottom bar**, in this order: wrong or stop (`danger`), neutral (`dark`), the way forward (`primary`, rightmost).
-- The language button and Help are always in the rail; do not repeat them.
+- Language, Help and (once a visit has begun) Start over are always at the bottom of the rail; do not repeat them in the bottom bar.
 
 With a one-line header at 1366×768, the middle has about **600 px** alone, **500 px** with a bottom bar, and **450 px** with the status lights and a bottom bar. In practice, with both: a banner plus a `DetailGrid` of 5 rows (10 items) is the most that fits. A title that wraps takes about 50 px away.
 
@@ -111,16 +111,19 @@ With a one-line header at 1366×768, the middle has about **600 px** alone, **50
 
 | Part       | Content                                                                              |
 | ---------- | ------------------------------------------------------------------------------------ |
-| Left rail  | Logo mark, "TRINETRA SYSTEMS", the system name, the language button, **Help**         |
+| Left rail  | Logo mark, "TRINETRA SYSTEMS", the system name tag; the language button, **Help**, **Start over** |
 | Header     | `header={{ icon, title, subtitle }}`: a round glowing icon, a big title, a cyan line |
 | Top right  | The date and time in India (`ClockChip`)                                             |
-| `status`   | Live lights: weighbridge and connection                                              |
+| `status`   | `KioskStatus`: step dots, live weight, weighbridge light (connection only when lost)  |
 | Middle     | The screen's one question                                                            |
 | `actions`  | The bottom bar: 1 to 3 buttons, equally wide                                         |
 
 Keep titles to about 18 letters so they stay on one line.
 
-**Help does not call anyone yet:** it tells the driver to go to the store office. Phase 10 connects it to `POST /api/help`.
+Driver screens do not use `KioskShell` directly: they use `KioskFrame` (`kiosk/frame.tsx`), which adds the status row, Help (`POST /api/help`), Start over, the inactivity reminders and the staff's logout (hold the logo for 3 seconds).
+
+- `header.hero` makes the heading the screen's message ("Go to Plant"). It is for the **slip screens only**: they also leave out the clock and the status row.
+- `variant="phone"` is the same look in one column, for the driver's upload page. The driver rules' sizes are for the weighbridge screen; the phone uses 20 px text and the same big buttons.
 
 ### `DashboardShell` (`layout/dashboard-shell.tsx`)
 
@@ -177,9 +180,13 @@ The full logo and one white card on navy: the staff logins and pages without a m
 | `ActionCard` | One or two very big choices with a picture ("Choose language", "Find my truck"). `blue` or `teal`   |
 | `DetailGrid` | A ticket's values in two columns with icons. At most 10 items. `highlight` or `live` for one value  |
 | `LiveWeight` | The weighing screens: the huge green number and whether it is stable                                |
-| `HelpButton` | Already in the rail                                                                                 |
-
-For big material and supplier tiles (Phase 10), build on `ActionCard`'s style and add the tile here.
+| `HelpButton`, `StartOverButton` | Already in the rail                                                              |
+| `KioskFrame`, `KioskStatus` | Every driver screen                                                                  |
+| `ChoiceTiles` | A question answered by tapping one of several big tiles                                            |
+| `CameraPhotos`, `PlateSign` | The camera photos with each camera's light; a number plate drawn large              |
+| `PlateKeypad`, `LetterKeypad` | The only keyboards: a plate as the last fallback, and the optional name            |
+| `WeighingRing` | Beside `LiveWeight` on the weighing screens                                                       |
+| `SlipView`, `PrintSlip` | A slip on screen and on paper; both are built from `slip-fields.ts`                     |
 
 ### Dashboard (`components/dashboard`)
 
@@ -202,6 +209,6 @@ For big material and supplier tiles (Phase 10), build on `ActionCard`'s style an
 1. The right shell and theme.
 2. Shared components, token colours.
 3. Text in both languages; looked at in Hindi.
-4. Kiosk: `expectDriverRules()` at both sizes. Dashboard: looked at 390 px wide, 768 px and 1440 px, with no sideways scrolling.
+4. Kiosk: `expectDriverRules()` at both sizes (the helper `look()` in `tests/e2e/kiosk-world.ts` does both sizes and both languages). Mark a fixed-height box that holds text with `data-fits`. **Look at the pictures too:** the rules cannot see an ugly screen. Dashboard: looked at 390 px wide, 768 px and 1440 px, with no sideways scrolling.
 5. Status = icon + word.
 6. A Playwright check, and a new screenshot if the screen is a main one.

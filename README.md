@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 9 (website foundation) and the new design. The three logins work in English and Hindi; the supervisor and store dashboards show sample data. A whole truck journey of every type runs through the API (`pnpm journey`). The real firmware (Phase 5B) and the truck screens are not built yet.
+**Current state:** Phase 10. A truck's first and second visit of every type works by touch at `/kiosk`, in English and Hindi, with the simulator; the driver's invoice goes up from the phone page. The supervisor and store dashboards still show sample data (`pnpm office` makes their decisions meanwhile). The real firmware (Phase 5B) is not built yet.
 
 ## Folder layout
 
@@ -158,6 +158,7 @@ Request and answer types are in [packages/shared/src/tickets.ts](packages/shared
 | `PATCH /api/tickets/:id/details`                          | Kiosk                        | Material, supplier, transporter, driver; mismatch check                                                                                                 |
 | `POST /api/tickets/:id/first-weight` and `/second-weight` | Kiosk                        | Captures the stable weight                                                                                                                              |
 | `POST /api/tickets/:id/discard-weight` and `/printed`     | Kiosk                        | "Weigh again" before confirming; logs the Print button                                                                                                  |
+| `GET /api/master`, `GET /api/kiosk/collect`               | Kiosk                        | The tile lists; the Ready screen's "Ready to collect" and "Not approved"                                                                                |
 | `GET /api/supervisor/tickets?status=`                     | Supervisor                   | Their Type 1 trucks (`pending` or `done`)                                                                                                               |
 | `POST /api/supervisor/tickets/:id/photo`                  | Its supervisor               | Live JPEG with optional `lat`, `lng`, `accuracyM` form fields; plate match (3 photos)                                                                   |
 | `POST /api/approvals/:id/decide`                          | Supervisor, store            | `APPROVE` or `REJECT`; a decision cannot be changed                                                                                                     |
@@ -200,6 +201,27 @@ Invoke-RestMethod -Uri http://localhost:4000/api/auth/me -WebSession $trinetra
 ```
 
 To try the role guard, start the server with `NODE_ENV=test`. That adds `/api/test/kiosk`, `/api/test/supervisor` and `/api/test/store`, which do not exist otherwise.
+
+## Try the weighbridge by hand
+
+You need `DEVICE_TOKEN`, `CAM_FRONT_TOKEN`, `CAM_BACK_TOKEN` and `ADMIN_PIN` in `apps/server/.env`, and a seeded database. Use three terminals: `pnpm dev`, the simulator, and one for `pnpm office`.
+
+1. `pnpm office reset`, then `pnpm office pick cement` (or `sand`, `steel-scrap`, `aggregate`). It prints the simulator command and the material to choose.
+2. In the simulator terminal: `pnpm sim --loaded 32560` (the number it printed).
+3. In Chrome open <http://localhost:3000/kiosk> and log in as `wb01`, PIN `3001`.
+4. Press `a` in the simulator: a loaded truck drives on. Answer on screen. At the QR code, click it (development only) and upload `scripts/sample-invoices/<name>.pdf` in the new tab.
+5. After the first weight press `l`. If someone must decide, run `pnpm office approve` (or `reject`; `pnpm office list` shows what waits).
+6. Press `e` for the second visit, and `l` when it is done.
+7. `pnpm office real` switches the demo modes off.
+
+| Pick          | What you will see                                                          | `pnpm office approve`        |
+| ------------- | -------------------------------------------------------------------------- | ---------------------------- |
+| `sand`        | Type 3: nobody needed                                                      | never                        |
+| `cement`      | Type 1: the second visit waits for the supervisor                          | once, after the first weight |
+| `steel-scrap` | Type 2: wait for the store officer, then the slip under "Ready to collect" | once, after the first weight |
+| `aggregate`   | Type 2, then "weight does not match": hold                                 | after each weighing          |
+
+The sample camera photos always show MH 12 AB 1234, whichever plate is picked.
 
 ## Simulator
 
@@ -296,7 +318,7 @@ Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/defaul
 
 ### Browser tests
 
-Playwright logs in as each role with its demo PIN, checks the page, the language switch and the connection status, tries the other roles' pages and logs out. It also measures the kiosk's driver rules, and checks the dashboards at phone, tablet and desktop width. It uses the installed **Google Chrome** and the development database, and uses a running `pnpm dev` or starts one.
+Playwright logs in as each role with its demo PIN, checks the page, the language switch and the connection status, tries the other roles' pages and logs out. It drives the five truck journeys and the fallback screens through the real weighbridge screens (with the simulator's code, a second browser as the driver's phone, and the demo pick modes; **it runs "Reset demo data" first**), measures the kiosk's driver rules, and checks the dashboards at phone, tablet and desktop width. The whole run takes about 5 minutes and needs the device tokens and `ADMIN_PIN`; stop `pnpm sim` first, because only one simulator may be connected. It uses the installed **Google Chrome** and the development database, and uses a running `pnpm dev` or starts one.
 
 ```powershell
 pnpm test:e2e
@@ -408,27 +430,29 @@ Each variable has a comment saying which phase uses it. Never commit the filled-
 
 Run all commands from the repository root.
 
-| Command                | What it does                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| `pnpm dev`             | Runs the website (:3000) and the backend (:4000) together, reloading on changes |
-| `pnpm build`           | Builds the website and the backend for production                               |
-| `pnpm test`            | Runs the tests (Vitest)                                                         |
-| `pnpm test:coverage`   | Tests `packages/shared` and reports coverage; fails below the limits            |
-| `pnpm test:e2e`        | Runs the browser tests (see [Browser tests](#browser-tests))                    |
-| `pnpm screenshots`     | Takes the pictures in `docs/screenshots` again                                  |
-| `pnpm sim`             | Simulates the main ESP32 and both cameras (see [Simulator](#simulator))         |
-| `pnpm journey`         | Runs the five truck journeys (see [Journeys](#journeys))                        |
-| `pnpm sim:plates`      | Draws the sample plate photos again                                             |
-| `pnpm lint`            | Checks the code with ESLint                                                     |
-| `pnpm typecheck`       | Checks TypeScript types in every package                                        |
-| `pnpm format`          | Formats files with Prettier (`docs/` and `CLAUDE.md` are left as written)       |
-| `pnpm format:check`    | Checks formatting without changing files                                        |
-| `pnpm db:create`       | Creates the two databases if they are missing                                   |
-| `pnpm db:generate`     | Writes a new migration after a schema change                                    |
-| `pnpm db:migrate`      | Creates or updates database tables                                              |
-| `pnpm db:seed`         | Loads or updates the demo data                                                  |
-| `pnpm db:seed --reset` | Deletes all data, then loads the demo data                                      |
-| `pnpm db:studio`       | Starts Drizzle Studio to look at the data                                       |
+| Command                  | What it does                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| `pnpm dev`               | Runs the website (:3000) and the backend (:4000) together, reloading on changes |
+| `pnpm build`             | Builds the website and the backend for production                               |
+| `pnpm test`              | Runs the tests (Vitest)                                                         |
+| `pnpm test:coverage`     | Tests `packages/shared` and reports coverage; fails below the limits            |
+| `pnpm test:e2e`          | Runs the browser tests (see [Browser tests](#browser-tests))                    |
+| `pnpm screenshots`       | Takes the pictures in `docs/screenshots/ui-update` again                        |
+| `pnpm screenshots:kiosk` | Runs the kiosk tests and saves every screen in `docs/screenshots/phase10`       |
+| `pnpm office`            | Demo pick modes and the supervisor's and store's decisions, for trying by hand  |
+| `pnpm sim`               | Simulates the main ESP32 and both cameras (see [Simulator](#simulator))         |
+| `pnpm journey`           | Runs the five truck journeys (see [Journeys](#journeys))                        |
+| `pnpm sim:plates`        | Draws the sample plate photos again                                             |
+| `pnpm lint`              | Checks the code with ESLint                                                     |
+| `pnpm typecheck`         | Checks TypeScript types in every package                                        |
+| `pnpm format`            | Formats files with Prettier (`docs/` and `CLAUDE.md` are left as written)       |
+| `pnpm format:check`      | Checks formatting without changing files                                        |
+| `pnpm db:create`         | Creates the two databases if they are missing                                   |
+| `pnpm db:generate`       | Writes a new migration after a schema change                                    |
+| `pnpm db:migrate`        | Creates or updates database tables                                              |
+| `pnpm db:seed`           | Loads or updates the demo data                                                  |
+| `pnpm db:seed --reset`   | Deletes all data, then loads the demo data                                      |
+| `pnpm db:studio`         | Starts Drizzle Studio to look at the data                                       |
 
 Before each commit, run `pnpm typecheck`, `pnpm lint` and `pnpm test`.
 

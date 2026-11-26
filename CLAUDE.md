@@ -81,30 +81,29 @@ Related docs:
 
 ## Current status
 
-Phase 9 done, and the UI update (new design) after it. Next: Phase 10, or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run.
+Phase 10 done (the weighbridge kiosk, the phone upload page and the slips), with invoice reading made asynchronous. Next: Phase 12 (supervisor website), or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run. Nothing has been tried on a real touchscreen, phone or printer. The Hindi text is unchecked ([docs/HINDI_REVIEW.md](docs/HINDI_REVIEW.md)).
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website. The ticket API's request schemas and answer types are in `src/tickets.ts`.
 
-Backend rules to keep: change a status only through `changeStatus()` (`apps/server/src/tickets/repo.ts`) inside `app.eventTransaction()`; lock the ticket before the approval or the material; a weight comes only from one `canCapture()` answer. `pnpm journey` runs the five scenarios (it runs "Reset demo data" first).
+Backend rules to keep: change a status only through `changeStatus()` (`apps/server/src/tickets/repo.ts`) inside `app.eventTransaction()`; lock the ticket before the approval or the material; a weight comes only from one `canCapture()` answer. No request may take longer than 30 s (the website's forwarding limit): slow work goes to `app.background`, as invoice reading does. `pnpm journey` runs the five scenarios (it runs "Reset demo data" first).
 
-Website rules to keep: call the backend only through `api` (`apps/web/src/lib/api.ts`), on the website's own `/api` (never the backend's address; only Socket.IO connects there). Every screen text goes in both `src/i18n/en.json` and `hi.json` and is read with `useT()`; the Hindi text still needs the user's review. Pages of a role go under `src/app/<role>/(signed-in)/` and are framed by `RoleShell` (which uses `KioskShell` or `DashboardShell`); a staff page is also listed in `src/lib/menus.ts`.
+Website rules to keep: call the backend only through `api` (`apps/web/src/lib/api.ts`), on the website's own `/api` (never the backend's address; only Socket.IO connects there; the phone's file upload in `lib/upload/send-file.ts` uses XHR for its progress figure). Every screen text goes in both `src/i18n/en.json` and `hi.json` and is read with `useT()`; add new Hindi to the review note. Staff pages go under `src/app/<role>/(signed-in)/`, are framed by `RoleShell` and listed in `src/lib/menus.ts`.
 
-**Phases 10–14 must follow [docs/design/STYLE_GUIDE.md](docs/design/STYLE_GUIDE.md):** two themes (token colour names only), the shared components (`/dev/ui` shows them), status = colour + icon + word, and the driver rules. Every new kiosk screen gets `expectDriverRules()` (`tests/e2e/driver-rules.ts`) at 1366×768 and 1920×1080 in both languages with its longest message showing: at 1366×768 there is little height. `pnpm test:e2e` runs the browser tests (installed Chrome, development database); `pnpm screenshots` retakes `docs/screenshots/ui-update`. The design reference images are on this computer only: do not commit them (public repository) unless the user says so.
+Kiosk rules to keep: `/kiosk` is one page (`components/kiosk/kiosk-app.tsx`). `lib/kiosk/flow.ts` decides the screen from the ticket's status plus the driver's step; every driver screen is a `KioskFrame`. A press that saves goes through `useAction()` (one at a time, same Idempotency-Key on retry). After any `await`, check the kiosk has not moved on (`sameDriver()`, or `answered(from)`): the truck may have left.
+
+**Phases 11–14 must follow [docs/design/STYLE_GUIDE.md](docs/design/STYLE_GUIDE.md):** two themes (token colour names only), the shared components (`/dev/ui` shows them), status = colour + icon + word, and the driver rules. Every new kiosk screen is checked with `look()` (`tests/e2e/kiosk-world.ts`) at 1366×768 and 1920×1080 in both languages with its longest message showing, and its picture is looked at. `pnpm test:e2e` runs the browser tests (installed Chrome, development database, demo reset); `pnpm screenshots:kiosk` retakes `docs/screenshots/phase10`. The design reference images and side-by-side comparisons are on this computer only: do not commit them (public repository) unless the user says so. `pnpm office` makes the supervisor's and store's decisions until Phases 12 and 13.
 
 Settle before the phases that need it:
 
 - **Phase 5B:** do not tick Phase 5 until 5B passes. The firmware must follow the device protocol in the README ("Device connection"). Send a heartbeat or weight often enough: the main ESP32 is offline after 3 s of silence, a camera after 15 s.
-- **Phase 9/10:** the backend keeps "truck on the bridge" and the plate reads in memory, so after a restart `truck:arrived` fires again (safe: it creates nothing) and the plate must be read again. Events missed while disconnected are not resent: pages reload over REST (`useOnReconnect`).
+- **Open:** the backend keeps "truck on the bridge" and the plate reads in memory, so after a restart `truck:arrived` fires again (safe: it creates nothing) and the plate must be read again. Events missed while disconnected are not resent: pages reload over REST (`useOnReconnect`).
 - **Open:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires. (Such a tab goes to the login when it next gets focus.)
-- **Phase 10:** call `resetKioskLanguage()` whenever the kiosk goes back to Ready (logout already does). Save the driver's language on the ticket.
-- **Phase 10:** replace the kiosk's placeholder page. The weighbridge light shows only online / offline so far; the plan also wants step dots, the live weight and "Start over" on every screen, which `KioskShell` does not have yet. Add them to the shell and the style guide, and re-check the height.
-- **Phase 10:** connect the kiosk's Help button to `POST /api/help` (it only says "go to the store office" now).
-- **Phases 12/13:** replace the dashboard homes' sample data with real data, delete `src/lib/sample-data.ts`, and make the bell count real alerts.
-- **Phase 10:** send an `Idempotency-Key` with every POST and PATCH (a new key per press, the same key when retrying it).
-- **Phase 10:** weighing: show the live weight and "Correct / Weigh again" **before** calling first-weight or second-weight; "Weigh again" calls discard-weight. A saved weight cannot be discarded.
-- **Phase 10:** still to build: `GET /api/master` and the kiosk's "Ready to collect" / "Not approved" lists. Show `blockedTicket` from `/api/anpr` and `plateCheck` from the ticket as "Not approved".
-- **Phase 10:** a high plate confidence is not proof (a 99% read was wrong in the Phase 7 check). The driver must always confirm the plate.
-- **Phase 10 (decided):** the phone upload page (`/upload/<code>`) converts photos to JPEG in the browser (HEIC); the server accepts only JPEG, PNG, WebP and PDF.
+- **Open:** the kiosk's dialogs are not measured by the driver-rule check.
+- **Open:** "Reset demo data" does not delete help calls made before a ticket existed.
+- **Phases 12/13:** replace the dashboard homes' sample data with real data, delete `src/lib/sample-data.ts`, and make the bell count real alerts. The store pages must handle driver help (also from "No phone?": the officer scans the kiosk's QR code).
+- **Phase 14:** build `/t/<ticket-no>` (the slips' QR codes point to it) and the demo settings behind the 3 second logo hold (it offers only "Log out" now).
+- **To try with a real phone:** the invoice QR holds `FRONTEND_ORIGIN`, so the phone must be able to open that address. Test "Take photo" and an iPhone HEIC photo.
+- **A high plate confidence is not proof** (a 99% read was wrong in the Phase 7 check): the driver always confirms the plate.
 - **Gemini backup (decided):** `GEMINI_FALLBACK_MODEL` (default `gemini-3.5-flash-lite`) is asked once when `GEMINI_MODEL` is busy, rate limited or times out. Results carry `model`. `gemini-3.8-flash` itself had not answered a request during Phase 7.
 - **To decide:** Whether to ask Gemini for a second opinion when Plate Recognizer's read is not in the vehicle list or front and back differ.
 - **To decide:** a ticket waiting for the store officer's blocked-plate approval is still STARTED, so it is abandoned after 10 minutes without activity.
@@ -112,9 +111,9 @@ Settle before the phases that need it:
 - **Before Phase 16:** change the demo usernames and PINs; they are public in the repository.
 - **Before Phase 16:** set a new `ADMIN_PIN` on Railway.
 - **Before Phase 16:** set `NODE_ENV=production` on Railway (otherwise the login cookie is not `Secure`).
-- **Before Phase 16:** configure Fastify's `trustProxy` safely for Railway, so rate limits use the real client address (otherwise all users may share the limits; login: 20 a minute).
+- **Before Phase 16:** configure Fastify's `trustProxy` safely for Railway, so rate limits use the real client address (otherwise all users may share the limits; login: 20 a minute, phone upload: 30 a minute). With the rewrite, it must cover both hops.
 - **Before Phase 16:** test the Supabase storage driver against the real bucket.
-- **Before Phase 16:** set `BACKEND_URL` on Vercel, and test an 8 MB upload and a slow (about 60 s) invoice read through Vercel's forwarding (the 120 s proxy timeout in `next.config.ts` is proven only for Next's own server). With the rewrite, `trustProxy` must cover both hops.
+- **Before Phase 16:** set `BACKEND_URL` on Vercel, and test an 8 MB upload and a slow plate reading (up to about 28 s) through Vercel's forwarding.
 - **Before Phase 16:** the "live" room has no limit on how many viewers can connect.
 
 *(Update this section at the end of every phase.)*
