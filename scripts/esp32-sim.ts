@@ -1,6 +1,7 @@
 // A pretend weighbridge: the main ESP32 and both ESP32-CAMs.
 //   pnpm sim                 cameras upload the matching plate pair
 //   pnpm sim --mismatch      the back camera shows another plate
+//   pnpm sim --loaded 19150  what the loaded truck of key "a" weighs
 //   pnpm sim --url ws://host:4000/device
 // The device tokens come from apps/server/.env. Start the backend first.
 import { existsSync } from "node:fs";
@@ -19,8 +20,17 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const { values: args } = parseArgs({
   args: process.argv.slice(2).filter((arg) => arg !== "--"),
-  options: { url: { type: "string" }, mismatch: { type: "boolean", default: false } },
+  options: {
+    url: { type: "string" },
+    mismatch: { type: "boolean", default: false },
+    loaded: { type: "string" },
+  },
 });
+const loadedKg = args.loaded === undefined ? LOADED_KG : Number(args.loaded);
+if (!Number.isInteger(loadedKg) || loadedKg <= 0 || loadedKg > 200_000) {
+  console.error("--loaded takes a whole number of kilograms, such as 19150.");
+  process.exit(1);
+}
 const url = args.url ?? process.env.SIM_SERVER_URL ?? "ws://localhost:4000/device";
 const httpBase = url.replace(/^ws/, "http").replace(/\/device$/, "");
 let mismatch = args.mismatch;
@@ -102,7 +112,7 @@ const sender = setInterval(() => {
 }, SEND_EVERY_MS);
 
 const HELP = `
-  a  truck arrives (${formatKg(LOADED_KG)})     e  empty truck (${formatKg(EMPTY_KG)})
+  a  truck arrives (${formatKg(loadedKg)})     e  empty truck (${formatKg(EMPTY_KG)})
   l  truck leaves                  p  toggle position OK
   u  toggle unstable wobble        o  all boards offline for 5 s
   m  switch matching / mismatched plate photos
@@ -120,7 +130,7 @@ function quit(): void {
 
 const keys: Record<string, () => void> = {
   a: () => {
-    model.arrive(LOADED_KG, now());
+    model.arrive(loadedKg, now());
     log("key a: a loaded truck arrives");
   },
   e: () => {
