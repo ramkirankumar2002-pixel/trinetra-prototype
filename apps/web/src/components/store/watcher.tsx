@@ -11,7 +11,13 @@ import { useT } from "@/i18n/use-t";
 import { useSocketEvent } from "@/lib/socket-hooks";
 import { kindPill } from "@/lib/store/logic";
 import { STORE_KEY, useStorePending } from "@/lib/store/queries";
-import { newArrivals, ringForTruck, tabTitle, unlockSound } from "@/lib/supervisor/alerts";
+import {
+  newArrivals,
+  ringForTruck,
+  SOUND_EVENTS,
+  tabTitle,
+  unlockSound,
+} from "@/lib/supervisor/alerts";
 import { useToast } from "../ui/toast";
 
 /**
@@ -44,9 +50,8 @@ export function StoreWatcher() {
 
   // The first tap anywhere turns the sound on.
   useEffect(() => {
-    const events = ["pointerdown", "keydown"] as const;
-    events.forEach((name) => window.addEventListener(name, unlockSound));
-    return () => events.forEach((name) => window.removeEventListener(name, unlockSound));
+    SOUND_EVENTS.forEach((name) => window.addEventListener(name, unlockSound));
+    return () => SOUND_EVENTS.forEach((name) => window.removeEventListener(name, unlockSound));
   }, []);
 
   // Judged from the list, not the event: a request made while this device was offline is

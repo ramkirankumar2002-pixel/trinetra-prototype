@@ -38,16 +38,50 @@ describe("a new truck", () => {
     }
     vi.stubGlobal("window", { AudioContext: FakeAudio });
     vi.stubGlobal("navigator", { vibrate });
-    const { ringForTruck, unlockSound, soundIsOn, VIBRATION } = await import("./alerts");
+    const { ringForTruck, unlockSound, VIBRATION } = await import("./alerts");
 
     ringForTruck();
     expect(vibrate).not.toHaveBeenCalled();
     expect(started).not.toHaveBeenCalled();
 
     unlockSound();
-    expect(soundIsOn()).toBe(true);
     ringForTruck();
     expect(vibrate).toHaveBeenCalledWith(VIBRATION);
     expect(started).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("the tap that turns the sound on", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("leaves the page as it is until the press is over, then says the sound is on", async () => {
+    vi.useFakeTimers();
+    const { unlockSound, soundIsOn, subscribeSound, HINT_STAYS_MS } = await import("./alerts");
+    const changed = vi.fn();
+    subscribeSound(changed);
+
+    unlockSound();
+    // Nothing on the page may move while the finger is on a button.
+    expect(soundIsOn()).toBe(false);
+    expect(changed).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(HINT_STAYS_MS - 1);
+    expect(soundIsOn()).toBe(false);
+
+    vi.advanceTimersByTime(1);
+    expect(soundIsOn()).toBe(true);
+    expect(changed).toHaveBeenCalledTimes(1);
+
+    // Later taps change nothing.
+    unlockSound();
+    vi.advanceTimersByTime(HINT_STAYS_MS);
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it("is turned on by the end of a press, never its start", async () => {
+    const { SOUND_EVENTS } = await import("./alerts");
+    expect(SOUND_EVENTS).toEqual(["pointerup", "keydown"]);
   });
 });

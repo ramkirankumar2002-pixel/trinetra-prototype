@@ -141,14 +141,14 @@ Each fix has a test: unit tests beside the code, API tests (`store-pages`, `deta
 - **What is wrong:** after "Skip", Name shows as "**———**", which reads like something missing or broken.
 - **Screenshot:** `t1-12-kiosk-check.png`
 
-## Found while fixing (not in the list, not fixed)
+## Found while fixing (not in the list)
 
 ### The first tap on a staff home page can be lost
 
 - **Screen:** supervisor Home (the "Verify" button) and, built the same way, store officer Home (the "Open" buttons).
 - **What is wrong:** until the page has been tapped once, it shows "Tap the screen once to turn on the sound…". The very first tap removes that line **as the finger goes down**, so everything below it jumps up before the finger lifts, and the button is not pressed. The second tap works.
 - **How it was found:** the new browser test pressed "Verify" first; nothing happened and no request was sent. With one tap elsewhere before it, the same test passes. Seen on the supervisor's page; the store officer's was not tried. The manual check and the older tests tapped a heading first, so they missed it.
-- **Status:** not fixed.
+- **Status: Fixed (2026-11-28).** The sound is still turned on by the first tap (when the finger lifts), but the line is taken away 0.4 s later, after the press has reached its button. The same test then confirmed that the store officer's home had the bug too. `manual-check-fixes.spec.ts` now makes the first press on both home pages a button; unit tests cover the delay. Not tried on a real phone.
 
 ## How the check was done
 

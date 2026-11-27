@@ -108,7 +108,6 @@ Settle before the phases that need it:
 - **To decide:** a visit that waits for a person now stays open until someone answers or cancels it, also overnight. While it is open, its plate cannot start a new ticket (the old one is carried on).
 - **Decided:** cancelling a visit does not block the plate (only a rejection does), also for a truck waiting for its supervisor or on HOLD.
 - **To decide:** should a supervisor's rejection become something the store officer can overrule? Today it is BLOCKED and for information only.
-- **Open bug:** the first tap on the supervisor's or store officer's home removes the "turn on the sound" line as the finger goes down, so a button below it is not pressed (see docs/MANUAL_CHECK.md, "Found while fixing").
 - **To try with a real phone (Phase 13):** the camera for a bill, opening a PDF bill, the sound.
 - **To try with a real phone (Phase 12):** certificate warning, camera on Android Chrome and iPhone Safari, the live connection on iPhone with the self-signed certificate, sound and vibration.
 - **Decided:** the supervisor's GPS is skipped in the prototype (a future feature).

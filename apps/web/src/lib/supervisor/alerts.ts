@@ -19,7 +19,22 @@ let audio: AudioContext | null = null;
 let touched = false;
 const listeners = new Set<() => void>();
 
-export const soundIsOn = (): boolean => touched;
+/**
+ * The events that turn the sound on: the end of a tap or click (not its start, so that a
+ * finger which only scrolls turns nothing on), or a key.
+ */
+export const SOUND_EVENTS = ["pointerup", "keydown"] as const;
+
+/**
+ * How long after that the pages are told. Telling them removes the "tap once for sound"
+ * line, and everything below it moves up: done while the finger is still on a button, the
+ * button slides away and the press is lost. By now the press has reached it.
+ */
+export const HINT_STAYS_MS = 400;
+let told = false;
+
+/** What the pages show: false until it is safe to take the hint away. */
+export const soundIsOn = (): boolean => told;
 
 export function subscribeSound(listener: () => void): () => void {
   listeners.add(listener);
@@ -34,8 +49,12 @@ export function unlockSound(): void {
     if (audio.state === "suspended") void audio.resume().catch(() => {});
   }
   if (touched) return;
+  // Sounds may play from now on.
   touched = true;
-  listeners.forEach((listener) => listener());
+  setTimeout(() => {
+    told = true;
+    listeners.forEach((listener) => listener());
+  }, HINT_STAYS_MS);
 }
 
 /** Two short beeps. Silent before the first tap. */

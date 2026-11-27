@@ -8,7 +8,13 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { useT } from "@/i18n/use-t";
 import { useSocketEvent } from "@/lib/socket-hooks";
-import { newArrivals, ringForTruck, tabTitle, unlockSound } from "@/lib/supervisor/alerts";
+import {
+  newArrivals,
+  ringForTruck,
+  SOUND_EVENTS,
+  tabTitle,
+  unlockSound,
+} from "@/lib/supervisor/alerts";
 import { SUPERVISOR_KEY, useSupervisorTrucks } from "@/lib/supervisor/queries";
 import { useToast } from "../ui/toast";
 
@@ -35,9 +41,8 @@ export function TruckWatcher() {
 
   // The first tap anywhere turns the sound on.
   useEffect(() => {
-    const events = ["pointerdown", "keydown"] as const;
-    events.forEach((name) => window.addEventListener(name, unlockSound));
-    return () => events.forEach((name) => window.removeEventListener(name, unlockSound));
+    SOUND_EVENTS.forEach((name) => window.addEventListener(name, unlockSound));
+    return () => SOUND_EVENTS.forEach((name) => window.removeEventListener(name, unlockSound));
   }, []);
 
   // Judged from the list, not the event: a truck that came while the phone was offline

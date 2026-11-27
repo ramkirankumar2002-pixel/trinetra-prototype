@@ -85,6 +85,16 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await expect(row).toContainText("No phone: send bill");
   await row.getByRole("link", { name: /^Open/ }).click();
 
+  // The very first press on the store officer's home, opened afresh: the page still asks
+  // to be tapped for its sound, and the button pressed must be the one that is opened.
+  const home = await storeContext.newPage();
+  await home.goto("/store");
+  await expect(home.getByTestId("connection")).toHaveText("Online");
+  await expect(home.getByText("Tap the screen once")).toBeVisible();
+  await home.getByRole("table").getByRole("link", { name: /^Open/ }).click();
+  await expect(home).toHaveURL(/\/store\/approvals\/\d+$/);
+  await home.close();
+
   // Issue 5: "Cancel visit" is not a second red button, and says what it is.
   const cancel = button(store, "Cancel visit");
   await expect(cancel).toHaveAttribute("data-variant", "outline");
@@ -168,11 +178,10 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   const phone = await phoneContext.newPage();
   await phone.goto("/supervisor");
   await expect(phone.getByTestId("connection")).toHaveText("Online");
-  // Tap once first, as the page asks. Known and not yet fixed: that first tap removes the
-  // sound hint, so a button below it moves before the finger lifts and is not pressed.
-  await phone.getByRole("heading", { name: "Next truck" }).click();
-  await expect(phone.getByText("Tap the screen once")).toHaveCount(0);
-  await phone.getByRole("link", { name: "Verify" }).click();
+  // The very first tap on the page, while it still asks to be tapped for its sound: the
+  // button under the finger must be the one that is pressed. Then the request is gone.
+  await expect(phone.getByText("Tap the screen once")).toBeVisible();
+  await phone.getByRole("link", { name: "Verify" }).tap();
   await expect(phone).toHaveURL(/\/supervisor\/verify\/\d+$/);
   await phone
     .getByTestId("camera-input")
