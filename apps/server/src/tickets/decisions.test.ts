@@ -281,6 +281,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       const { status, body } = await decide("store", request, {
         ...approve,
         chosenWeight: choice,
+        reason: "Moisture loss",
       });
       expect(status).toBe(200);
       expect(body.approval.chosenWeight).toBe(stored);
@@ -306,14 +307,19 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       expect((await decide("store", request, { ...approve, chosenWeight: "NET" })).status).toBe(
         409,
       );
-      expect((await decide("store", request, { ...approve, chosenWeight: "INVOICE" })).status).toBe(
-        200,
-      );
+      expect(
+        (await decide("store", request, { ...approve, chosenWeight: "INVOICE", reason: "Checked" }))
+          .status,
+      ).toBe(200);
     });
 
     it("offers no invoice weight when there is none", async () => {
       const { request } = await onHold(null);
-      const response = await decide("store", request, { ...approve, chosenWeight: "INVOICE" });
+      const response = await decide("store", request, {
+        ...approve,
+        chosenWeight: "INVOICE",
+        reason: "Checked",
+      });
       expect(response.body.error?.code).toBe("CHOICE_NOT_AVAILABLE");
     });
   });
@@ -356,7 +362,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       await h.settle(LOADED);
       expect((await post(id, "first-weight")).body.error?.code).toBe("NOT_APPROVED_EARLIER");
 
-      const { body } = await decide("store", request, approve);
+      const { body } = await decide("store", request, { ...approve, reason: "Checked" });
       expect(body.ticket).toMatchObject({ status: "STARTED", plateCheck: "APPROVED" });
       await h.settle(LOADED);
       expect((await post(id, "first-weight")).status).toBe(200);

@@ -166,6 +166,8 @@ async function decide(approve: boolean): Promise<void> {
   if (approve && item.kind === "SUPERVISOR") await supervisorPhoto(item);
   const extra: Record<string, string> = approve ? {} : { reason: "Tried by hand" };
   if (approve && item.kind === "HOLD") extra.chosenWeight = "NET";
+  // The only warning left to decide here is a plate that was blocked: allowing it needs why.
+  if (approve && item.kind === "PLATE_WARNING") extra.reason = "Tried by hand";
   if (approve && item.kind === "MISMATCH") {
     const ticket = await call<TicketView>("ram", "GET", `/api/tickets/${item.ticketId}`);
     const onInvoice = SAMPLE_INVOICES.find(

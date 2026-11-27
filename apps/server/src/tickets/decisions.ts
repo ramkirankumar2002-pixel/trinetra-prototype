@@ -1,6 +1,7 @@
 // POST /api/approvals/:id/decide: a person's answer to a request, and what it does
 // (build plan sections 6, 10 and 11). A decision can never be changed.
 import {
+  isClosedStatus,
   OVERRIDE_REASON_MIN,
   supervisorRoom,
   type decideSchema,
@@ -201,6 +202,17 @@ async function mismatchDecision(effect: Effect, changes: ApprovalChanges): Promi
   });
 }
 
+/**
+ * Choices that override what the system found need the store officer's reason, as every
+ * rejection does (decideSchema checks those): accepting the invoice weight instead of the
+ * weighed one, and letting a plate that was blocked weigh again.
+ */
+function needsReason({ kind, plateWarningReason }: ApprovalRow, decision: Decision): boolean {
+  if (decision.decision !== "APPROVE") return false;
+  if (kind === "HOLD") return decision.chosenWeight === "INVOICE";
+  return plateWarningReason === "BLOCKED_HISTORY";
+}
+
 async function applyEffect(effect: Effect, changes: ApprovalChanges): Promise<void> {
   const { request, approve } = effect;
   if (request.kind === "SUPERVISOR") return supervisorDecision(effect, changes);
@@ -210,6 +222,19 @@ async function applyEffect(effect: Effect, changes: ApprovalChanges): Promise<vo
   // The blocked-plate check.
   await move(effect, approve ? "PLATE_WARNING_APPROVED" : "PLATE_WARNING_REJECTED");
 }
+
+/** A notice moves nothing, and its timeline row says so: the same status before and after. */
+export const markHandled = (
+  tx: Transaction,
+  ticket: TicketRow,
+  actor: Actor,
+  data: Record<string, unknown>,
+) =>
+  addEvent(tx, ticket.id, "REQUEST_HANDLED", actor, {
+    from: ticket.status,
+    to: ticket.status,
+    ...data,
+  });
 
 export async function decideApproval(
   app: FastifyInstance,
@@ -237,6 +262,11 @@ export async function decideApproval(
       throw new AppError(409, "ALREADY_DECIDED", "This request has already been decided.");
     }
 
+    // On a ticket that has ended, the answer is that it has moved on, not "give a reason".
+    if (needsReason(request, decision) && !decision.reason && !isClosedStatus(ticket!.status)) {
+      throw notAllowed("REASON_REQUIRED", "Give the reason for this decision.");
+    }
+
     const changes: ApprovalChanges = {
       status: approve ? "APPROVED" : "REJECTED",
       decidedBy: who.userId,
@@ -256,7 +286,7 @@ export async function decideApproval(
       if (!approve) {
         throw new AppError(409, "CANNOT_REJECT", "This can only be marked as handled.");
       }
-      if (ticket) await addEvent(tx, ticket.id, "REQUEST_HANDLED", actor, data);
+      if (ticket) await markHandled(tx, ticket, actor, data);
     } else {
       await applyEffect({ tx, ticket: ticket!, request, decision, approve, actor, data }, changes);
     }

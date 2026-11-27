@@ -1,8 +1,13 @@
 // The store officer's list, and the driver's Help button (build plan sections 8 and 11).
-import { isClosedStatus, type StoreRequestsResponse } from "@trinetra/shared";
+import {
+  isClosedStatus,
+  type StoreRequestsResponse,
+  type StoreRequestView,
+} from "@trinetra/shared";
 import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { approvals, materials, ticketEvents, tickets } from "../db/schema";
+import { AppError } from "../errors/app-error";
 import { createApproval, lockTicket, type Actor, type ApprovalRow, type TicketRow } from "./repo";
 import { approvalView, holdReasonOf, materialNames, userNames, WARNING_EVENTS } from "./view";
 
@@ -24,6 +29,47 @@ const requestRows = (app: FastifyInstance) =>
     .from(approvals)
     .leftJoin(tickets, eq(approvals.ticketId, tickets.id))
     .leftJoin(materials, eq(tickets.materialId, materials.id));
+
+type RequestRow = Awaited<ReturnType<typeof requestRows>>[number];
+
+async function requestViews(app: FastifyInstance, rows: RequestRow[]) {
+  const names = await userNames(
+    app.db,
+    rows.map((row) => row.approval.decidedBy).filter((id): id is number => id !== null),
+  );
+  const materialsById = await materialNames(app.db);
+  const ticketIds = rows.map((row) => row.ticket?.id).filter((id): id is number => !!id);
+  const held = new Set(
+    ticketIds.length === 0
+      ? []
+      : (
+          await app.db
+            .select({ ticketId: approvals.ticketId })
+            .from(approvals)
+            .where(and(eq(approvals.kind, "HOLD"), inArray(approvals.ticketId, ticketIds)))
+        ).map((row) => row.ticketId),
+  );
+  return rows.map(({ approval, ticket, material }): StoreRequestView => ({
+    approval: approvalView(approval, names, materialsById),
+    ticket: ticket && {
+      id: ticket.id,
+      ticketNo: ticket.ticketNo,
+      plate: ticket.plate,
+      status: ticket.status,
+      type: ticket.type,
+      material,
+      supplier: ticket.supplier,
+      invoiceWeightKg: ticket.invoiceWeightKg,
+      heldWeightKg: ticket.heldWeightKg,
+      firstWeightKg: ticket.firstWeightKg,
+      secondWeightKg: ticket.secondWeightKg,
+      netKg: ticket.netKg,
+      variancePct: ticket.variancePct,
+      holdReason: holdReasonOf(ticket, held.has(ticket.id)),
+      isDemo: ticket.isDemo,
+    },
+  }));
+}
 
 /** Requests still waiting for a decision from anyone. */
 export async function pendingApprovals(app: FastifyInstance) {
@@ -56,22 +102,7 @@ export async function storeRequests(
           .orderBy(desc(approvals.decidedAt), desc(approvals.id))
           .limit(LIST_LIMIT);
 
-  const names = await userNames(
-    app.db,
-    rows.map((row) => row.approval.decidedBy).filter((id): id is number => id !== null),
-  );
-  const materialsById = await materialNames(app.db);
-  const ticketIds = rows.map((row) => row.ticket?.id).filter((id): id is number => !!id);
-  const held = new Set(
-    ticketIds.length === 0
-      ? []
-      : (
-          await app.db
-            .select({ ticketId: approvals.ticketId })
-            .from(approvals)
-            .where(and(eq(approvals.kind, "HOLD"), inArray(approvals.ticketId, ticketIds)))
-        ).map((row) => row.ticketId),
-  );
+  const requests = await requestViews(app, rows);
 
   const warnings = await app.db
     .select({ event: ticketEvents, ticket: tickets })
@@ -87,26 +118,7 @@ export async function storeRequests(
     .limit(LIST_LIMIT);
 
   return {
-    requests: rows.map(({ approval, ticket, material }) => ({
-      approval: approvalView(approval, names, materialsById),
-      ticket: ticket && {
-        id: ticket.id,
-        ticketNo: ticket.ticketNo,
-        plate: ticket.plate,
-        status: ticket.status,
-        type: ticket.type,
-        material,
-        supplier: ticket.supplier,
-        invoiceWeightKg: ticket.invoiceWeightKg,
-        heldWeightKg: ticket.heldWeightKg,
-        firstWeightKg: ticket.firstWeightKg,
-        secondWeightKg: ticket.secondWeightKg,
-        netKg: ticket.netKg,
-        variancePct: ticket.variancePct,
-        holdReason: holdReasonOf(ticket, held.has(ticket.id)),
-        isDemo: ticket.isDemo,
-      },
-    })),
+    requests,
     warnings: warnings.map(({ event, ticket }) => ({
       type: WARNING_EVENTS[event.type]!,
       message: String(event.data.message ?? ""),
@@ -116,6 +128,20 @@ export async function storeRequests(
       plate: ticket.plate,
     })),
   };
+}
+
+/** One request with its ticket's summary, pending or decided: the detail page. */
+export async function storeRequest(
+  app: FastifyInstance,
+  approvalId: number,
+): Promise<StoreRequestView> {
+  const rows = await requestRows(app).where(eq(approvals.id, approvalId));
+  // The supervisor's own check is not the store officer's request.
+  const found = rows.filter(
+    ({ approval }) => approval.kind !== "SUPERVISOR" || approval.status === "REJECTED",
+  );
+  if (found.length === 0) throw new AppError(404, "NOT_FOUND", "There is no such request.");
+  return (await requestViews(app, found))[0]!;
 }
 
 /** The driver pressed Help. Pressing it again while the call is open adds nothing. */

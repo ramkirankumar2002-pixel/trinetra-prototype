@@ -185,6 +185,15 @@ describe("the driver's visit", () => {
   });
 });
 
+describe("a new upload round", () => {
+  it('shows the code and "No phone?" again, so the store officer can be called again', () => {
+    useKiosk.getState().startOver();
+    useKiosk.getState().setNoPhone(true);
+    useKiosk.getState().uploadAgain(1);
+    expect(useKiosk.getState()).toMatchObject({ noPhone: false, qrAfter: 1 });
+  });
+});
+
 describe("noticing the truck", () => {
   const present: BridgeState = { ...EMPTY_BRIDGE, truckPresent: true };
   const reading = (reason: "NOT_STABLE" | "POSITION_NOT_OK" | "NO_TRUCK" | "STALE_READING") => ({

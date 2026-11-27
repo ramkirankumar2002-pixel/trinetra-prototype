@@ -335,6 +335,67 @@ export interface StoreRequestsResponse {
   warnings: (TicketWarning & { ticketId: number; ticketNo: string; plate: string })[];
 }
 
+/** GET /api/store/summary: the store officer's numbers. "Today" is the day in India. */
+export interface StoreSummaryResponse {
+  /** Requests waiting for the store officer now. */
+  waiting: number;
+  /** Requests the store officer approved or rejected today. "Seen" and "handled" are not counted. */
+  approved: number;
+  rejected: number;
+  /** Trucks on HOLD now. */
+  onHold: number;
+  /** Open tickets: trucks whose visit has not ended. */
+  onSite: number;
+  /** Tickets completed today. */
+  completed: number;
+}
+
+/** A person's answer to one of a ticket's requests: who approved what. */
+export interface StoreTicketDecision {
+  approvalId: number;
+  kind: ApprovalKind;
+  plateWarningReason: PlateWarningReason | null;
+  status: Exclude<ApprovalStatus, "PENDING">;
+  decidedBy: string | null;
+  decidedAt: string;
+  reason: string | null;
+  chosenWeight: HoldWeightChoice | null;
+}
+
+/** One ticket of the store officer's "trucks on site" and "history" lists. */
+export interface StoreTicketView {
+  ticketId: number;
+  ticketNo: string;
+  plate: string;
+  status: TicketStatus;
+  type: TicketType | null;
+  material: string | null;
+  tripNo: number | null;
+  unloadingPoint: { code: string; name: string } | null;
+  supervisor: string | null;
+  invoiceWeightKg: number | null;
+  netKg: number | null;
+  variancePct: number | null;
+  finalWeightKg: number | null;
+  /** The request waiting for the store officer, if there is one: the oldest. */
+  pendingStoreApprovalId: number | null;
+  decisions: StoreTicketDecision[];
+  isDemo: boolean;
+  createdAt: string;
+  firstWeightAt: string | null;
+  closedAt: string | null;
+}
+
+/** GET /api/store/trucks and GET /api/store/history. */
+export interface StoreTicketsResponse {
+  tickets: StoreTicketView[];
+}
+
+export const storeHistorySchema = z.object({
+  /** Part of a number plate or of a ticket number. */
+  q: z.string().trim().max(40).default(""),
+});
+
 export interface SupervisorTicketView {
   approvalId: number;
   approvalStatus: ApprovalStatus;

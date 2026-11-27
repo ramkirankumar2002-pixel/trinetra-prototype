@@ -19,6 +19,7 @@ import { ReaderError } from "../services/readers/errors";
 import type { Upload } from "../http/upload";
 import { emitAfterCommit, type Transaction } from "../realtime/after-commit";
 import { storeFile, type StoredFile } from "../services/images/pipeline";
+import { markHandled } from "./decisions";
 import { isDemoActive, tagDemo } from "./demo";
 import {
   addEvent,
@@ -26,6 +27,7 @@ import {
   lockTicket,
   ticketRooms,
   updateTicket,
+  userActor,
   wrongStage,
   type Actor,
   type TicketRow,
@@ -147,12 +149,52 @@ async function isSuperseded(tx: Transaction, ticketId: number, photoId: string) 
   return newest?.data.photoId !== photoId;
 }
 
+/** The store officer who uploads for a driver without a phone, and the driver's call. */
+interface ForDriver {
+  officerId: number;
+  helpId: number;
+}
+
+/**
+ * The bill the store officer uploaded has been read, so the weighbridge goes on: the
+ * driver's call for help is answered, in the officer's name.
+ */
+async function answerHelpCall(
+  tx: Transaction,
+  ticket: TicketRow,
+  { officerId, helpId }: ForDriver,
+  photoId: string,
+): Promise<void> {
+  const reason = "Bill uploaded for the driver";
+  const [answered] = await tx
+    .update(approvals)
+    .set({ status: "APPROVED", decidedBy: officerId, decidedAt: new Date(), reason })
+    .where(and(eq(approvals.id, helpId), eq(approvals.status, "PENDING")))
+    .returning({ id: approvals.id });
+  // Already marked as handled while the bill was being read.
+  if (!answered) return;
+  await markHandled(tx, ticket, userActor(officerId), {
+    approvalId: helpId,
+    kind: "DRIVER_HELP",
+    decision: "APPROVE",
+    reason,
+    photoId,
+  });
+  emitAfterCommit("approval:decided", ["kiosk", "store"], {
+    approvalId: helpId,
+    ticketId: ticket.id,
+    kind: "DRIVER_HELP",
+    status: "APPROVED",
+  });
+}
+
 /** Saves what was read on the ticket. A new upload replaces the earlier invoice. */
 async function saveInvoice(
   app: FastifyInstance,
   ticketId: number,
   photoId: string,
   read: InvoiceRead,
+  forDriver?: ForDriver,
 ): Promise<void> {
   const demo = (await isDemoActive(app.db, app.hardware)) || read.source === "demo";
 
@@ -223,7 +265,10 @@ async function saveInvoice(
     if (read.invoiceNo && supplier) {
       await warnIfDuplicate(tx, ticket, read.invoiceNo, supplier);
     }
+    if (forDriver) await answerHelpCall(tx, ticket, forDriver, photoId);
+    // The store officer's page follows the reading too.
     emitAfterCommit("invoice:read", ["kiosk"], { ticketId, ok: true, error: null });
+    emitAfterCommit("ticket:updated", ["store"], { ticketId, status: ticket.status });
   });
 }
 
@@ -252,6 +297,7 @@ async function saveFailure(
     await updateTicket(tx, ticket, {});
     await addEvent(tx, ticketId, "INVOICE_READ_FAILED", "system", { photoId, error });
     emitAfterCommit("invoice:read", ["kiosk"], { ticketId, ok: false, error });
+    emitAfterCommit("ticket:updated", ["store"], { ticketId, status: ticket.status });
   });
 }
 
@@ -261,29 +307,65 @@ const errorCode = (error: unknown) => {
   return error instanceof AppError ? error.code : "INTERNAL_ERROR";
 };
 
-/** The slow part, after the phone has its answer. */
+/** The slow part, after the uploader has its answer. */
 async function readAndSave(
   app: FastifyInstance,
-  link: { id: number; ticketId: number },
+  ticketId: number,
   plate: string,
   file: StoredFile,
+  options: { forDriver?: ForDriver; onFailure?: () => Promise<void> },
 ): Promise<void> {
   try {
     const read = await app.readers.readInvoice(file, plate);
-    await saveInvoice(app, link.ticketId, file.id, read);
+    await saveInvoice(app, ticketId, file.id, read, options.forDriver);
   } catch (error) {
     const code = errorCode(error);
     if (code === "INTERNAL_ERROR") app.log.error({ err: error }, "could not read an invoice");
     else app.log.warn({ code }, "could not read an invoice");
-    await releaseCode(app, link.id, link.ticketId);
-    await saveFailure(app, link.ticketId, file.id, code);
+    await options.onFailure?.();
+    await saveFailure(app, ticketId, file.id, code);
   }
 }
 
 /**
- * Stores the file and answers at once; the invoice is read in the background, and the
- * result or the failure goes to the kiosk as "invoice:read". The code works once: it is
- * taken before anything slow, and given back only if nothing could be saved or read.
+ * Stores the file, notes it on the ticket and has it read in the background. The result or
+ * the failure goes to the kiosk as "invoice:read".
+ */
+async function takeInvoiceFile(
+  app: FastifyInstance,
+  ticketId: number,
+  upload: Upload,
+  options: {
+    actor: Actor;
+    forDriver?: ForDriver;
+    onFailure?: () => Promise<void>;
+  },
+): Promise<UploadResponse> {
+  const ticket = await getTicket(app.db, ticketId);
+  const file = await storeFile(
+    { storage: app.storage, db: app.db },
+    { data: upload.buffer, contentType: upload.contentType, kind: "INVOICE", ticketId },
+  );
+  await app.eventTransaction(async (tx) => {
+    const locked = await lockTicket(tx, ticketId);
+    needsStarted(locked);
+    // Also counts as activity, so the ticket is not abandoned while we read.
+    await updateTicket(tx, locked, {});
+    await addEvent(tx, ticketId, "INVOICE_RECEIVED", options.actor, {
+      photoId: file.id,
+      ...(options.forDriver ? { forDriver: true } : {}),
+    });
+    // The kiosk shows "Reading invoice…".
+    const change = { ticketId, status: locked.status };
+    emitAfterCommit("ticket:updated", ["kiosk", "store"], change);
+  });
+  app.background.run("read invoice", () => readAndSave(app, ticketId, ticket.plate, file, options));
+  return { ok: true, status: "received" };
+}
+
+/**
+ * The driver's phone. The code works once: it is taken before anything slow, and given
+ * back only if nothing could be saved or read.
  */
 export async function receiveInvoice(
   app: FastifyInstance,
@@ -309,30 +391,50 @@ export async function receiveInvoice(
     throw new AppError(410, "CODE_USED", "This upload link has already been used.");
   }
 
+  const giveBack = () => releaseCode(app, claimed.id, claimed.ticketId);
   try {
-    const ticket = await getTicket(app.db, claimed.ticketId);
-    const file = await storeFile(
-      { storage: app.storage, db: app.db },
-      {
-        data: upload.buffer,
-        contentType: upload.contentType,
-        kind: "INVOICE",
-        ticketId: ticket.id,
-      },
-    );
-    await app.eventTransaction(async (tx) => {
-      const locked = await lockTicket(tx, ticket.id);
-      needsStarted(locked);
-      // Also counts as activity, so the ticket is not abandoned while we read.
-      await updateTicket(tx, locked, {});
-      await addEvent(tx, ticket.id, "INVOICE_RECEIVED", "system", { photoId: file.id });
-      // The kiosk shows "Reading invoice…".
-      emitAfterCommit("ticket:updated", ["kiosk"], { ticketId: ticket.id, status: locked.status });
+    return await takeInvoiceFile(app, claimed.ticketId, upload, {
+      actor: "system",
+      onFailure: giveBack,
     });
-    app.background.run("read invoice", () => readAndSave(app, claimed, ticket.plate, file));
-    return { ok: true, status: "received" };
   } catch (error) {
-    await releaseCode(app, claimed.id, claimed.ticketId);
+    await giveBack();
     throw error;
   }
+}
+
+/** The driver's pending call for help, if a bill may be uploaded for it. */
+async function helpCallFor(app: FastifyInstance, approvalId: number) {
+  const [request] = await app.db.select().from(approvals).where(eq(approvals.id, approvalId));
+  if (!request) throw new AppError(404, "NOT_FOUND", "There is no such request.");
+  if (request.kind !== "DRIVER_HELP") {
+    throw wrongStage("A bill can only be uploaded for a driver who asked for help.");
+  }
+  if (request.status !== "PENDING") {
+    throw new AppError(409, "ALREADY_DECIDED", "This request has already been decided.");
+  }
+  if (request.ticketId === null) {
+    throw wrongStage("This driver has not started a visit yet, so there is no ticket.");
+  }
+  needsStarted(await getTicket(app.db, request.ticketId));
+  return request.ticketId;
+}
+
+/**
+ * The store officer uploads the bill of a driver without a phone, from their own device.
+ * It is read as the driver's own upload is, and the kiosk goes on by itself.
+ */
+export async function receiveStoreInvoice(
+  app: FastifyInstance,
+  approvalId: number,
+  officerId: number,
+  readFile: () => Promise<Upload>,
+): Promise<UploadResponse> {
+  // Checked before the file is read.
+  const ticketId = await helpCallFor(app, approvalId);
+  const upload = await readFile();
+  return takeInvoiceFile(app, ticketId, upload, {
+    actor: userActor(officerId),
+    forDriver: { officerId, helpId: approvalId },
+  });
 }

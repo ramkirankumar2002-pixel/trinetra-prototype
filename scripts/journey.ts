@@ -24,6 +24,7 @@ import {
   type LiveSummaryResponse,
   type PublicTicketView,
   type StoreRequestsResponse,
+  type StoreTicketsResponse,
   type SupervisorPhotoResponse,
   type SupervisorTicketView,
   type TicketStatus,
@@ -633,6 +634,16 @@ async function toleranceFail(): Promise<string> {
   await storeDecides(ticket, "HOLD", { decision: "APPROVE", chosenWeight: "NET" });
   await printSlip(ticket.id, "FINAL");
   await showTicket(ticket.id, "COMPLETED");
+  const { tickets: ended } = await api<StoreTicketsResponse>(
+    "GET",
+    `/api/store/history?q=${ticket.ticketNo}`,
+    { who: STORE },
+  );
+  check(
+    ended[0]?.finalWeightKg === ended[0]?.netKg && ended[0]?.decisions.length === 2,
+    "The store officer's history does not show both decisions and the accepted weight.",
+  );
+  step("The store officer's history shows the accepted weight and who approved what.");
   return ticket.ticketNo;
 }
 

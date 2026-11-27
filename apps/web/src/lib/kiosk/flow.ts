@@ -177,7 +177,9 @@ export const useKiosk = create<KioskStore>()((set, get) => {
         },
       })),
     uploadAgain: (uploadsSoFar) =>
-      set((state) => ({ qrAfter: uploadsSoFar, qrRound: state.qrRound + 1 })),
+      // A new round: the code, and "No phone?" to call the store officer again (the earlier
+      // call was answered when their upload was read).
+      set((state) => ({ qrAfter: uploadsSoFar, qrRound: state.qrRound + 1, noPhone: false })),
     setNoPhone: (noPhone) => set({ noPhone }),
     finish: () => clear(true),
     truckLeft: () => {
