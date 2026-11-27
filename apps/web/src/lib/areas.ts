@@ -14,3 +14,22 @@ export function areaOf(pathname: string): AreaName | undefined {
   const first = pathname.split("/")[1] ?? "";
   return Object.hasOwn(AREAS, first) ? (first as AreaName) : undefined;
 }
+
+/** A page of this part, other than its login, that a login may go back to. */
+function isPageOf(area: AreaName, path: string): boolean {
+  const { home, login } = AREAS[area];
+  // Only letters, digits, dashes and single slashes: nothing that could leave the website.
+  return path.startsWith(`${home}/`) && path !== login && /^(\/[A-Za-z0-9-]+)+$/.test(path);
+}
+
+/** The login address for someone who was on `path`: it remembers where to come back to. */
+export function loginPath(area: AreaName, path: string): string {
+  const { login } = AREAS[area];
+  return isPageOf(area, path) ? `${login}?next=${encodeURIComponent(path)}` : login;
+}
+
+/** Where to go after logging in: the page asked for, if it is one of this part's. */
+export function afterLoginPath(area: AreaName, search: string): string {
+  const next = new URLSearchParams(search).get("next");
+  return next !== null && isPageOf(area, next) ? next : AREAS[area].home;
+}

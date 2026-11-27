@@ -68,24 +68,35 @@ async function decode(file: Blob): Promise<Decoded> {
   }
 }
 
-async function toJpeg(file: Blob): Promise<Blob> {
+/** Draws a picture or a video frame as a JPEG whose longer side is at most `maxSide`. */
+export async function drawJpeg(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  maxSide = MAX_SIDE,
+): Promise<Blob> {
+  const { width, height } = fitWithin(sourceWidth, sourceHeight, maxSide);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new PrepareError("BAD_PHOTO");
+  // JPEG has no see-through areas: they become white, not black.
+  context.fillStyle = "white";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(source, 0, 0, width, height);
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
+  );
+  if (!blob) throw new PrepareError("BAD_PHOTO");
+  return blob;
+}
+
+/** Any photo the browser can open, redrawn as a smaller JPEG. */
+export async function toJpeg(file: Blob, maxSide = MAX_SIDE): Promise<Blob> {
   const picture = await decode(file);
   try {
-    const { width, height } = fitWithin(picture.width, picture.height);
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new PrepareError("BAD_PHOTO");
-    // JPEG has no see-through areas: they become white, not black.
-    context.fillStyle = "white";
-    context.fillRect(0, 0, width, height);
-    context.drawImage(picture.source, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
-    );
-    if (!blob) throw new PrepareError("BAD_PHOTO");
-    return blob;
+    return await drawJpeg(picture.source, picture.width, picture.height, maxSide);
   } finally {
     picture.close();
   }

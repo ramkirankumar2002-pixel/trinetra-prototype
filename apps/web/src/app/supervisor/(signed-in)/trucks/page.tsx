@@ -1,5 +1,12 @@
-import { EmptyPage } from "@/components/empty-page";
+"use client";
 
-export default function SupervisorTrucksToVerifyPage() {
-  return <EmptyPage area="supervisor" page="trucks" text="empty.trucks" />;
+import { RoleShell } from "@/components/role-shell";
+import { Trucks } from "@/components/supervisor/trucks";
+
+export default function SupervisorTrucksPage() {
+  return (
+    <RoleShell area="supervisor">
+      <Trucks />
+    </RoleShell>
+  );
 }

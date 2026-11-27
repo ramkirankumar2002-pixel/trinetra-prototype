@@ -1,5 +1,12 @@
-import { EmptyPage } from "@/components/empty-page";
+"use client";
+
+import { RoleShell } from "@/components/role-shell";
+import { DoneList } from "@/components/supervisor/done";
 
 export default function SupervisorDonePage() {
-  return <EmptyPage area="supervisor" page="done" text="empty.done" />;
+  return (
+    <RoleShell area="supervisor">
+      <DoneList />
+    </RoleShell>
+  );
 }

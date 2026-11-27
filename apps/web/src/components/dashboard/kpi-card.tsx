@@ -43,6 +43,7 @@ export function KpiCard({
   colour,
   value,
   label,
+  note,
   trend,
   percent,
 }: {
@@ -50,6 +51,8 @@ export function KpiCard({
   colour: KpiColour;
   value: string;
   label: string;
+  /** A few small words saying what is counted. */
+  note?: string;
   /** A small change, with its words: "+2 since yesterday". */
   trend?: { direction: "up" | "down"; text: string };
   /** A progress ring on the right. */
@@ -71,6 +74,7 @@ export function KpiCard({
       <div className="min-w-0 flex-1">
         <p className="text-2xl leading-tight font-extrabold md:text-3xl">{value}</p>
         <p className="text-sm leading-tight text-muted-foreground">{label}</p>
+        {note && <p className="text-xs leading-tight text-muted-foreground">{note}</p>}
         {trend && (
           <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-muted-foreground">
             <Arrow aria-hidden className="size-3.5 shrink-0" />

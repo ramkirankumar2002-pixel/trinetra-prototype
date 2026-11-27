@@ -1,28 +1,71 @@
 "use client";
 
-// The supervisor's dashboard home. Everything counted or listed is SAMPLE data until
-// Phase 12.
-import { CircleCheckBig, CircleX, Clock, Hourglass, ShieldCheck, Truck } from "lucide-react";
-import { DataTable } from "@/components/dashboard/data-table";
+// The supervisor's home: today's numbers and the truck to check next.
+import { formatKg, supervisorDayStats, type SupervisorTicketView } from "@trinetra/shared";
+import {
+  CircleCheckBig,
+  CircleX,
+  Clock,
+  Hourglass,
+  ShieldCheck,
+  Truck,
+  Volume2,
+} from "lucide-react";
+import Link from "next/link";
+import { useSyncExternalStore } from "react";
+import { ConnectionStatusLight } from "@/components/connection-status";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Panel } from "@/components/dashboard/panel";
-import { SampleAlertsPanel } from "@/components/dashboard/sample-alerts";
-import { SampleTag } from "@/components/dashboard/sample-tag";
 import { WelcomeBanner } from "@/components/dashboard/welcome-banner";
 import { useCurrentUser } from "@/components/require-role";
 import { RoleShell } from "@/components/role-shell";
+import { materialText, PlateText, WaitingPill } from "@/components/supervisor/parts";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
-import { StatusPill } from "@/components/ui/status-pill";
-import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/use-t";
-import { SAMPLE_TRUCKS } from "@/lib/sample-data";
+import { soundIsOn, subscribeSound } from "@/lib/supervisor/alerts";
+import { minutesSince, useNow, useSupervisorTrucks } from "@/lib/supervisor/queries";
+
+function NextTruck({ truck }: { truck: SupervisorTicketView }) {
+  const t = useT();
+  const minutes = minutesSince(truck.firstWeightAt, useNow());
+  return (
+    <div data-testid="next-truck" className="flex flex-col gap-3 md:flex-row md:items-center">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <PlateText plate={truck.plate} />
+          <WaitingPill truck={truck} />
+        </div>
+        <p className="text-muted-foreground">
+          {materialText(truck.material, t)} · {t("sup.trip", { trip: truck.tripNo ?? "—" })}
+          {truck.invoiceWeightKg !== null && ` · ${formatKg(truck.invoiceWeightKg)}`}
+          {minutes !== null && ` · ${t("sup.waitingFor", { minutes })}`}
+        </p>
+      </div>
+      <Button asChild size="lg" className="min-h-16 text-xl md:min-w-56">
+        <Link href={`/supervisor/verify/${truck.ticketId}`}>
+          <ShieldCheck aria-hidden />
+          {t("action.verify")}
+        </Link>
+      </Button>
+    </div>
+  );
+}
 
 function Home() {
   const t = useT();
-  const toast = useToast();
   const user = useCurrentUser();
-  const sampleOnly = () => toast({ tone: "info", title: t("sample.nothingDone") });
+  const pending = useSupervisorTrucks("pending");
+  const done = useSupervisorTrucks("done");
+  const sound = useSyncExternalStore(subscribeSound, soundIsOn, () => false);
+  const points = pending.data?.points ?? [];
+  const stats =
+    pending.data && done.data ? supervisorDayStats(pending.data.tickets, done.data.tickets) : null;
+  const value = (number: number | undefined) => (number === undefined ? "—" : String(number));
+  const next = pending.data?.tickets[0];
+  const failed = pending.isError || done.isError;
 
   return (
     <>
@@ -30,86 +73,90 @@ function Home() {
         greeting={t("banner.welcome")}
         name={user.name}
         detail={t("area.supervisor")}
-        location={{
-          label: t("banner.unloadingPoint"),
-          value: "CH-009+800",
-          tag: <SampleTag />,
-        }}
+        {...(points.length > 0
+          ? {
+              location: {
+                label: t("banner.unloadingPoint"),
+                value: points.map((point) => point.code).join(", "),
+              },
+            }
+          : {})}
       />
-      <Banner>{t("sample.notice")}</Banner>
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiCard icon={Hourglass} colour="orange" value="3" label={t("kpi.waiting")} />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground">{t("sup.connection")}</span>
+        {/* The top bar has one too; this is the one the home page names. */}
+        <ConnectionStatusLight testId="home-connection" />
+      </div>
+      {!sound && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Volume2 aria-hidden className="size-5 shrink-0" />
+          {t("sup.tapForSound")}
+        </p>
+      )}
+
+      <Panel icon={Truck} title={t("sup.nextTruck")}>
+        {next ? (
+          <NextTruck truck={next} />
+        ) : pending.data ? (
+          <EmptyState icon={Truck} title={t("sup.noTrucks")}>
+            {t("empty.trucks")}
+          </EmptyState>
+        ) : failed ? null : (
+          <Spinner label={t("sup.loading")} className="py-6" />
+        )}
+        {failed && (
+          <div className="flex flex-col gap-2">
+            <Banner tone="stop">{t("sup.loadFailed")}</Banner>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={() => void Promise.all([pending.refetch(), done.refetch()])}
+            >
+              {t("session.retry")}
+            </Button>
+          </div>
+        )}
+      </Panel>
+
+      <section aria-label={t("sup.today")} className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+        <KpiCard
+          icon={Truck}
+          colour="blue"
+          value={value(stats?.coming)}
+          label={t("sup.kpi.coming")}
+          note={t("sup.kpi.comingNote")}
+        />
+        <KpiCard
+          icon={Hourglass}
+          colour="orange"
+          value={value(stats?.waiting)}
+          label={t("sup.kpi.waiting")}
+        />
         <KpiCard
           icon={CircleCheckBig}
           colour="green"
-          value="8"
-          label={t("kpi.verified")}
-          trend={{ direction: "up", text: t("kpi.moreThanYesterday", { count: 2 }) }}
-          percent={73}
+          value={value(stats?.verified)}
+          label={t("sup.verified")}
         />
-        <KpiCard icon={CircleX} colour="purple" value="1" label={t("kpi.rejected")} />
         <KpiCard
-          icon={Clock}
-          colour="blue"
-          value={t("kpi.minutes", { count: 12 })}
-          label={t("kpi.averageWait")}
-          trend={{ direction: "down", text: t("kpi.lessThanYesterday", { count: 3 }) }}
+          icon={CircleX}
+          colour="purple"
+          value={value(stats?.rejected)}
+          label={t("status.rejected")}
         />
-      </div>
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1fr)]">
-        <Panel
-          icon={Truck}
-          title={t("table.trucksForMe")}
-          tag={<SampleTag />}
-          viewAll={{ href: "/supervisor/trucks", label: t("action.viewAll") }}
-        >
-          <DataTable
-            label={t("table.trucksForMe")}
-            rows={SAMPLE_TRUCKS}
-            rowKey={(row) => row.ticket}
-            columns={[
-              { id: "ticket", header: t("column.ticket"), nowrap: true, cell: (row) => row.ticket },
-              {
-                id: "vehicle",
-                header: t("column.vehicle"),
-                nowrap: true,
-                cell: (row) => row.plate,
-              },
-              { id: "material", header: t("column.material"), cell: (row) => row.material },
-              {
-                id: "waiting",
-                header: t("column.waiting"),
-                cell: (row) =>
-                  row.waitingMin === null ? "—" : t("kpi.minutes", { count: row.waitingMin }),
-              },
-              {
-                id: "status",
-                header: t("column.status"),
-                cell: (row) => (
-                  <StatusPill tone={row.status.tone}>{t(row.status.label)}</StatusPill>
-                ),
-              },
-              {
-                id: "action",
-                header: t("column.action"),
-                actions: true,
-                cell: (row) =>
-                  row.toVerify ? (
-                    <Button size="sm" onClick={sampleOnly}>
-                      <ShieldCheck aria-hidden />
-                      {t("action.verify")}
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={sampleOnly}>
-                      {t("action.view")}
-                    </Button>
-                  ),
-              },
-            ]}
+        <div className="col-span-2 xl:col-span-1 *:h-full">
+          <KpiCard
+            icon={Clock}
+            colour="blue"
+            value={
+              stats?.averageWaitMin === null || stats === null
+                ? "—"
+                : t("kpi.minutes", { count: stats.averageWaitMin })
+            }
+            label={t("kpi.averageWait")}
           />
-        </Panel>
-        <SampleAlertsPanel area="supervisor" />
-      </div>
+        </div>
+      </section>
     </>
   );
 }

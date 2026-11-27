@@ -18,8 +18,8 @@ const ROLES = [
     path: "supervisor",
     username: "amit",
     size: { width: 390, height: 760 },
-    english: "Trucks for me",
-    hindi: "मेरे ट्रक",
+    english: "Next truck",
+    hindi: "अगला ट्रक",
   },
   {
     path: "store",

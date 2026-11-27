@@ -53,6 +53,12 @@ for (const area of AREAS) {
         }
 
         await page.goto(`/${area.path}`);
+        if (area.path === "supervisor") {
+          // Real numbers: nothing on the supervisor's pages is a sample.
+          await expect(page.getByTestId("kpi")).toHaveCount(5);
+          await expect(page.getByTestId("sample")).toHaveCount(0);
+          continue;
+        }
         await expect(page.getByTestId("kpi")).toHaveCount(4);
         // Everything made up is marked as a sample.
         await expect(page.getByTestId("sample").first()).toBeVisible();
@@ -86,6 +92,7 @@ for (const area of AREAS) {
     await expect(page.getByTestId("connection")).toHaveText("Online");
   });
 
+  if (area.path !== "store") continue;
   test(`${area.path} sample buttons change nothing and say so`, async ({ page, context }) => {
     await signIn(context, area.username);
     const writes: string[] = [];
@@ -93,8 +100,7 @@ for (const area of AREAS) {
       if (request.method() !== "GET" && request.url().includes("/api/")) writes.push(request.url());
     });
     await page.goto(`/${area.path}`);
-    const button = area.path === "store" ? "Approve" : "Verify";
-    await page.getByRole("button", { name: button }).first().click();
+    await page.getByRole("button", { name: "Approve" }).first().click();
     await expect(page.getByText("This is sample data. Nothing was changed.").first()).toBeVisible();
     expect(writes).toEqual([]);
   });

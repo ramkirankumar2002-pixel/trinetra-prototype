@@ -147,6 +147,32 @@ export class Office {
     });
   }
 
+  /**
+   * A Type 1 truck (cement, which goes to Amit Kumar) with its first weight saved, made
+   * through the kiosk's API and the simulated weighbridge. The truck then leaves.
+   */
+  async weighType1(bridge: Weighbridge, plate: string): Promise<number> {
+    const started = await this.kiosk.post(`${WEB_URL}/api/tickets`, {
+      data: { plate, language: "en", manual: true },
+    });
+    expect(started.ok(), await started.text()).toBe(true);
+    const { ticket } = (await started.json()) as { ticket: { id: number } };
+    const details = await this.kiosk.patch(`${WEB_URL}/api/tickets/${ticket.id}/details`, {
+      data: { material: "Cement Bags" },
+    });
+    expect(details.ok(), await details.text()).toBe(true);
+    bridge.driveOn(32_560);
+    await expect
+      .poll(
+        async () =>
+          (await this.kiosk.post(`${WEB_URL}/api/tickets/${ticket.id}/first-weight`)).status(),
+        { timeout: 30_000, intervals: [1000] },
+      )
+      .toBe(200);
+    bridge.driveOff();
+    return ticket.id;
+  }
+
   async storeDecides(plate: string, kind: string, decision: object): Promise<void> {
     let id: number | undefined;
     await expect

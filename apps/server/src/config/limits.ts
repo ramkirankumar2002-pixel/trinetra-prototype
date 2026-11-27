@@ -4,6 +4,12 @@ export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 /** Requests per minute from one address, for the whole API. */
 export const GENERAL_RATE_LIMIT = { max: 300, timeWindow: "1 minute" };
 
+/**
+ * On a development computer (also "pnpm lan"), the website forwards every browser's calls,
+ * so the laptop's kiosk and all the phones share one address and one allowance.
+ */
+export const LOCAL_RATE_LIMIT = { max: 1200, timeWindow: "1 minute" };
+
 /** Stricter limit on login, on top of the per-username lock. */
 export const LOGIN_RATE_LIMIT = { max: 20, timeWindow: "1 minute" };
 

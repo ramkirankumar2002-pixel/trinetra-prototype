@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useT } from "@/i18n/use-t";
 import { AREAS, type AreaName } from "@/lib/areas";
-import { useMe } from "@/lib/session";
+import { isTemporary, useMe } from "@/lib/session";
 import { AuthShell } from "./layout/auth-shell";
 import { KioskShell } from "./layout/kiosk-shell";
 import { LiveConnection } from "./live-connection";
@@ -46,7 +46,7 @@ export function RequireRole({ area, children }: { area: AreaName; children: Reac
     );
   }
 
-  const serverDown = !user && error !== null && "retryable" in error && error.retryable === true;
+  const serverDown = !user && isTemporary(error);
   const waiting = (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6 text-center">
       <Spinner label={t(serverDown ? "session.serverDown" : "session.checking")} />

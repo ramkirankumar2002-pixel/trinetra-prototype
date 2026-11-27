@@ -9,6 +9,12 @@ import { api } from "./api";
 export const ME_KEY = ["me"] as const;
 const SERVER_RETRY_MS = 3000;
 
+/** The server cannot be reached, or is asked too often: asking again later will work. */
+export function isTemporary(error: unknown): boolean {
+  const known = error as { retryable?: boolean; status?: number } | null;
+  return known?.retryable === true || known?.status === 429;
+}
+
 /**
  * With `redirectOn401` (the default) an ended login goes to the login page; a login page
  * asks without it.
@@ -21,10 +27,7 @@ export function useMe(options: { redirectOn401?: boolean } = {}) {
       (await api.get<AuthResponse>("/api/auth/me", { signal, redirectOn401 })).user,
     // Asked again when the window gets focus: another tab may have logged out.
     staleTime: 0,
-    // While the server cannot be reached, keep asking.
-    refetchInterval: (query) => {
-      const error = query.state.error as { retryable?: boolean } | null;
-      return error?.retryable ? SERVER_RETRY_MS : false;
-    },
+    // While there is no answer to be had, keep asking.
+    refetchInterval: (query) => (isTemporary(query.state.error) ? SERVER_RETRY_MS : false),
   });
 }

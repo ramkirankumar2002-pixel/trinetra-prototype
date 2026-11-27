@@ -9,7 +9,7 @@ import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react
 import { useT } from "@/i18n/use-t";
 import type { MessageKey } from "@/i18n/translate";
 import { api, ApiError } from "@/lib/api";
-import { AREAS, type AreaName } from "@/lib/areas";
+import { afterLoginPath, AREAS, type AreaName } from "@/lib/areas";
 import { useMe } from "@/lib/session";
 import { LanguageSwitch } from "./language-switch";
 import { AuthShell } from "./layout/auth-shell";
@@ -89,7 +89,9 @@ export function LoginScreen({
   goTo?: (path: string) => void;
 }) {
   const t = useT();
-  const { role, home } = AREAS[area];
+  const { role } = AREAS[area];
+  // The page that was open when the login ended, or this part's home.
+  const home = () => afterLoginPath(area, window.location.search);
   const required = t(`role.${role}`);
 
   const me = useMe({ redirectOn401: false });
@@ -120,10 +122,10 @@ export function LoginScreen({
   // Already logged in with the right role (but not by the form just now).
   const alreadyIn = me.data?.role === role;
   useEffect(() => {
-    if (alreadyIn) goTo(home);
+    if (alreadyIn) goTo(home());
     // Only when the answer arrives, not again for each new goTo function.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alreadyIn, home]);
+  }, [alreadyIn, area]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -145,7 +147,7 @@ export function LoginScreen({
       }
       rememberUsername(area, name);
       // Stays busy while the next page loads.
-      goTo(home);
+      goTo(home());
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "UNKNOWN";
       const details = error instanceof ApiError ? error.details : undefined;

@@ -17,8 +17,8 @@ const SHOWN: Record<ConnectionStatus, { tone: Tone; key: MessageKey }> = {
 };
 
 /** This screen's own link to the server. */
-export function ConnectionStatusLight() {
+export function ConnectionStatusLight({ testId = "connection" }: { testId?: string }) {
   const t = useT();
   const { tone, key } = SHOWN[useSocketStatus()];
-  return <StatusLight data-testid="connection" tone={tone} label={t(key)} />;
+  return <StatusLight data-testid={testId} tone={tone} label={t(key)} />;
 }

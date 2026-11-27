@@ -92,7 +92,7 @@ function Home() {
             ]}
           />
         </Panel>
-        <SampleAlertsPanel area="store" />
+        <SampleAlertsPanel />
       </div>
     </>
   );

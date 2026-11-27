@@ -23,7 +23,7 @@ export function LanguageSwitch({
           key={option}
           lang={option}
           size="sm"
-          className="min-h-10 flex-1"
+          className="min-h-12 flex-1"
           variant={option === language ? "primary" : onNavy ? "nav" : "outline"}
           aria-pressed={option === language}
           onClick={() => setLanguage(option)}

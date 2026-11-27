@@ -146,9 +146,10 @@ describe("API client: errors", () => {
 describe("API client: an ended login", () => {
   it.each([
     ["/kiosk", "/kiosk/login"],
-    ["/kiosk/settings", "/kiosk/login"],
+    // With the page to come back to after logging in.
+    ["/kiosk/settings", "/kiosk/login?next=%2Fkiosk%2Fsettings"],
     ["/supervisor", "/supervisor/login"],
-    ["/store/requests/7", "/store/login"],
+    ["/store/requests/7", "/store/login?next=%2Fstore%2Frequests%2F7"],
   ])("on %s goes to %s", async (at, login) => {
     const { client, goTo } = setUp(refusal(401, "NOT_LOGGED_IN"), at);
     expect((await failure(client.get("/api/x"))).code).toBe("NOT_LOGGED_IN");
