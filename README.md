@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 12. A truck's first and second visit of every type works by touch at `/kiosk`, in English and Hindi, with the simulator; the driver's invoice goes up from the phone page. The supervisor's phone pages work (Phase 12; see [testing on your phone](docs/PROGRESS.md#testing-on-your-phone)). The store officer's dashboard still shows sample data (`pnpm office` makes those decisions meanwhile). The real firmware (Phase 5B) is not built yet.
+**Current state:** Phase 12. A truck's first and second visit of every type works by touch at `/kiosk`, in English and Hindi, with the simulator; the driver's invoice goes up from the phone page. The supervisor's phone pages work (Phase 12; see [testing on your phone](docs/PROGRESS.md#testing-on-your-phone)). The store officer's website works on a laptop and a phone (Phase 13; see [testing the store officer](docs/PROGRESS.md#testing-the-store-officer)). The real firmware (Phase 5B) is not built yet.
 
 ## Folder layout
 
@@ -163,6 +163,10 @@ Request and answer types are in [packages/shared/src/tickets.ts](packages/shared
 | `POST /api/supervisor/tickets/:id/photo`                  | Its supervisor               | Live JPEG with optional `lat`, `lng`, `accuracyM` form fields; plate match (3 photos)                                                                   |
 | `POST /api/approvals/:id/decide`                          | Supervisor, store            | `APPROVE` or `REJECT`; a decision cannot be changed                                                                                                     |
 | `GET /api/store/requests?status=`                         | Store                        | Requests (`pending` or `done`), newest first, and warnings of the last 24 hours                                                                         |
+| `GET /api/store/requests/:id`                             | Store                        | One request with its ticket's summary                                                                                                                   |
+| `POST /api/store/requests/:id/invoice`                    | Store                        | The bill of a driver without a phone, for a pending help call; read like the driver's own upload                                                        |
+| `GET /api/store/summary`                                  | Store                        | The numbers on the store officer's home                                                                                                                 |
+| `GET /api/store/trucks`, `GET /api/store/history?q=`      | Store                        | Trucks on site now; today's completed, rejected and blocked tickets (search by plate or ticket number)                                                  |
 | `POST /api/help`                                          | Kiosk                        | Calls the store officer                                                                                                                                 |
 | `GET /api/public/tickets/:ticketNo`                       | Anyone                       | Read-only timeline without phone numbers                                                                                                                |
 | `GET /api/live/summary`                                   | Anyone                       | Counts for the projector screen                                                                                                                         |
@@ -206,7 +210,7 @@ To try the role guard, start the server with `NODE_ENV=test`. That adds `/api/te
 
 You need `DEVICE_TOKEN`, `CAM_FRONT_TOKEN`, `CAM_BACK_TOKEN` and `ADMIN_PIN` in `apps/server/.env`, and a seeded database. Use three terminals: `pnpm dev`, the simulator, and one for `pnpm office`.
 
-1. `pnpm office reset`, then `pnpm office pick cement` (or `sand`, `steel-scrap`, `aggregate`, `steel-bars`). It prints the simulator command and the material to choose.
+1. `pnpm office reset`, then `pnpm office pick cement` (or `sand`, `steel-scrap`, `aggregate`, `steel-bars`, `bitumen`). It prints the simulator command and the material to choose.
 2. In the simulator terminal: `pnpm sim --loaded 32560` (the number it printed).
 3. In Chrome open <http://localhost:3000/kiosk> and log in as `wb01`, PIN `3001`.
 4. Press `a` in the simulator: a loaded truck drives on. Answer on screen. At the QR code, click it (development only) and upload `scripts/sample-invoices/<name>.pdf` in the new tab.
@@ -306,7 +310,7 @@ With `pnpm dev` running (and the database seeded):
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | <http://localhost:3000/kiosk>      | The kiosk user (landscape, 1366×768 or 1920×1080)                                                                   |
 | <http://localhost:3000/supervisor> | A supervisor (made for a phone)                                                                                     |
-| <http://localhost:3000/store>      | The store officer (made for a phone)                                                                                |
+| <http://localhost:3000/store>      | The store officer (laptop first; also a phone)                                                                      |
 | <http://localhost:3000/dev/ui>     | No login: the design system; `?kiosk=details` and others show sample weighbridge screens (not in production builds) |
 
 Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/default-data.ts), and `pnpm db:seed` prints them. One browser holds one login: logging in to another part replaces it. To be logged in to two at once, use two browser profiles or a private window.
@@ -394,14 +398,14 @@ With `pnpm dev` running, open <http://localhost:3000/dev/readers> and log in as 
 
 If a service fails on stage, these settings replace it. They are in [default-data.ts](packages/shared/src/seed/default-data.ts); edit them and run `pnpm db:seed` (a settings page comes in Phase 14). Running `pnpm db:seed` also puts them back to whatever the file says.
 
-| Setting     | Values         | Effect of `pick`                                                                                |
-| ----------- | -------------- | ----------------------------------------------------------------------------------------------- |
-| `anpr_mode` | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                |
-| `ocr_mode`  | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand` or `aggregate` |
+| Setting     | Values         | Effect of `pick`                                                                                                         |
+| ----------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `anpr_mode` | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                                         |
+| `ocr_mode`  | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand`, `aggregate`, `steel-bars` or `bitumen` |
 
 ### Sample invoices and the real check
 
-[scripts/sample-invoices](scripts/sample-invoices) holds five made-up **SAMPLE** invoices as PDF and JPEG, one per demo scenario (`pnpm sim:invoices` draws them). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
+[scripts/sample-invoices](scripts/sample-invoices) holds six made-up **SAMPLE** invoices as PDF and JPEG, one per demo scenario (`pnpm sim:invoices` draws them). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
 
 This reads them all with the **real services** (about 10 plate lookups and 4 Gemini requests):
 

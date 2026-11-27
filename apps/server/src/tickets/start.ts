@@ -139,17 +139,22 @@ export async function startTicket(
     });
 
     const previous = await tx
-      .select({ status: tickets.status, closedAt: tickets.closedAt })
+      .select({ status: tickets.status, closedAt: tickets.closedAt, ticketNo: tickets.ticketNo })
       .from(tickets)
       .where(
         and(eq(tickets.plate, request.plate), inArray(tickets.status, ["BLOCKED", "REJECTED"])),
       );
     if (needsPlateApproval(previous, new Date())) {
+      // For the store officer: the ticket, or the newest of them, that caused the check.
+      const earlier = previous
+        .filter((row) => needsPlateApproval([row], new Date()))
+        .sort((a, b) => (b.closedAt?.getTime() ?? 0) - (a.closedAt?.getTime() ?? 0))[0]!;
       await createApproval(
         tx,
         ticket!,
         { kind: "PLATE_WARNING", plateWarningReason: "BLOCKED_HISTORY" },
         "system",
+        { earlierTicketNo: earlier.ticketNo, earlierStatus: earlier.status },
       );
     }
     await finish(ticket!);

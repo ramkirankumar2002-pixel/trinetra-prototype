@@ -20,7 +20,14 @@ export function EmptyPage({
   const t = useT();
   const icon = MENUS[area].find((item) => item.href === `/${area}/${page}`)?.icon;
   return (
-    <RoleShell area={area}>
+    <RoleShell
+      area={area}
+      {...(area === "store"
+        ? {
+            page: { section: `/${area}`, title: "menu.profile", subtitle: "page.profile.subtitle" },
+          }
+        : {})}
+    >
       <Card className="min-h-80">
         <EmptyState {...(icon ? { icon } : {})} title={t("empty.title")}>
           {t(text)}

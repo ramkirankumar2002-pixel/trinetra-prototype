@@ -17,7 +17,7 @@ Goal: **simple and attractive.** One main thing on each screen, a lot of room, a
 3. **All screen text goes in both `en.json` and `hi.json`** and is read with `useT()`. Check every new screen in Hindi: its words are often longer.
 4. **Digits are 0–9 in both languages.** Weights use `formatKg()`, times `formatIST()`.
 5. **The backend owns the weight.** A component may show a weight; nothing sends one.
-6. **Made-up data is marked** with `SampleTag`, uses plates starting `XX` and tickets starting `SAMPLE`, and lives only in `src/lib/sample-data.ts` (and `/dev`). Delete it when the real data arrives.
+6. **No made-up data** on a real page (only under `/dev`). Staff pages show what the backend says, or say that there is nothing.
 
 ## Themes
 
@@ -136,7 +136,9 @@ Use it through `RoleShell`, which fills it in. The menus are in `src/lib/menus.t
 
 Top bar: menu button, page title with the connection light (and the subtitle on wide screens), date and time, the bell with a red count, and the user's picture with name and role (name and role on very wide screens). On a phone it keeps only the menu button, title, connection, bell and picture.
 
-The supervisor's bell counts the trucks waiting. **The store officer's bell counts sample alerts** until Phase 13.
+The supervisor's bell counts the trucks waiting; the store officer's, the requests waiting.
+
+**Store officer pages** are made for a laptop first and must work on a phone: the same 48 px buttons. On a wide screen a request's page keeps the decision beside the facts; on a phone it follows them.
 
 **Supervisor pages** are made for a phone: every button and link used as a button is at least 48 px tall (`size="lg"`), and `tests/e2e/supervisor.spec.ts` measures it.
 
@@ -175,7 +177,7 @@ The full logo and one white card on navy: the staff logins and pages without a m
 | `LogoMark`, `LogoFull`           | **Only on `nav` navy:** the picture has a solid navy background       |
 | `ConnectionStatusLight`, `WeighbridgeStatusLight` | This screen's connection; the ESP32 online or offline |
 
-| `LiveCamera` (`components/camera`) | Every photo staff take: the back camera inside the page, no gallery. Also for the store pages |
+| `LiveCamera` (`components/camera`) | Every photo staff take: the back camera inside the page. `subject="bill"` frames a page. Only the store officer's bill upload also offers a file |
 | `NetworkBanner`                    | Lost network. Nothing is queued                                                              |
 | `PlateText`, `ZoomPhoto` (`components/supervisor/parts`) | A number plate in large letters; a photo that a tap enlarges            |
 
@@ -202,8 +204,14 @@ The full logo and one white card on navy: the staff logins and pages without a m
 | `KpiCard`       | One number that matters, with a circle colour, and optionally a small change or a progress ring. 4 in a row (2 on a phone) |
 | `Panel`         | A card with a heading and optionally "View all"                                                                      |
 | `DataTable`     | Any list with columns. It becomes stacked cards when narrow. Mark buttons `actions`; mark ticket numbers and plates `nowrap` |
-| `AlertList`     | Recent happenings: coloured icon, title, detail, time                                                                |
-| `SampleTag`     | Beside anything made up                                                                                              |
+
+### Store officer (`components/store`)
+
+| Component | When to use it |
+| --- | --- |
+| `KindPill`, `TicketStatusPill`, `WaitPill` | The kind of a request; a ticket's status; how long it has waited (amber from 5 minutes, red from 10) |
+| `ReasonForm` | Every decision that needs a reason: tap one, or type; nothing is confirmed without it |
+| `TruckCard`, `PhotosCard`, `BillCard`, `WeightsCard`, `HoldCalculation`, `TimelineCard` | One ticket, as cards |
 
 ## Pictures and icons
 

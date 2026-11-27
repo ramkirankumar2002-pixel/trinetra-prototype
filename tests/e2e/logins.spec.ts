@@ -25,8 +25,8 @@ const ROLES = [
     path: "store",
     username: "ram",
     size: { width: 390, height: 760 },
-    english: "Requests to decide",
-    hindi: "फ़ैसले के अनुरोध",
+    english: "Waiting longest",
+    hindi: "सबसे ज़्यादा देर से इंतज़ार",
   },
 ] as const;
 

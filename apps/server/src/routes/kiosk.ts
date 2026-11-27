@@ -23,8 +23,9 @@ export function registerKioskRoutes(app: FastifyInstance, state: HardwareState):
     },
   );
 
-  /** The lists the kiosk's tiles are made from. */
-  app.get("/api/master", kiosk, async (): Promise<MasterResponse> => {
+  /** The lists the kiosk's tiles, and the store officer's material list, are made from. */
+  const lists = { preHandler: requireRole("KIOSK", "STORE") };
+  app.get("/api/master", lists, async (): Promise<MasterResponse> => {
     const [materialRows, supplierRows, transporterRows] = await Promise.all([
       app.db.select().from(materials).orderBy(asc(materials.id)),
       app.db.select().from(suppliers).orderBy(asc(suppliers.name)),

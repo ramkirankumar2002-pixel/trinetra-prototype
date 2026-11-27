@@ -39,7 +39,7 @@ export function Panel({
         </h2>
         {tag}
         {viewAll && (
-          <Button asChild variant="outline" size="sm" className="ml-auto">
+          <Button asChild variant="outline" size="sm" className="ml-auto min-h-12">
             <Link href={viewAll.href}>{viewAll.label}</Link>
           </Button>
         )}

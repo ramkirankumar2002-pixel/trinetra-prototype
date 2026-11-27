@@ -21,6 +21,16 @@ export interface Shot {
   source: CaptureSource;
 }
 
+/** What is photographed: it decides the box in the viewfinder and the words under it. */
+export type CameraSubject = "plate" | "bill";
+
+const SUBJECTS: Record<CameraSubject, { hint: MessageKey; box: string }> = {
+  // A number plate's shape.
+  plate: { hint: "camera.hint", box: "aspect-[3/1] w-4/5 max-w-md" },
+  // A page held upright.
+  bill: { hint: "camera.billHint", box: "aspect-[3/4] h-[92%]" },
+};
+
 const PROBLEMS: Record<CameraProblem, MessageKey> = {
   denied: "camera.denied",
   missing: "camera.missing",
@@ -52,7 +62,7 @@ function Problem({ problem, onRetry }: { problem: CameraProblem; onRetry: () => 
   );
 }
 
-function Viewfinder({ onShot }: { onShot: (shot: Shot) => void }) {
+function Viewfinder({ onShot, subject }: { onShot: (shot: Shot) => void; subject: CameraSubject }) {
   const t = useT();
   const video = useRef<HTMLVideoElement>(null);
   const [attempt, setAttempt] = useState(0);
@@ -126,14 +136,16 @@ function Viewfinder({ onShot }: { onShot: (shot: Shot) => void }) {
         />
         {ready ? (
           <div aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center">
-            {/* A number plate's shape. The dark ring around it draws the eye inside. */}
-            <div className="aspect-[3/1] w-4/5 max-w-md rounded-lg border-4 border-white shadow-[0_0_0_100vmax_rgb(0_0_0/0.35)]" />
+            {/* The dark ring around the box draws the eye inside. */}
+            <div
+              className={`${SUBJECTS[subject].box} rounded-lg border-4 border-white shadow-[0_0_0_100vmax_rgb(0_0_0/0.35)]`}
+            />
           </div>
         ) : (
           <Spinner className="absolute inset-0 text-white" label={t("camera.starting")} />
         )}
       </div>
-      <p className="text-center text-muted-foreground">{t("camera.hint")}</p>
+      <p className="text-center text-muted-foreground">{t(SUBJECTS[subject].hint)}</p>
       <Button size="lg" disabled={!ready || busy} onClick={() => void take()}>
         <Camera aria-hidden />
         {t("camera.take")}
@@ -185,7 +197,13 @@ function CameraApp({ onShot }: { onShot: (shot: Shot) => void }) {
   );
 }
 
-export function LiveCamera({ onShot }: { onShot: (shot: Shot) => void }) {
+export function LiveCamera({
+  onShot,
+  subject = "plate",
+}: {
+  onShot: (shot: Shot) => void;
+  subject?: CameraSubject;
+}) {
   // Known only in the browser: the page the server sends cannot tell.
   const live = useSyncExternalStore<boolean | null>(
     () => () => {},
@@ -193,5 +211,5 @@ export function LiveCamera({ onShot }: { onShot: (shot: Shot) => void }) {
     () => null,
   );
   if (live === null) return null;
-  return live ? <Viewfinder onShot={onShot} /> : <CameraApp onShot={onShot} />;
+  return live ? <Viewfinder onShot={onShot} subject={subject} /> : <CameraApp onShot={onShot} />;
 }

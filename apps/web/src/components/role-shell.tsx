@@ -8,14 +8,15 @@ import type { ReactNode } from "react";
 import type { MessageKey } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
 import { MENUS, type StaffArea } from "@/lib/menus";
-import { SAMPLE_ALERTS } from "@/lib/sample-data";
 import { useOnReconnect } from "@/lib/socket-hooks";
+import { useStorePending } from "@/lib/store/queries";
 import { useSupervisorTrucks } from "@/lib/supervisor/queries";
 import { ConnectionStatusLight } from "./connection-status";
 import { DashboardShell } from "./layout/dashboard-shell";
 import { LogoutButton } from "./logout-button";
 import { NetworkBanner } from "./network-banner";
 import { useCurrentUser } from "./require-role";
+import { StoreWatcher } from "./store/watcher";
 import { TruckWatcher } from "./supervisor/watcher";
 import { ToastProvider, useToast } from "./ui/toast";
 
@@ -32,12 +33,8 @@ function Messages({ area, children }: { area: StaffArea; children: ReactNode }) 
   return (
     <ToastProvider label={t("shell.notification")}>
       <BackOnlineMessage />
-      {area === "supervisor" && (
-        <>
-          <TruckWatcher />
-          <NetworkBanner />
-        </>
-      )}
+      {area === "supervisor" ? <TruckWatcher /> : <StoreWatcher />}
+      <NetworkBanner />
       {children}
     </ToastProvider>
   );
@@ -60,6 +57,7 @@ export function RoleShell({ area, page: own, children }: RoleShellProps) {
   const home = menu[0]!.href;
   const supervisor = area === "supervisor";
   const trucks = useSupervisorTrucks("pending", supervisor);
+  const requests = useStorePending(!supervisor);
 
   return (
     <DashboardShell
@@ -72,8 +70,7 @@ export function RoleShell({ area, page: own, children }: RoleShellProps) {
       alerts={
         supervisor
           ? { count: trucks.data?.tickets.length ?? 0, href: `${home}/trucks` }
-          : // Sample alerts until Phase 13.
-            { count: SAMPLE_ALERTS.length, href: `${home}#alerts` }
+          : { count: requests.data?.requests.length ?? 0, href: `${home}/approvals` }
       }
       logout={<LogoutButton area={area} variant="nav-danger" className="w-full" />}
     >

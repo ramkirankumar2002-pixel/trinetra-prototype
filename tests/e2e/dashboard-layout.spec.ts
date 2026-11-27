@@ -4,8 +4,23 @@ import { expect, test, type Page } from "@playwright/test";
 import { signIn } from "./staff-session";
 
 const AREAS = [
-  { path: "supervisor", username: "amit", pages: ["", "/trucks", "/done", "/profile"] },
-  { path: "store", username: "ram", pages: ["", "/requests", "/done", "/profile"] },
+  {
+    path: "supervisor",
+    username: "amit",
+    pages: ["", "/trucks", "/done", "/profile"],
+    numbers: 5,
+    // A bottom tab, then a page chosen in the drawer.
+    tab: { name: "Done", route: "done", title: "Done today" },
+    drawer: { name: "Profile", route: "profile" },
+  },
+  {
+    path: "store",
+    username: "ram",
+    pages: ["", "/approvals", "/trucks", "/history"],
+    numbers: 6,
+    tab: { name: "History", route: "history", title: "History" },
+    drawer: { name: "Trucks on site", route: "trucks" },
+  },
 ];
 
 const SIZES = [
@@ -53,20 +68,9 @@ for (const area of AREAS) {
         }
 
         await page.goto(`/${area.path}`);
-        if (area.path === "supervisor") {
-          // Real numbers: nothing on the supervisor's pages is a sample.
-          await expect(page.getByTestId("kpi")).toHaveCount(5);
-          await expect(page.getByTestId("sample")).toHaveCount(0);
-          continue;
-        }
-        await expect(page.getByTestId("kpi")).toHaveCount(4);
-        // Everything made up is marked as a sample.
-        await expect(page.getByTestId("sample").first()).toBeVisible();
-        // The table is a table where there is room, and cards on a phone.
-        const row = page.getByRole("table").getByRole("row").nth(1);
-        const display = await row.evaluate((element) => getComputedStyle(element).display);
-        if (phone) expect(display).toBe("flex");
-        if (size.width >= 1440) expect(display).toBe("table-row");
+        // Real numbers: nothing on the staff pages is a sample.
+        await expect(page.getByTestId("kpi")).toHaveCount(area.numbers);
+        await expect(page.getByTestId("sample")).toHaveCount(0);
       }
     });
   }
@@ -78,30 +82,17 @@ for (const area of AREAS) {
     await expect(page.getByTestId("connection")).toHaveText("Online");
 
     const tabs = page.getByRole("navigation", { name: "Main pages" });
-    await tabs.getByRole("link", { name: "Done" }).click();
-    await expect(page).toHaveURL(new RegExp(`/${area.path}/done$`));
-    await expect(page.getByRole("heading", { name: "Done today" })).toBeVisible();
+    await tabs.getByRole("link", { name: area.tab.name }).click();
+    await expect(page).toHaveURL(new RegExp(`/${area.path}/${area.tab.route}$`));
+    await expect(page.getByRole("heading", { level: 1, name: area.tab.title })).toBeVisible();
 
     await page.getByRole("button", { name: "Open menu" }).click();
     const drawer = page.getByRole("dialog", { name: "Menu" });
-    await drawer.getByRole("link", { name: "Profile" }).click();
+    await drawer.getByRole("link", { name: area.drawer.name }).click();
     // The drawer closes once a page is chosen.
     await expect(drawer).toHaveCount(0);
-    await expect(page).toHaveURL(new RegExp(`/${area.path}/profile$`));
+    await expect(page).toHaveURL(new RegExp(`/${area.path}/${area.drawer.route}$`));
     // Moving between pages keeps the live connection.
     await expect(page.getByTestId("connection")).toHaveText("Online");
-  });
-
-  if (area.path !== "store") continue;
-  test(`${area.path} sample buttons change nothing and say so`, async ({ page, context }) => {
-    await signIn(context, area.username);
-    const writes: string[] = [];
-    page.on("request", (request) => {
-      if (request.method() !== "GET" && request.url().includes("/api/")) writes.push(request.url());
-    });
-    await page.goto(`/${area.path}`);
-    await page.getByRole("button", { name: "Approve" }).first().click();
-    await expect(page.getByText("This is sample data. Nothing was changed.").first()).toBeVisible();
-    expect(writes).toEqual([]);
   });
 }

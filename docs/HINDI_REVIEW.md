@@ -320,3 +320,223 @@ New or changed for the supervisor's pages and the "No phone?" screen. Not checke
 | `sup.error.reason` | The reason is too short. | कारण बहुत छोटा है। |
 | `sup.error.notYours` | This truck was not sent to your unloading point. | यह ट्रक आपकी उतारने की जगह पर नहीं भेजा गया। |
 | `sup.error.noTruck` | This truck was not found. | यह ट्रक नहीं मिला। |
+
+## Phase 13
+
+New for the store officer's pages (and the camera's hint for a bill). Not checked by a Hindi speaker. Reasons are saved in English whatever the language.
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `menu.approvals` | Approvals | मंज़ूरियाँ |
+| `menu.onSite` | Trucks on site | साइट पर ट्रक |
+| `menu.history` | History | इतिहास |
+| `tab.approvals` | Approvals | मंज़ूरियाँ |
+| `tab.onSite` | On site | साइट पर |
+| `tab.history` | History | इतिहास |
+| `page.approvals.subtitle` | The longest wait comes first | सबसे लंबा इंतज़ार सबसे ऊपर |
+| `page.onSite.subtitle` | Every truck whose visit has not ended | जिन ट्रकों का काम पूरा नहीं हुआ |
+| `page.history.subtitle` | Trucks finished or turned away today | आज पूरे हुए या लौटाए गए ट्रक |
+| `camera.billHint` | Put the whole bill inside the box. | पूरा बिल बॉक्स के अंदर रखें। |
+| `store.request.title` | Request | अनुरोध |
+| `store.request.subtitle` | Check the truck, then decide | ट्रक जाँचें, फिर फ़ैसला करें |
+| `store.ticket.title` | Truck details | ट्रक की जानकारी |
+| `store.ticket.subtitle` | To read only | सिर्फ़ देखने के लिए |
+| `store.kpi.waiting` | Waiting for me | मेरे इंतज़ार में |
+| `store.kpi.approved` | Approved | मंज़ूर |
+| `store.kpi.onSite` | Trucks on site | साइट पर ट्रक |
+| `store.kpi.completed` | Completed trips | पूरे हुए फेरे |
+| `store.note.now` | now | अभी |
+| `store.note.today` | today | आज |
+| `store.live.on` | Connected. New requests appear by themselves. | जुड़ा हुआ है। नए अनुरोध अपने-आप दिखेंगे। |
+| `store.live.off` | Not connected. Trying again… | जुड़ा नहीं है। फिर कोशिश हो रही है… |
+| `store.tapForSound` | Tap the screen once to turn on the sound for new requests. | नए अनुरोध की आवाज़ चालू करने के लिए स्क्रीन को एक बार छुएँ। |
+| `store.oldest` | Waiting longest | सबसे ज़्यादा देर से इंतज़ार |
+| `store.nothingWaiting` | Nothing is waiting for you | आपके लिए कुछ बाकी नहीं है |
+| `store.nothingWaiting.text` | New requests will appear here by themselves. | नए अनुरोध यहाँ अपने-आप दिखेंगे। |
+| `store.nothingOfKind` | No request of this kind is waiting. | इस तरह का कोई अनुरोध बाकी नहीं है। |
+| `store.open` | Open | खोलें |
+| `store.filter.label` | Show | दिखाएँ |
+| `store.filter.all` | All | सभी |
+| `store.filter.type2` | Type 2 | टाइप 2 |
+| `store.filter.hold` | HOLD | रोक (HOLD) |
+| `store.filter.mismatch` | Mismatch | बेमेल |
+| `store.filter.help` | Driver help | ड्राइवर मदद |
+| `store.filter.plate` | Plate | प्लेट |
+| `store.kind.type2` | Type 2 check | टाइप 2 जाँच |
+| `store.kind.hold` | Weight HOLD | वज़न पर रोक |
+| `store.kind.mismatch` | Material mismatch | सामान बेमेल |
+| `store.kind.help` | Driver help | ड्राइवर मदद |
+| `store.kind.blocked` | Blocked plate | रोकी गई प्लेट |
+| `store.kind.frontBack` | Plates differ | प्लेट अलग-अलग |
+| `store.kind.supervisor` | Blocked by supervisor | सुपरवाइज़र ने रोका |
+| `store.toast.new` | New request: {kind}, {plate} | नया अनुरोध: {kind}, {plate} |
+| `store.toast.newNoTruck` | New request: {kind} | नया अनुरोध: {kind} |
+| `store.toast.blocked` | A supervisor blocked a truck. See History. | सुपरवाइज़र ने एक ट्रक रोका है। इतिहास देखें। |
+| `store.warnings` | Warnings (no decision needed) | चेतावनियाँ (फ़ैसले की ज़रूरत नहीं) |
+| `store.warning.DUPLICATE_INVOICE` | Bill used before. | यह बिल पहले इस्तेमाल हुआ है। |
+| `store.warning.INVOICE_VEHICLE_MISMATCH` | Bill names another truck. | बिल पर दूसरे ट्रक का नंबर है। |
+| `store.type` | Truck type | ट्रक का टाइप |
+| `store.photos` | Photos | फ़ोटो |
+| `store.photo.front` | Front plate | आगे की प्लेट |
+| `store.photo.back` | Back plate | पीछे की प्लेट |
+| `store.photo.supervisor` | Supervisor's photo | सुपरवाइज़र की फ़ोटो |
+| `store.bill` | Bill | बिल |
+| `store.bill.none` | No bill has been uploaded. | कोई बिल अपलोड नहीं हुआ है। |
+| `store.bill.openPdf` | Open the PDF | PDF खोलें |
+| `store.bill.noPreview` | This browser cannot show the PDF here. Use the button below. | यह ब्राउज़र PDF यहाँ नहीं दिखा सकता। नीचे का बटन दबाएँ। |
+| `store.bill.readBy` | Read from the bill by Gemini | Gemini ने बिल से यह पढ़ा |
+| `store.bill.readDemo` | Demo reading (not read from this file) | डेमो जानकारी (इस फ़ाइल से नहीं पढ़ी गई) |
+| `store.bill.model` | Reader model | पढ़ने वाला मॉडल |
+| `store.bill.noConfidence` | The bill reader gives no confidence figure. Compare these values with the bill. | बिल पढ़ने वाला भरोसे का कोई अंक नहीं देता। इन्हें बिल से मिलाकर देखें। |
+| `store.billWarning.VEHICLE_MISMATCH` | The bill names another truck. | बिल पर दूसरे ट्रक का नंबर है। |
+| `store.billWarning.WEIGHT_UNIT_UNKNOWN` | No weight could be worked out from the bill. | बिल से वज़न नहीं निकाला जा सका। |
+| `store.billWarning.MATERIAL_NOT_RECOGNISED` | The material on the bill is not clearly one of ours. | बिल का सामान हमारी सूची में साफ़ नहीं मिलता। |
+| `store.vendor` | Vendor | विक्रेता |
+| `store.notRead` | Not read | पढ़ा नहीं गया |
+| `store.weights` | Weights | वज़न |
+| `store.weight.held` | First weight (held) | पहला वज़न (रोका हुआ) |
+| `store.weight.firstAt` | First weighed | पहली तौल का समय |
+| `store.weight.accepted` | Accepted weight | माना गया वज़न |
+| `store.calc.title` | The calculation | हिसाब |
+| `store.calc.netHow` | first weight − second weight | पहला वज़न − दूसरा वज़न |
+| `store.calc.difference` | Difference in kg | फ़र्क (किलो) |
+| `store.calc.differenceHow` | net weight − invoice weight | नेट वज़न − बिल का वज़न |
+| `store.calc.percent` | Difference % | फ़र्क % |
+| `store.calc.percentHow` | difference ÷ invoice weight × 100 | फ़र्क ÷ बिल का वज़न × 100 |
+| `store.calc.limit` | Allowed limit | तय सीमा |
+| `store.calc.over` | {variance}% is more than the limit of {limit}%. | {variance}% तय सीमा {limit}% से ज़्यादा है। |
+| `store.calc.noInvoice` | There is no invoice weight to compare with. | मिलाने के लिए बिल का वज़न नहीं है। |
+| `store.calc.badWeights` | The two weights are not valid. | दोनों वज़न सही नहीं हैं। |
+| `store.timeline` | Timeline | घटनाक्रम |
+| `store.driverSaid` | Driver said | ड्राइवर ने बताया |
+| `store.billSays` | Bill says | बिल में लिखा है |
+| `store.yourDecision` | Your decision | आपका फ़ैसला |
+| `store.decision` | What was decided | क्या फ़ैसला हुआ |
+| `store.approved` | Approved | मंज़ूर |
+| `store.chosenWeight` | Weight accepted | माना गया वज़न |
+| `store.type2.text` | The truck is waiting aside. First weight held: {kg}. Approve to save it. | ट्रक किनारे इंतज़ार कर रहा है। रोका हुआ पहला वज़न: {kg}। सेव करने के लिए मंज़ूर करें। |
+| `store.hold.text` | Choose the weight for the final slip, or reject the truck. | आखिरी पर्ची के लिए वज़न चुनें, या ट्रक अस्वीकार करें। |
+| `store.action.acceptNet` | Accept NET weight: {kg} | नेट वज़न मानें: {kg} |
+| `store.action.acceptInvoice` | Accept INVOICE weight: {kg} | बिल का वज़न मानें: {kg} |
+| `store.action.confirmInvoice` | Accept invoice weight | बिल का वज़न मानें |
+| `store.action.rejectTruck` | Reject truck | ट्रक अस्वीकार करें |
+| `store.action.setMaterial` | Set material and continue | सामान तय करें और आगे बढ़ें |
+| `store.action.seen` | Seen | देख लिया |
+| `store.action.allow` | Allow | अनुमति दें |
+| `store.action.allowTruck` | Allow truck | ट्रक को अनुमति दें |
+| `store.action.handled` | Mark as handled | निपटा हुआ मानें |
+| `store.ask.reject` | Reject {plate} | {plate} को अस्वीकार करें |
+| `store.ask.invoice` | Accept the invoice weight {kg} for {plate} | {plate} के लिए बिल का वज़न {kg} मानें |
+| `store.ask.allow` | Allow {plate} to be weighed | {plate} को तौलने की अनुमति दें |
+| `store.reason.why` | Why? Tap a reason, or type one. | क्यों? कोई कारण दबाएँ, या लिखें। |
+| `store.reason.type` | More words | और जानकारी |
+| `store.reason.wrongMaterial` | Wrong material | गलत सामान |
+| `store.reason.wrongBill` | Wrong or unclear bill | गलत या धुँधला बिल |
+| `store.reason.weight` | Weight does not match | वज़न मेल नहीं खाता |
+| `store.reason.notAllowed` | Not allowed to enter | अंदर आने की अनुमति नहीं |
+| `store.reason.loss` | Loss on the way (moisture or spillage) | रास्ते में कमी (नमी या सामान गिरना) |
+| `store.reason.difference` | Weighbridge difference accepted | वेब्रिज का फ़र्क स्वीकार है |
+| `store.reason.supplier` | Checked with the supplier | सप्लायर से पुष्टि की |
+| `store.reason.checked` | Checked the truck in person | खुद जाकर ट्रक जाँचा |
+| `store.reason.mistake` | Earlier rejection was a mistake | पिछली अस्वीकृति गलती थी |
+| `store.reason.fixed` | Problem has been fixed | समस्या ठीक हो गई |
+| `store.mismatch.pick` | Correct material | सही सामान |
+| `store.mismatch.choose` | Choose the material | सामान चुनें |
+| `store.frontBack.text` | A warning only: the front and back cameras read different plates. The truck is not stopped. | सिर्फ़ चेतावनी: आगे और पीछे के कैमरों ने अलग प्लेट पढ़ी। ट्रक रोका नहीं गया है। |
+| `store.blocked.text` | This plate was blocked or rejected in the last 24 hours. It cannot be weighed unless you allow it. | यह प्लेट पिछले 24 घंटों में रोकी या अस्वीकार की गई थी। आपकी अनुमति के बिना तौल नहीं होगी। |
+| `store.blocked.earlierTicket` | Earlier ticket | पिछला टिकट |
+| `store.blocked.earlierResult` | What happened | क्या हुआ था |
+| `store.blocked.bySupervisor` | Blocked by a supervisor | सुपरवाइज़र ने रोका था |
+| `store.blocked.byStore` | Rejected by the store officer | स्टोर अधिकारी ने अस्वीकार किया था |
+| `store.help.text` | The driver asked for help. Help them, then mark it as handled. | ड्राइवर ने मदद माँगी है। मदद करें, फिर इसे निपटा हुआ मानें। |
+| `store.help.noTicket` | The driver pressed Help before a visit began, so there is no truck record. | ड्राइवर ने काम शुरू होने से पहले मदद दबाई, इसलिए ट्रक का कोई रिकॉर्ड नहीं है। |
+| `store.upload.title` | Upload bill for driver | ड्राइवर का बिल अपलोड करें |
+| `store.upload.text` | If the driver has no phone, send their bill from this device. The weighbridge goes on by itself. | ड्राइवर के पास फ़ोन न हो तो उसका बिल इस डिवाइस से भेजें। वेब्रिज अपने-आप आगे बढ़ेगा। |
+| `store.upload.send` | Send the bill | बिल भेजें |
+| `store.upload.another` | Choose another | दूसरा चुनें |
+| `store.upload.closeCamera` | Close the camera | कैमरा बंद करें |
+| `store.upload.pdfReady` | PDF chosen. | PDF चुन ली गई। |
+| `store.upload.sending` | Sending the bill… | बिल भेजा जा रहा है… |
+| `store.upload.failed` | The bill could not be read. Try a clearer photo or the PDF. | बिल पढ़ा नहीं जा सका। साफ़ फ़ोटो या PDF से फिर कोशिश करें। |
+| `store.done.approved` | Approved. The weighbridge has been told. | मंज़ूर। वेब्रिज को बता दिया गया है। |
+| `store.done.rejected` | Rejected. The truck must leave. | अस्वीकार। ट्रक को जाना होगा। |
+| `store.done.seen` | Marked as seen. | देखा हुआ दर्ज किया गया। |
+| `store.done.handled` | Marked as handled. | निपटा हुआ दर्ज किया गया। |
+| `store.done.uploaded` | Done. The bill was read and the weighbridge has gone on. | हो गया। बिल पढ़ लिया गया और वेब्रिज आगे बढ़ गया। |
+| `store.done.material` | Material set. The driver can go on. | सामान तय हो गया। ड्राइवर आगे बढ़ सकता है। |
+| `store.done.taken` | Already handled. | यह पहले ही निपटाया जा चुका है। |
+| `store.next` | Next request | अगला अनुरोध |
+| `store.nextPlate` | Next request: {plate} | अगला अनुरोध: {plate} |
+| `store.backToApprovals` | Back to approvals | मंज़ूरियों पर वापस |
+| `store.error.reason` | Give a reason first. | पहले कारण बताएँ। |
+| `store.error.choice` | That weight cannot be accepted for this truck. | इस ट्रक के लिए यह वज़न नहीं माना जा सकता। |
+| `store.error.noRequest` | This request was not found. | यह अनुरोध नहीं मिला। |
+| `store.column.where` | Where it is | ट्रक कहाँ है |
+| `store.column.since` | Came at | आने का समय |
+| `store.column.who` | Who decided what | किसने क्या फ़ैसला किया |
+| `store.decide` | Decide | फ़ैसला करें |
+| `store.noTrucks` | No truck is on site | साइट पर कोई ट्रक नहीं है |
+| `store.noTrucks.text` | A truck appears here when its visit begins. | काम शुरू होते ही ट्रक यहाँ दिखेगा। |
+| `store.backToTrucks` | Back to trucks on site | साइट के ट्रकों पर वापस |
+| `store.where.answering` | At the weighbridge, answering questions | वेब्रिज पर, सवालों के जवाब दे रहा है |
+| `store.where.needsYou` | At the weighbridge, waiting for you | वेब्रिज पर, आपका इंतज़ार |
+| `store.where.mismatch` | Sent to the store office | स्टोर ऑफ़िस भेजा गया |
+| `store.where.aside` | Waiting aside for you | किनारे आपका इंतज़ार कर रहा है |
+| `store.where.hold` | On HOLD, waiting for you | रोक पर, आपका इंतज़ार |
+| `store.where.supervisor` | Unloading at {point}, waiting for {name} | {point} पर अनलोडिंग, {name} का इंतज़ार |
+| `store.where.readySecond` | Checked by {name}. Ready for second weight | {name} ने जाँच लिया। दूसरी तौल के लिए तैयार |
+| `store.where.unloadThenSecond` | Unloading at {point}, then second weight | {point} पर अनलोडिंग, फिर दूसरी तौल |
+| `store.status.STARTED` | Started | शुरू हुआ |
+| `store.status.MISMATCH_PENDING` | Mismatch | बेमेल |
+| `store.status.STORE_PENDING` | Store check | स्टोर जाँच |
+| `store.status.READY_FOR_UNLOAD` | Ready to unload | अनलोडिंग के लिए तैयार |
+| `store.status.SUPERVISOR_PENDING` | Supervisor check | सुपरवाइज़र जाँच |
+| `store.status.READY_FOR_SECOND` | Second weight due | दूसरी तौल बाकी |
+| `store.status.HOLD_PENDING` | On HOLD | रोक पर |
+| `store.status.COMPLETED` | Completed | पूरा हुआ |
+| `store.status.REJECTED` | Rejected | अस्वीकार |
+| `store.status.BLOCKED` | Blocked | रोका गया |
+| `store.status.ABANDONED` | Left early | बीच में छोड़ा |
+| `store.search` | Search by plate or ticket number | प्लेट या टिकट नंबर से खोजें |
+| `store.noHistory` | No truck has finished today | आज कोई ट्रक पूरा नहीं हुआ |
+| `store.noHistory.text` | Completed, rejected and blocked trucks appear here. | पूरे, अस्वीकार और रोके गए ट्रक यहाँ दिखेंगे। |
+| `store.noMatch` | No truck matches | कोई ट्रक नहीं मिला |
+| `store.noMatch.text` | Only today's finished trucks are searched. | सिर्फ़ आज के पूरे हुए ट्रकों में खोज होती है। |
+| `store.noPerson` | No person had to decide. | किसी को फ़ैसला नहीं करना पड़ा। |
+| `store.approvedBy` | approved by {name}, {time} | {name} ने मंज़ूर किया, {time} |
+| `store.rejectedBy` | rejected by {name}, {time} | {name} ने अस्वीकार किया, {time} |
+| `store.handledBy` | seen by {name}, {time} | {name} ने देखा, {time} |
+| `store.event.TICKET_CREATED` | Visit started | काम शुरू हुआ |
+| `store.event.TICKET_RESUMED` | Visit continued | काम फिर जारी हुआ |
+| `store.event.PLATE_READ` | Number plate read | नंबर प्लेट पढ़ी गई |
+| `store.event.DETAILS_SAVED` | Driver's answers saved | ड्राइवर के जवाब सेव हुए |
+| `store.event.MATERIAL_MISMATCH` | Material did not match the bill | सामान बिल से मेल नहीं खाया |
+| `store.event.INVOICE_LINK_CREATED` | QR code shown for the bill | बिल के लिए QR कोड दिखाया गया |
+| `store.event.INVOICE_RECEIVED` | Bill received | बिल मिला |
+| `store.event.INVOICE_READ` | Bill read | बिल पढ़ा गया |
+| `store.event.INVOICE_READ_FAILED` | Bill could not be read | बिल पढ़ा नहीं जा सका |
+| `store.event.INVOICE_VEHICLE_MISMATCH` | Bill names another truck | बिल पर दूसरे ट्रक का नंबर |
+| `store.event.INVOICE_DUPLICATE` | Bill used before | बिल पहले इस्तेमाल हुआ |
+| `store.event.APPROVAL_REQUESTED` | A person was asked | किसी से फ़ैसला माँगा गया |
+| `store.event.REQUEST_HANDLED` | Request marked as handled | अनुरोध निपटाया गया |
+| `store.event.SUPERVISOR_PHOTO` | Supervisor took a photo | सुपरवाइज़र ने फ़ोटो ली |
+| `store.event.WEIGHT_DISCARDED` | Driver asked to weigh again | ड्राइवर ने दोबारा तौल माँगी |
+| `store.event.SLIP_PRINTED` | Slip printed | पर्ची छापी गई |
+| `store.event.MISMATCH_LIMIT_REACHED` | Sent to the store officer: mismatch | बेमेल के कारण स्टोर अधिकारी को भेजा गया |
+| `store.event.MISMATCH_RESOLVED` | Store officer set the material | स्टोर अधिकारी ने सामान तय किया |
+| `store.event.MISMATCH_REJECTED` | Store officer rejected the truck | स्टोर अधिकारी ने ट्रक अस्वीकार किया |
+| `store.event.FIRST_WEIGHT_SAVED` | First weight saved | पहला वज़न सेव हुआ |
+| `store.event.FIRST_WEIGHT_HELD` | First weight held for the store officer | पहला वज़न स्टोर अधिकारी के लिए रोका गया |
+| `store.event.STORE_APPROVED` | Store officer approved: first weight saved | स्टोर अधिकारी ने मंज़ूर किया: पहला वज़न सेव |
+| `store.event.STORE_REJECTED` | Store officer rejected the truck | स्टोर अधिकारी ने ट्रक अस्वीकार किया |
+| `store.event.SUPERVISOR_REQUESTED` | Sent to the supervisor | सुपरवाइज़र को भेजा गया |
+| `store.event.SECOND_WEIGHT_ALLOWED` | Ready for second weight | दूसरी तौल के लिए तैयार |
+| `store.event.SUPERVISOR_APPROVED` | Supervisor approved | सुपरवाइज़र ने मंज़ूर किया |
+| `store.event.SUPERVISOR_REJECTED` | Supervisor blocked the truck | सुपरवाइज़र ने ट्रक रोका |
+| `store.event.SECOND_WEIGHT_PASSED` | Second weight: matches the bill | दूसरी तौल: बिल से मेल |
+| `store.event.SECOND_WEIGHT_FAILED` | Second weight: put on HOLD | दूसरी तौल: रोक लगाई गई |
+| `store.event.HOLD_APPROVED` | Store officer accepted a weight | स्टोर अधिकारी ने वज़न माना |
+| `store.event.HOLD_REJECTED` | Store officer rejected the truck | स्टोर अधिकारी ने ट्रक अस्वीकार किया |
+| `store.event.PLATE_WARNING_APPROVED` | Store officer allowed the plate | स्टोर अधिकारी ने प्लेट को अनुमति दी |
+| `store.event.PLATE_WARNING_REJECTED` | Store officer refused the plate | स्टोर अधिकारी ने प्लेट को मना किया |
+| `store.event.ABANDON` | Driver left before the first weight | ड्राइवर पहली तौल से पहले चला गया |

@@ -48,7 +48,7 @@ describe.skipIf(!testDatabaseUrl)("the kiosk's lists", { timeout: 30_000 }, () =
 
   it("are for the kiosk only", async () => {
     await h.expectRoles("GET", "/api/kiosk/collect", ["kiosk"]);
-    await h.expectRoles("GET", "/api/master", ["kiosk"]);
+    await h.expectRoles("GET", "/api/master", ["kiosk", "store"]);
   });
 
   it("GET /api/master gives the materials with their other names, and the fleet", async () => {

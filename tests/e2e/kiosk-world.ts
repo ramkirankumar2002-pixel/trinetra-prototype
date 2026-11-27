@@ -1,6 +1,6 @@
 // Everything around the weighbridge screen in the kiosk tests: the ESP32 simulator with
 // both cameras, the demo "pick" modes (so no outside service is used), and the supervisor
-// and store officer, who decide through the API until their screens exist (Phases 12, 13).
+// and store officer deciding through the API (their own pages have their own tests).
 import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";

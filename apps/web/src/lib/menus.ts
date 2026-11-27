@@ -1,6 +1,13 @@
 // The pages of the supervisor and the store officer: the sidebar, the phone's drawer and
 // its bottom tabs are all drawn from these lists.
-import { CircleCheckBig, ClipboardList, LayoutDashboard, Truck, UserRound } from "lucide-react";
+import {
+  CircleCheckBig,
+  ClipboardList,
+  History,
+  LayoutDashboard,
+  Truck,
+  UserRound,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { MessageKey } from "@/i18n/translate";
 import type { AreaName } from "./areas";
@@ -53,16 +60,29 @@ export const MENUS: Record<StaffArea, readonly MenuItem[]> = {
     done("supervisor"),
     profile("supervisor"),
   ],
+  // The profile is reached through the officer's picture in the top bar.
   store: [
     dashboard("store"),
     {
-      href: "/store/requests",
+      href: "/store/approvals",
       icon: ClipboardList,
-      label: "menu.requests",
-      short: "tab.requests",
-      subtitle: "page.requests.subtitle",
+      label: "menu.approvals",
+      short: "tab.approvals",
+      subtitle: "page.approvals.subtitle",
     },
-    done("store"),
-    profile("store"),
+    {
+      href: "/store/trucks",
+      icon: Truck,
+      label: "menu.onSite",
+      short: "tab.onSite",
+      subtitle: "page.onSite.subtitle",
+    },
+    {
+      href: "/store/history",
+      icon: History,
+      label: "menu.history",
+      short: "tab.history",
+      subtitle: "page.history.subtitle",
+    },
   ],
 };

@@ -305,15 +305,52 @@ These are public in the repository. They must be changed before deploying (Phase
 
 The other supervisors see an empty list. After pulling this change, run `pnpm db:seed` (without `--reset`, so tickets are kept).
 
-**To show a truck going to another supervisor:** `pnpm office reset`, `pnpm office pick steel-bars`, `pnpm sim --loaded 32560`, choose **Steel Bars** on the kiosk, and log the phone in as `vikram` (PIN 1005). There is a sample invoice for Steel Bars; there is none for Bitumen.
+**To show a truck going to another supervisor:** `pnpm office reset`, `pnpm office pick steel-bars`, `pnpm sim --loaded 32560`, choose **Steel Bars** on the kiosk, and log the phone in as `vikram` (PIN 1005). Steel Bars and Bitumen both have sample invoices (Bitumen: `pnpm office pick bitumen`).
 
 ## Phase 13 — Store officer website
 
-- [ ] **104.** Requests list with tabs, type badges, live updates, sound.
-- [ ] **105.** Detail page for each request type, with weight / material choice.
-- [ ] **106.** Done list.
+- [x] **104.** Requests list with tabs, type badges, live updates, sound.
+- [x] **105.** Detail page for each request type, with weight / material choice.
+- [x] **106.** Done list (History).
+
+**Also in this phase** (added 2026-11-27, not one of the 120 steps):
+
+- [x] A made-up Bitumen sample bill (`BR 06 QR 4321`) and `pnpm office pick bitumen`.
+- [x] Home with today's real numbers, "Trucks on site", today's history with search, and a read-only ticket page.
+- [x] The server asks for a reason to accept the invoice weight or to allow a blocked plate (every rejection already needed one).
+- [x] Sample data removed.
+- [ ] The new Hindi text needs your review: [HINDI_REVIEW.md](HINDI_REVIEW.md#phase-13).
 
 **Done when:** all five request types work end to end with the kiosk.
+
+✅ Passed on 2026-11-27 **in the browser test only** (Playwright at 1366×768 and 390×844, ESP32 simulator, demo "pick" modes, one computer). Through the real weighbridge screen **and** the real store pages, on both sizes: a Type 2 truck waits and is approved (the first weight is saved); the same truck fails the tolerance and the invoice weight is accepted (the slip shows 14,500 kg); "No phone?" is answered by uploading the bill and the weighbridge goes on by itself. The store pages with trucks made through the kiosk's API: rejecting a Type 2 truck, allowing a blocked plate, fixing a mismatch, "Already handled", a supervisor's block, home numbers, trucks, history and search, and login coming back to the same page. "Seen" for front and back plates that differ is covered by API tests only (the demo mode cannot make two different plates). Pictures are in [screenshots/phase13](screenshots/phase13). All 46 browser tests, all six `pnpm journey` scenarios (the tolerance one also reads the store officer's history), typecheck, lint, unit and API tests and the build passed.
+
+- **Not tried** on a real phone or a real laptop other than this computer: the sound, the camera for a bill, a PDF on a phone (it has an "Open the PDF" button; the in-page preview is shown on wide screens only).
+- No real Gemini call was made: bills were read by the demo "pick" mode.
+- A supervisor's rejection is **not** a HOLD: the ticket is BLOCKED, as before (no new state). The store officer is told by a message and sees it in History; there is nothing to approve.
+- The bill reader gives no confidence figure, so none is shown.
+
+### Testing the store officer
+
+**Store officer login (test only; public in the repository, change before Phase 16):** username `ram`, PIN `2001` (Ram, Sr. Manager). Page: <http://localhost:3000/store>.
+
+Use two browser windows with **separate logins** (for example a normal and a private window): one for `http://localhost:3000/kiosk` (`wb01`, PIN `3001`), one for the store. Three terminals: `pnpm dev`; `pnpm sim` (the commands below say which weights); and one for `pnpm office`. After pulling this phase run `pnpm db:seed` once. Tap the store page once so it may play its sound.
+
+**A Type 2 truck, then a HOLD** (same truck):
+
+1. `pnpm office reset`, `pnpm office pick aggregate`, `pnpm sim --loaded 32560`; press `a` in the simulator.
+2. Kiosk: confirm the plate, upload `scripts/sample-invoices/aggregate.jpg` (click the QR code while developing), choose **Aggregate 20 mm**, finish the questions, take the weight. It says "move aside and wait".
+3. Store: **Approvals → Open → Approve**. The kiosk shows the slip. Press `l`.
+4. Press `a` again: confirm the plate, **Second weight**, confirm. The kiosk says the weight does not match.
+5. Store: open the **Weight HOLD**, read the calculation, **Accept INVOICE weight**, tap a reason, confirm. The kiosk shows the final slip with 14,500 kg.
+
+**A driver without a phone:**
+
+1. `pnpm office reset`, `pnpm office pick cement`, `pnpm sim --loaded 32560`; press `a`.
+2. Kiosk: confirm the plate, press **No phone?**.
+3. Store: open **Driver help** → **Choose file** → `scripts/sample-invoices/cement.jpg` (or **Take photo**) → **Send the bill**. It says "Done" and the kiosk shows what was read.
+
+`pnpm office approve` and `reject` still work. Do not use them while testing the store page by hand: they answer the same requests.
 
 ## Phase 14 — Shared pages
 

@@ -176,6 +176,14 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
       });
     });
 
+    it("says which earlier ticket caused the check", async () => {
+      const { id } = await blockedAgain();
+      expect((await lastEvent(id, "APPROVAL_REQUESTED")).data).toMatchObject({
+        earlierStatus: "REJECTED",
+        earlierTicketNo: (await h.allTickets())[0]!.ticketNo,
+      });
+    });
+
     it("rejected: the new visit ends", async () => {
       const { id, request } = await blockedAgain();
       await decide(request, { decision: "REJECT", reason: "Blocked earlier" });

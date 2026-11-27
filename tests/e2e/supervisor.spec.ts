@@ -6,7 +6,7 @@
 // Set PHASE12_SHOTS=1 to save the pictures in docs/screenshots/phase12.
 //
 // IT RUNS "RESET DEMO DATA" FIRST: demo tickets in the development database are deleted.
-import { mkdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { SEED_USERS } from "@trinetra/shared/seed";
@@ -24,14 +24,13 @@ import {
   Weighbridge,
 } from "./kiosk-world";
 import { WEB_URL } from "./playwright.config";
+import { lookAt, PHONE } from "./staff-look";
 import { signIn } from "./staff-session";
 
 const SHOTS = process.env.PHASE12_SHOTS === "1";
 const file = (path: string) => fileURLToPath(new URL(`../../${path}`, import.meta.url));
 const SHOT_FOLDER = file("docs/screenshots/phase12/");
 
-const PHONE = { width: 390, height: 844 };
-const LAPTOP = { width: 1366, height: 768 };
 const PIN = SEED_USERS.find((user) => user.username === "amit")!.pin;
 
 const bridge = new Weighbridge();
@@ -112,76 +111,9 @@ const tabs = (page: Page) => page.getByRole("navigation", { name: "Main pages" }
 
 const online = (page: Page) => expect(page.getByTestId("connection")).toHaveText("Online");
 
-const noSidewaysScroll = async (page: Page, name: string) => {
-  const extra = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(extra, `${name}: nothing scrolls sideways`).toBeLessThanOrEqual(0);
-};
-
-/** Every button and tab on the phone can be hit with a thumb. */
-async function bigEnough(page: Page, name: string) {
-  const small = await page.evaluate(() =>
-    [
-      ...document.querySelectorAll(
-        "main button, main a[data-slot='button'], main label.cursor-pointer",
-      ),
-    ]
-      .filter((element) => {
-        const box = element.getBoundingClientRect();
-        return box.width > 0 && box.height > 0 && box.height < 47.5;
-      })
-      .map(
-        (element) => `${element.textContent?.trim()} (${element.getBoundingClientRect().height})`,
-      ),
-  );
-  expect(small, `${name}: buttons are at least 48 px tall`).toEqual([]);
-}
-
 /** The screen on a phone and a laptop, in English and Hindi, without leaving its state. */
-async function look(page: Page, name: string) {
-  await noSidewaysScroll(page, name);
-  await bigEnough(page, name);
-  if (!SHOTS) return;
-  await mkdir(SHOT_FOLDER, { recursive: true });
-  await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
-  const shoot = async (language: "en" | "hi") => {
-    for (const [device, size] of [
-      ["laptop", LAPTOP],
-      ["mobile", PHONE],
-    ] as const) {
-      await page.setViewportSize(size);
-      // A tall phone picture of the whole page, with the bottom tabs at the bottom.
-      if (device === "mobile") {
-        const height = await page.evaluate(() => document.documentElement.scrollHeight);
-        await page.setViewportSize({ width: size.width, height: Math.max(size.height, height) });
-      }
-      await page.evaluate(() => document.fonts.ready);
-      await page.waitForFunction(() =>
-        [...document.images].every((image) => image.complete && image.naturalWidth > 0),
-      );
-      await noSidewaysScroll(page, `${name} ${language} ${device}`);
-      await page.screenshot({
-        path: `${SHOT_FOLDER}${name}-${device}-${language}.png`,
-        animations: "disabled",
-        // Messages that fade away are not part of the screen.
-        style: "ol[tabindex='-1']{visibility:hidden!important}",
-      });
-    }
-  };
-  /** The language switch is in the sidebar (laptop) and under the login card. */
-  const choose = async (language: string) => {
-    await page.setViewportSize(LAPTOP);
-    await page.getByRole("button", { name: language, exact: true }).first().click();
-  };
-  await shoot("en");
-  await choose("हिंदी");
-  await expect(page.locator("html")).toHaveAttribute("lang", "hi");
-  await shoot("hi");
-  await choose("English");
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await page.setViewportSize(PHONE);
-}
+const look = (page: Page, name: string) =>
+  lookAt(page, name, { folder: SHOTS ? SHOT_FOLDER : null, back: PHONE });
 
 async function takePhoto(phone: Page) {
   await expect(phone.getByTestId("camera-video")).toBeVisible();
