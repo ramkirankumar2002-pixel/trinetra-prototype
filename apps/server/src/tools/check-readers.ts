@@ -138,6 +138,7 @@ if (!args["plates-only"]) {
     "steel-scrap": "jpg",
     sand: "pdf",
     aggregate: "jpg",
+    "steel-bars": "pdf",
   };
   const lists = await loadInvoiceLists(db);
   const rows: Record<string, unknown>[] = [];

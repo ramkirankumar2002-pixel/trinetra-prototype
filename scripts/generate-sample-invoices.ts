@@ -1,4 +1,4 @@
-// Draws the four SAMPLE invoices as JPEG and PDF: pnpm sim:invoices
+// Draws the SAMPLE invoices as JPEG and PDF: pnpm sim:invoices
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { SAMPLE_INVOICES, type SampleInvoice } from "@trinetra/shared/seed";

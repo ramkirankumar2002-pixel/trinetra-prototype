@@ -168,6 +168,11 @@ export interface SeedUnloadingRule {
 
 export const SEED_UNLOADING_RULES: SeedUnloadingRule[] = [
   { material: "Cement Bags", tripFrom: 1, tripTo: 999, point: "PLANT" },
+  // Added for the demo (not in the mockups), so Type 1 trucks reach different supervisors.
+  // Additive has no rule: it goes to the default point.
+  { material: "Steel Bars", tripFrom: 1, tripTo: 999, point: "CH-010+500" },
+  { material: "Bitumen", tripFrom: 1, tripTo: 2, point: "CH-003+750" },
+  { material: "Bitumen", tripFrom: 3, tripTo: 999, point: "CH-012+300" },
   { material: "Aggregate 10 mm", tripFrom: 1, tripTo: 3, point: "CH-005+250" },
   { material: "Aggregate 10 mm", tripFrom: 4, tripTo: 999, point: "CH-009+800" },
   { material: "Aggregate 20 mm", tripFrom: 1, tripTo: 4, point: "CH-003+750" },

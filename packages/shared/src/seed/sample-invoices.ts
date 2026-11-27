@@ -1,9 +1,15 @@
-// The four made-up SAMPLE invoices, one per demo scenario. The files in
+// The made-up SAMPLE invoices, one per demo scenario. The files in
 // scripts/sample-invoices/ are drawn from this data (pnpm sim:invoices), and
 // "pick" demo mode returns it without reading any file.
 import type { TicketType } from "../domain";
 
-export const SAMPLE_INVOICE_IDS = ["cement", "steel-scrap", "sand", "aggregate"] as const;
+export const SAMPLE_INVOICE_IDS = [
+  "cement",
+  "steel-scrap",
+  "sand",
+  "aggregate",
+  "steel-bars",
+] as const;
 export type SampleInvoiceId = (typeof SAMPLE_INVOICE_IDS)[number];
 
 export interface SampleInvoice {
@@ -90,5 +96,21 @@ export const SAMPLE_INVOICES: readonly SampleInvoice[] = [
     },
     quantityText: "14.500",
     expected: { material: "Aggregate 20 mm", weightKg: 14_500, type: "TYPE_2" },
+  },
+  {
+    id: "steel-bars",
+    scenario: "Type 1 at another unloading point: its own supervisor checks",
+    printed: {
+      invoice_number: "SMPL-BAR-005",
+      invoice_date: "2026-11-26",
+      supplier: "Ganga Steel Traders",
+      transporter: "Highway Carriers",
+      vehicle_number: "RJ 14 LM 2345",
+      material: "TMT Steel Bars Fe500",
+      quantity: 14.31,
+      quantity_unit: "MT",
+    },
+    quantityText: "14.310",
+    expected: { material: "Steel Bars", weightKg: 14_310, type: "TYPE_1" },
   },
 ];

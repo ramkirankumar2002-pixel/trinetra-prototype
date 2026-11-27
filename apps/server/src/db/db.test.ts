@@ -63,7 +63,7 @@ describe.skipIf(!url)("database", { timeout: 60_000 }, () => {
         materials: 9,
         chainages: 10,
         unloading_points: 7,
-        unloading_rules: 8,
+        unloading_rules: 11,
         transporters: 4,
         vehicles: 8,
         suppliers: 4,

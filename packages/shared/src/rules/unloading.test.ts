@@ -8,6 +8,12 @@ const resolve = (material: string, tripNo: number) =>
 describe("resolveUnloadingPoint", () => {
   it.each([
     ["Cement Bags", 1, "Plant", "Amit Kumar"],
+    ["Steel Bars", 1, "CH-010+500", "Vikram Sharma"],
+    ["Steel Bars", 999, "CH-010+500", "Vikram Sharma"],
+    ["Bitumen", 1, "CH-003+750", "Suresh Yadav"],
+    ["Bitumen", 2, "CH-003+750", "Suresh Yadav"],
+    ["Bitumen", 3, "CH-012+300", "Pankaj Gupta"],
+    ["Bitumen", 999, "CH-012+300", "Pankaj Gupta"],
     ["Steel Scrap", 500, "Plant", "Dinesh Verma"],
     ["Sand", 999, "CH-012+300", "Pankaj Gupta"],
     ["Aggregate 10 mm", 1, "CH-005+250", "Ravi Singh"],
@@ -22,18 +28,23 @@ describe("resolveUnloadingPoint", () => {
     expect(choice.isDefault).toBe(false);
   });
 
-  it.each(["Cement Bags", "Sand", "Aggregate 10 mm", "Aggregate 20 mm", "Steel Scrap"])(
-    "%s trip past every range goes to the default",
-    (material) => {
-      expect(resolve(material, 1000)).toMatchObject({
-        point: { code: "Plant" },
-        supervisor: { name: "Amit Kumar", phone: "9876543210" },
-        isDefault: true,
-      });
-    },
-  );
+  it.each([
+    "Cement Bags",
+    "Sand",
+    "Aggregate 10 mm",
+    "Aggregate 20 mm",
+    "Steel Scrap",
+    "Steel Bars",
+    "Bitumen",
+  ])("%s trip past every range goes to the default", (material) => {
+    expect(resolve(material, 1000)).toMatchObject({
+      point: { code: "Plant" },
+      supervisor: { name: "Amit Kumar", phone: "9876543210" },
+      isDefault: true,
+    });
+  });
 
-  it.each(["Additive", "Bitumen", "Steel Bars", "Bricks", "Unknown material"])(
+  it.each(["Additive", "Bricks", "Unknown material"])(
     "%s has no rule and goes to Plant, Amit Kumar",
     (material) => {
       const choice = resolve(material, 1);

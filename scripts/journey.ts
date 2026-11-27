@@ -31,7 +31,7 @@ import {
   type UploadInfoResponse,
   type UploadLinkResponse,
 } from "@trinetra/shared";
-import { SEED_USERS } from "@trinetra/shared/seed";
+import { SEED_USERS, type SampleInvoiceId } from "@trinetra/shared/seed";
 import { SimDevice } from "./sim/device";
 import { WeightModel } from "./sim/weight-model";
 
@@ -124,6 +124,7 @@ async function logIn(username: string): Promise<void> {
 const KIOSK = "wb01";
 const STORE = "ram";
 const SUPERVISOR = "amit";
+const VIKRAM = "vikram";
 
 const demo = <T>(method: string, path: string, body?: unknown) =>
   api<T>(method, `/api/demo/${path}`, {
@@ -222,7 +223,7 @@ async function driveOff(): Promise<void> {
 
 interface Truck {
   plate: string;
-  invoice: "cement" | "steel-scrap" | "sand" | "aggregate";
+  invoice: SampleInvoiceId;
   material: string;
   loadedKg: number;
   emptyKg: number;
@@ -379,12 +380,17 @@ async function storeDecides(
   step(`Store officer: ${String(decision.decision)} ${kind}${chosen}${reason}.`);
 }
 
-async function supervisorChecks(ticket: TicketView, seen: string) {
-  const { tickets } = await api<{ tickets: SupervisorTicketView[] }>(
-    "GET",
-    "/api/supervisor/tickets?status=pending",
-    { who: SUPERVISOR },
-  );
+const waitingFor = async (who: string) =>
+  (
+    await api<{ tickets: SupervisorTicketView[] }>(
+      "GET",
+      "/api/supervisor/tickets?status=pending",
+      { who },
+    )
+  ).tickets;
+
+async function supervisorChecks(ticket: TicketView, seen: string, who: string = SUPERVISOR) {
+  const tickets = await waitingFor(who);
   const mine = tickets.find((item) => item.ticketId === ticket.id);
   check(mine, "The truck is not on the supervisor's list.");
   step(`Supervisor sees ${formatPlate(mine.plate)} waiting at ${mine.unloadingPoint!.code}.`);
@@ -395,7 +401,7 @@ async function supervisorChecks(ticket: TicketView, seen: string) {
     "POST",
     `/api/supervisor/tickets/${ticket.id}/photo`,
     {
-      who: SUPERVISOR,
+      who,
       form: await fileForm("./sample-plates/match-front.jpg", "image/jpeg", {
         lat: "21.2514",
         lng: "81.6296",
@@ -410,8 +416,11 @@ async function supervisorChecks(ticket: TicketView, seen: string) {
   return { approvalId: mine.approvalId, match: photo.match };
 }
 
-const decideAsSupervisor = (approvalId: number, body: Record<string, unknown>) =>
-  api("POST", `/api/approvals/${approvalId}/decide`, { who: SUPERVISOR, body });
+const decideAsSupervisor = (
+  approvalId: number,
+  body: Record<string, unknown>,
+  who: string = SUPERVISOR,
+) => api("POST", `/api/approvals/${approvalId}/decide`, { who, body });
 
 // ---- The final ticket ----
 
@@ -470,7 +479,7 @@ function title(text: string): void {
   console.log(`\n${"=".repeat(78)}\n${text}\n${"=".repeat(78)}`);
 }
 
-// ---- The five journeys ----
+// ---- The six journeys ----
 
 async function typeThreeAutomatic(): Promise<string> {
   title("1. Type 3, fully automatic: sand, 900 kg on the invoice");
@@ -637,6 +646,43 @@ async function serverAnswers(): Promise<boolean> {
   }
 }
 
+async function steelBarsToVikram(): Promise<string> {
+  title("6. Type 1 at another unloading point: steel bars go to Vikram Sharma");
+  const truck: Truck = {
+    plate: "RJ14LM2345",
+    invoice: "steel-bars",
+    material: "Steel Bars",
+    loadedKg: 32_560,
+    emptyKg: 18_250,
+  };
+  let ticket = await firstWeight(await checkIn(truck));
+  check(ticket.status === "SUPERVISOR_PENDING", "A Type 1 truck needs its supervisor.");
+  check(
+    ticket.unloadingPoint?.code === "CH-010+500" && ticket.supervisor?.name === "Vikram Sharma",
+    `Steel Bars should go to CH-010+500, Vikram Sharma, not ${ticket.supervisor?.name}.`,
+  );
+  await printSlip(ticket.id, "FIRST");
+  await driveOff();
+
+  const amits = await waitingFor(SUPERVISOR);
+  check(!amits.some((item) => item.ticketId === ticket.id), "Amit Kumar must not see it.");
+  step("Amit Kumar's list does not show the truck.");
+  say(
+    `    Amit opens it anyway: ${await refused("GET", `/api/tickets/${ticket.id}`, 403, { who: SUPERVISOR })}`,
+  );
+
+  const { approvalId, match } = await supervisorChecks(ticket, truck.plate, VIKRAM);
+  check(match, "Vikram's photo should match.");
+  await decideAsSupervisor(approvalId, { decision: "APPROVE" }, VIKRAM);
+  step("Vikram Sharma: APPROVE.");
+
+  ticket = await secondVisit(truck, ticket);
+  await printSlip(ticket.id, "FINAL");
+  await driveOff();
+  await showTicket(ticket.id, "COMPLETED");
+  return ticket.ticketNo;
+}
+
 /** Starts the backend if none is running. Returns the process to stop afterwards. */
 async function ensureServer(): Promise<ChildProcess | undefined> {
   if (await serverAnswers()) {
@@ -670,7 +716,7 @@ async function main(): Promise<void> {
   const server = await ensureServer();
   let before: DemoSettings | undefined;
   try {
-    for (const user of [KIOSK, STORE, SUPERVISOR]) await logIn(user);
+    for (const user of [KIOSK, STORE, SUPERVISOR, VIKRAM]) await logIn(user);
     before = await demo<DemoSettings>("GET", "settings");
     await demo("PUT", "settings", { weightMode: "real" });
     const reset = await demo<{ deletedTickets: number }>("POST", "reset");
@@ -684,9 +730,10 @@ async function main(): Promise<void> {
       ["Fraud blocked", await fraudBlocked()],
       ["Type 2 store approves", await typeTwoApproved()],
       ["Tolerance fail resolved", await toleranceFail()],
+      ["Steel bars to Vikram", await steelBarsToVikram()],
     ];
 
-    title("All five journeys finished");
+    title("All six journeys finished");
     for (const [name, ticketNo] of results) {
       const ticket = await api<PublicTicketView>("GET", `/api/public/tickets/${ticketNo}`);
       say(`${name.padEnd(28)} ${ticketNo}  ${ticket.status}`);

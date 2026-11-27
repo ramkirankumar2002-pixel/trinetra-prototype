@@ -176,7 +176,7 @@ A job abandons STARTED tickets with no activity for 10 minutes. The lights, buzz
 
 ## Journeys
 
-`pnpm journey` runs five full truck journeys through the HTTP API: Type 3 automatic, Type 1 approved by the supervisor, fraud blocked, Type 2 approved by the store, and a tolerance fail resolved by the store. Weights come from the simulator, and plates and invoices from the demo "pick" modes, so no camera or outside service is used. It needs `DEVICE_TOKEN` and `ADMIN_PIN`, and a migrated and seeded database. **It runs "Reset demo data" first.** It uses a backend already running on port 4000, or starts its own.
+`pnpm journey` runs six full truck journeys through the HTTP API: Type 3 automatic, Type 1 approved by the supervisor, fraud blocked, Type 2 approved by the store, a tolerance fail resolved by the store, and a Steel Bars truck that goes to Vikram Sharma, which Amit Kumar cannot see. Weights come from the simulator, and plates and invoices from the demo "pick" modes, so no camera or outside service is used. It needs `DEVICE_TOKEN` and `ADMIN_PIN`, and a migrated and seeded database. **It runs "Reset demo data" first.** It uses a backend already running on port 4000, or starts its own.
 
 ```powershell
 pnpm journey
@@ -206,7 +206,7 @@ To try the role guard, start the server with `NODE_ENV=test`. That adds `/api/te
 
 You need `DEVICE_TOKEN`, `CAM_FRONT_TOKEN`, `CAM_BACK_TOKEN` and `ADMIN_PIN` in `apps/server/.env`, and a seeded database. Use three terminals: `pnpm dev`, the simulator, and one for `pnpm office`.
 
-1. `pnpm office reset`, then `pnpm office pick cement` (or `sand`, `steel-scrap`, `aggregate`). It prints the simulator command and the material to choose.
+1. `pnpm office reset`, then `pnpm office pick cement` (or `sand`, `steel-scrap`, `aggregate`, `steel-bars`). It prints the simulator command and the material to choose.
 2. In the simulator terminal: `pnpm sim --loaded 32560` (the number it printed).
 3. In Chrome open <http://localhost:3000/kiosk> and log in as `wb01`, PIN `3001`.
 4. Press `a` in the simulator: a loaded truck drives on. Answer on screen. At the QR code, click it (development only) and upload `scripts/sample-invoices/<name>.pdf` in the new tab.
@@ -221,7 +221,7 @@ You need `DEVICE_TOKEN`, `CAM_FRONT_TOKEN`, `CAM_BACK_TOKEN` and `ADMIN_PIN` in 
 | `steel-scrap` | Type 2: wait for the store officer, then the slip under "Ready to collect" | once, after the first weight |
 | `aggregate`   | Type 2, then "weight does not match": hold                                 | after each weighing          |
 
-The sample camera photos always show MH 12 AB 1234, whichever plate is picked.
+`steel-bars` is Type 1 for Vikram Sharma (`vikram`, PIN 1005). In "pick" mode the weighbridge shows a drawn "DEMO PHOTO" with the picked plate.
 
 ## Simulator
 
@@ -401,7 +401,7 @@ If a service fails on stage, these settings replace it. They are in [default-dat
 
 ### Sample invoices and the real check
 
-[scripts/sample-invoices](scripts/sample-invoices) holds four made-up **SAMPLE** invoices as PDF and JPEG, one per demo scenario (`pnpm sim:invoices` draws them). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
+[scripts/sample-invoices](scripts/sample-invoices) holds five made-up **SAMPLE** invoices as PDF and JPEG, one per demo scenario (`pnpm sim:invoices` draws them). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
 
 This reads them all with the **real services** (about 10 plate lookups and 4 Gemini requests):
 

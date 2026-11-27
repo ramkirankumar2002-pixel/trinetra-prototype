@@ -1,6 +1,6 @@
 // For trying the weighbridge by hand before the supervisor and store screens exist
 // (Phases 12 and 13). It sets the demo "pick" modes and makes the people's decisions.
-//   pnpm office pick cement          also: sand, steel-scrap, aggregate
+//   pnpm office pick cement          also: sand, steel-scrap, aggregate, steel-bars
 //   pnpm office list                 what is waiting for a person
 //   pnpm office approve              the oldest waiting request
 //   pnpm office reject               the same, refused
@@ -30,7 +30,11 @@ const LOADED_KG: Record<string, number> = {
   "steel-scrap": 19_750,
   // 14,310 kg against 14,500 kg on the invoice: this one fails the tolerance.
   aggregate: 32_560,
+  "steel-bars": 32_560,
 };
+
+/** Those the unloading rules can send a Type 1 truck to. */
+const SUPERVISORS = ["amit", "suresh", "vikram", "pankaj"] as const;
 
 const cookies = new Map<string, string>();
 
@@ -79,7 +83,7 @@ async function pick(id: string): Promise<void> {
 }
 
 interface Waiting {
-  who: "amit" | "ram";
+  who: (typeof SUPERVISORS)[number] | "ram";
   approvalId: number;
   ticketId: number | null;
   kind: string;
@@ -88,10 +92,15 @@ interface Waiting {
 
 async function waiting(): Promise<Waiting[]> {
   const store = await call<StoreRequestsResponse>("ram", "GET", "/api/store/requests");
-  const supervisor = await call<{ tickets: SupervisorTicketView[] }>(
-    "amit",
-    "GET",
-    "/api/supervisor/tickets?status=pending",
+  const trucks = await Promise.all(
+    SUPERVISORS.map(async (who) => {
+      const { tickets } = await call<{ tickets: SupervisorTicketView[] }>(
+        who,
+        "GET",
+        "/api/supervisor/tickets?status=pending",
+      );
+      return tickets.map((item) => ({ ...item, who }));
+    }),
   );
   return [
     ...store.requests.map((item) => ({
@@ -101,8 +110,8 @@ async function waiting(): Promise<Waiting[]> {
       kind: item.approval.kind,
       plate: item.ticket ? formatPlate(item.ticket.plate) : "no ticket yet",
     })),
-    ...supervisor.tickets.map((item) => ({
-      who: "amit" as const,
+    ...trucks.flat().map((item) => ({
+      who: item.who,
       approvalId: item.approvalId,
       ticketId: item.ticketId,
       kind: "SUPERVISOR",
@@ -130,7 +139,7 @@ async function supervisorPhoto(item: Waiting): Promise<void> {
   const photo = await readFile(new URL("./sample-plates/match-front.jpg", import.meta.url));
   form.append("file", new Blob([new Uint8Array(photo)], { type: "image/jpeg" }), "photo.jpg");
   const result = await call<SupervisorPhotoResponse>(
-    "amit",
+    item.who,
     "POST",
     `/api/supervisor/tickets/${item.ticketId}/photo`,
     form,
@@ -167,7 +176,7 @@ async function decide(approve: boolean): Promise<void> {
     decision: approve ? "APPROVE" : "REJECT",
     ...extra,
   });
-  const by = item.who === "amit" ? "Supervisor" : "Store officer";
+  const by = item.who === "ram" ? "Store officer" : `Supervisor (${item.who})`;
   console.log(`${by}: ${approve ? "APPROVED" : "REJECTED"} ${item.kind} for ${item.plate}.`);
 }
 

@@ -105,6 +105,57 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       expect((await done()).map((item) => item.ticketId)).toEqual([second]);
     });
 
+    it("sends a Steel Bars truck to Vikram Sharma, and Amit Kumar does not see it", async () => {
+      const id = await weighed({ material: "Steel Bars" });
+
+      expect((await list("vikram")).body.tickets).toMatchObject([
+        {
+          ticketId: id,
+          material: "Steel Bars",
+          unloadingPoint: { code: "CH-010+500", name: "Middle Section Point" },
+        },
+      ]);
+      expect((await list("amit")).body.tickets).toEqual([]);
+
+      const request = await pending(id, "SUPERVISOR");
+      const opened = await h.call("amit", "GET", `/api/tickets/${id}`);
+      expect(opened.body.error?.code).toBe("NOT_YOUR_TICKET");
+      h.supervisorSees(PLATE);
+      expect((await photo(id, { who: "amit" })).status).toBe(403);
+      const refused = await h.call("amit", "POST", `/api/approvals/${request}/decide`, {
+        decision: "REJECT",
+        reason: "Wrong truck",
+      });
+      expect(refused.status).toBe(403);
+
+      expect((await photo(id, { who: "vikram" })).body.matchResult).toBe("MATCH");
+      const approved = await h.call("vikram", "POST", `/api/approvals/${request}/decide`, {
+        decision: "APPROVE",
+      });
+      expect(approved.status).toBe(200);
+      expect((await view(id)).status).toBe("READY_FOR_SECOND");
+    });
+
+    it.each([
+      [1, "suresh"],
+      [3, "pankaj"],
+    ])("sends Bitumen trip %i to %s", async (trips, username) => {
+      let id = 0;
+      for (const plate of [PLATE, OTHER_PLATE, "UP32EF9012"].slice(0, trips)) {
+        id = await weighed({ plate, material: "Bitumen" });
+        h.leave();
+      }
+      const ticket = await view(id);
+      expect(ticket.tripNo).toBe(trips);
+      expect(ticket.supervisor?.name.toLowerCase()).toContain(username);
+    });
+
+    it("sends Additive to the default point, Amit Kumar", async () => {
+      const id = await weighed({ material: "Additive" });
+      expect((await view(id)).unloadingPoint?.code).toBe("Plant");
+      expect((await list("amit")).body.tickets).toMatchObject([{ ticketId: id }]);
+    });
+
     it("answers 403 when another supervisor opens the truck", async () => {
       const id = await type1();
       const open = (who: Who) => h.call(who, "GET", `/api/tickets/${id}`);

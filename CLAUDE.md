@@ -64,6 +64,7 @@ Related docs:
 ### Data and business rules
 
 - **Master data is hardcoded** in one seed file, `packages/shared/src/seed/default-data.ts` (imported as `@trinetra/shared/seed`, never by the website; loaded with `pnpm db:seed`). Material types, unloading rules and tolerance live there. No screens to edit them.
+- **Type 1 unloading** (added 2026-11-27): Cement Bags → Plant (Amit Kumar); Steel Bars → CH-010+500 (Vikram Sharma); Bitumen trips 1–2 → CH-003+750 (Suresh Yadav), 3 on → CH-012+300 (Pankaj Gupta); Additive → the default (Plant, Amit Kumar).
 - **Tolerance: 0.5%.** Variance % = |net − invoice weight| ÷ invoice weight × 100. Pass if ≤ 0.5%.
 - **Type 2 / Type 3 split is by OCR invoice weight:** above the material's threshold → Type 2 (Store); at or below → Type 3. Thresholds: Steel Scrap 1,000 kg, Sand 1,000 kg, Aggregate 20 mm 500 kg, Aggregate 10 mm 500 kg. Cement Bags, Additive, Bitumen and Steel Bars are always Type 1 (Supervisor). Bricks are always Type 3.
 - Weights are stored in kilograms as whole numbers; times are stored in UTC and shown in IST.
@@ -85,7 +86,7 @@ Phase 12 done (the supervisor website), with three Phase 10 fixes: `PUBLIC_WEB_U
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website. The ticket API's request schemas and answer types are in `src/tickets.ts`.
 
-Backend rules to keep: change a status only through `changeStatus()` (`apps/server/src/tickets/repo.ts`) inside `app.eventTransaction()`; lock the ticket before the approval or the material; a weight comes only from one `canCapture()` answer. No request may take longer than 30 s (the website's forwarding limit): slow work goes to `app.background`, as invoice reading does. `pnpm journey` runs the five scenarios (it runs "Reset demo data" first).
+Backend rules to keep: change a status only through `changeStatus()` (`apps/server/src/tickets/repo.ts`) inside `app.eventTransaction()`; lock the ticket before the approval or the material; a weight comes only from one `canCapture()` answer. No request may take longer than 30 s (the website's forwarding limit): slow work goes to `app.background`, as invoice reading does. `pnpm journey` runs the six scenarios (it runs "Reset demo data" first).
 
 Website rules to keep: call the backend only through `api` (`apps/web/src/lib/api.ts`), on the website's own `/api` (never the backend's address; only Socket.IO connects there; the phone's file upload in `lib/upload/send-file.ts` uses XHR for its progress figure). Every screen text goes in both `src/i18n/en.json` and `hi.json` and is read with `useT()`; add new Hindi to the review note. Staff pages go under `src/app/<role>/(signed-in)/`, are framed by `RoleShell` and listed in `src/lib/menus.ts`.
 
@@ -104,8 +105,7 @@ Settle before the phases that need it:
 - **Open:** "Reset demo data" does not delete help calls made before a ticket existed.
 - **Phase 13:** replace the store home's sample data with real data, delete `src/lib/sample-data.ts`, and make the store's bell count real alerts. The store pages must handle driver help; from "No phone?" the kiosk hides the QR code, so the officer presses "I found my phone → show code again" and scans it (or the store page gets its own upload).
 - **To try with a real phone (Phase 12):** certificate warning, camera on Android Chrome and iPhone Safari, the live connection on iPhone with the self-signed certificate, sound and vibration.
-- **To decide:** with the current seed only Amit Kumar receives trucks (every Type 1 material is unloaded at Plant). Showing another unloading point's supervisor needs a seed rule change.
-- **To decide:** send the supervisor's GPS with the photo (build plan section 10; the backend accepts it, the page does not send it).
+- **Decided:** the supervisor's GPS is skipped in the prototype (a future feature).
 - **Phase 14:** build `/t/<ticket-no>` (the slips' QR codes point to it) and the demo settings behind the 3 second logo hold (it offers only "Log out" now).
 - **To try with a real phone:** the QR codes hold `PUBLIC_WEB_URL` (`pnpm lan` sets it). Test "Take photo" and an iPhone HEIC photo.
 - **A high plate confidence is not proof** (a 99% read was wrong in the Phase 7 check): the driver always confirms the plate.

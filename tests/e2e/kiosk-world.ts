@@ -6,6 +6,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { expect, type APIRequestContext, type Browser, type Page } from "@playwright/test";
 import type { StoreRequestsResponse, SupervisorTicketView } from "@trinetra/shared";
+import type { SampleInvoiceId } from "@trinetra/shared/seed";
 import { SimDevice } from "../../scripts/sim/device";
 import { WeightModel } from "../../scripts/sim/weight-model";
 import { expectDriverRules, KIOSK_SIZES } from "./driver-rules";
@@ -138,7 +139,7 @@ export class Office {
     await this.demo("post", "reset");
   }
 
-  pick(plate: string, invoice: "cement" | "steel-scrap" | "sand" | "aggregate"): Promise<void> {
+  pick(plate: string, invoice: SampleInvoiceId): Promise<void> {
     return this.demo("put", "settings", {
       anprMode: "pick",
       ocrMode: "pick",

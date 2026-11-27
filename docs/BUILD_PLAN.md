@@ -205,6 +205,9 @@ Values are taken from the store manager dashboard mockups (Material Type, Chaina
 | Material | Trip range | Unloading point | Supervisor |
 | --- | --- | --- | --- |
 | Cement Bags | 1–999 | Plant (location) | Amit Kumar |
+| Steel Bars (added 2026-11-27) | 1–999 | CH-010+500, Middle Section Point | Vikram Sharma |
+| Bitumen (added 2026-11-27) | 1–2 | CH-003+750, Bridge Approach Road | Suresh Yadav |
+| Bitumen (added 2026-11-27) | 3–999 | CH-012+300, Valley Crossing | Pankaj Gupta |
 | Aggregate 10 mm | 1–3 | CH-005+250, Hill Section Area | Ravi Singh |
 | Aggregate 10 mm | 4–999 | CH-009+800, Near Quarry Area | Mahesh Patel |
 | Aggregate 20 mm | 1–4 | CH-003+750, Bridge Approach Road | Suresh Yadav |
@@ -213,7 +216,7 @@ Values are taken from the store manager dashboard mockups (Material Type, Chaina
 | Steel Scrap | 1–999 | Plant (location) | Dinesh Verma |
 | **Default** (no rule, or trip past the range) | — | Plant (assumed) | Amit Kumar (assumed) |
 
-**Users:** the 10 supervisors above (each logs in with a PIN); store officer **Ram (Sr. Manager)**; kiosk **WB-01**. Only Type 1 trucks need a supervisor, and every Type 1 material goes to Plant, so in the demo all supervisor approvals reach **Amit Kumar**. Other supervisors are shown on the slip as the contact at their unloading point.
+**Users:** the 10 supervisors above (each logs in with a PIN); store officer **Ram (Sr. Manager)**; kiosk **WB-01**. Only Type 1 trucks need a supervisor. In the demo, Cement Bags and Additive reach **Amit Kumar** (Plant; Additive through the default), Steel Bars reach **Vikram Sharma**, and Bitumen reaches **Suresh Yadav** (trips 1–2) and then **Pankaj Gupta** (changed 2026-11-27). Other supervisors are shown on the slip as the contact at their unloading point.
 
 **Transporters, vehicles, suppliers:** not in the mockups, so we use 3–4 sample names each and the plates printed on our truck models.
 

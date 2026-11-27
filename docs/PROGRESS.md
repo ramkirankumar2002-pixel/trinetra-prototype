@@ -258,11 +258,11 @@ Added 2026-11-26, not one of the 120 steps.
 
 **Done when:** approving on a phone unlocks the kiosk in under 1 second.
 
-✅ Passed on 2026-11-27 **in the browser test only**: Playwright with a 390×844 window as the phone, a pretend camera stream, the ESP32 simulator and demo "pick" plate mode. The kiosk showed the approval 110–180 ms after the tap, with everything on one computer. A Type 1 truck was weighed at the real kiosk screens, appeared on the phone by itself, was approved there, and finished its second weighing. The tests also cover one letter different, no match, reject, manual check, double tap, lost network, "Already done by someone else", login and back to the same page, another supervisor (403), a refused camera and a page without a camera. All 40 browser tests (the Phase 10 journeys among them) and the five `pnpm journey` scenarios passed. Pictures are in [screenshots/phase12](screenshots/phase12). `pnpm lan` was checked from the laptop itself, through its Wi-Fi address: pages, login (a Secure cookie), live connection by polling and by WebSocket, and another website's origin refused.
+✅ Passed on 2026-11-27 **in the browser test only**: Playwright with a 390×844 window as the phone, a pretend camera stream, the ESP32 simulator and demo "pick" plate mode. The kiosk showed the approval 110–180 ms after the tap, with everything on one computer. A Type 1 truck was weighed at the real kiosk screens, appeared on the phone by itself, was approved there, and finished its second weighing. The tests also cover one letter different, no match, reject, manual check, double tap, lost network, "Already done by someone else", login and back to the same page, another supervisor (403), a refused camera and a page without a camera. All 40 browser tests (the Phase 10 journeys among them) passed, and the `pnpm journey` scenarios: five, and since the new unloading rules a sixth, where a Steel Bars truck goes to Vikram Sharma and Amit Kumar cannot see it. Pictures are in [screenshots/phase12](screenshots/phase12). `pnpm lan` was checked from the laptop itself, through its Wi-Fi address: pages, login (a Secure cookie), live connection by polling and by WebSocket, and another website's origin refused.
 
 - **Not tried on a real phone:** the certificate warning, the real camera, Android Chrome, iPhone Safari (including whether its live connection accepts this certificate; if not, it should keep working by polling), the sound and the vibration (iPhones have no vibration for web pages).
 - No real Plate Recognizer or Gemini call was made. "Could not read" was shown by replacing one answer in the browser; the backend's handling of an unread photo is in the API tests.
-- The supervisor's photo is saved without GPS (build plan section 10 mentions it; the backend accepts it, the page does not send it).
+- The supervisor's photo is saved without GPS: skipped for the prototype, a future feature (decided 2026-11-27).
 
 ### Testing on your phone
 
@@ -286,14 +286,26 @@ These are public in the repository. They must be changed before deploying (Phase
 | suresh   | 1002 | Suresh Yadav | CH-003+750 Bridge Approach Road |
 | ravi     | 1003 | Ravi Singh   | CH-005+250 Hill Section Area    |
 | mahesh   | 1004 | Mahesh Patel | CH-009+800 Near Quarry Area     |
-| vikram   | 1005 | Vikram Sharma| CH-010+500 Middle Section Point |
+| vikram   | 1005 | Vikram Sharma | CH-010+500 Middle Section Point |
 | dinesh   | 1006 | Dinesh Verma | Plant (Steel Scrap)             |
 | pankaj   | 1007 | Pankaj Gupta | CH-012+300 Valley Crossing      |
 | ajay     | 1008 | Ajay Kumar   | none in the rules               |
 | deepak   | 1009 | Deepak Yadav | none in the rules               |
 | rohit    | 1010 | Rohit Kumar  | none in the rules               |
 
-**Only `amit` receives trucks with the current seed:** only Type 1 trucks are checked, and every Type 1 material is unloaded at Plant (Amit Kumar). The others see an empty list.
+**Who receives trucks** (only Type 1 trucks are checked; rules added 2026-11-27, trips counted per material since the last demo reset):
+
+| Material    | Trips | Supervisor to log in as |
+| ----------- | ----- | ----------------------- |
+| Cement Bags | all   | amit                    |
+| Additive    | all   | amit (default point)    |
+| Steel Bars  | all   | vikram                  |
+| Bitumen     | 1–2   | suresh                  |
+| Bitumen     | 3 on  | pankaj                  |
+
+The other supervisors see an empty list. After pulling this change, run `pnpm db:seed` (without `--reset`, so tickets are kept).
+
+**To show a truck going to another supervisor:** `pnpm office reset`, `pnpm office pick steel-bars`, `pnpm sim --loaded 32560`, choose **Steel Bars** on the kiosk, and log the phone in as `vikram` (PIN 1005). There is a sample invoice for Steel Bars; there is none for Bitumen.
 
 ## Phase 13 — Store officer website
 

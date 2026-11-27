@@ -27,7 +27,7 @@ export const STABLE_MS = 150;
 const FEED_EVERY_MS = 30;
 
 /** Seeded accounts by what the tests use them for. */
-export type Who = "kiosk" | "store" | "amit" | "suresh";
+export type Who = "kiosk" | "store" | "amit" | "suresh" | "vikram";
 
 export const PLATE = "MH12AB1234";
 export const OTHER_PLATE = "MH14CD5678";
@@ -69,6 +69,7 @@ export function useTicketHarness() {
       ["store", "ram"],
       ["amit", "amit"],
       ["suresh", "suresh"],
+      ["vikram", "vikram"],
     ] as const) {
       accounts.set(
         who,
