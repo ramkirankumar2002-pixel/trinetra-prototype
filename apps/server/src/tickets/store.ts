@@ -7,8 +7,16 @@ import {
 import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { approvals, materials, ticketEvents, tickets } from "../db/schema";
+import { emitAfterCommit, type Transaction } from "../realtime/after-commit";
 import { AppError } from "../errors/app-error";
-import { createApproval, lockTicket, type Actor, type ApprovalRow, type TicketRow } from "./repo";
+import {
+  addEvent,
+  createApproval,
+  lockTicket,
+  type Actor,
+  type ApprovalRow,
+  type TicketRow,
+} from "./repo";
 import { approvalView, holdReasonOf, materialNames, userNames, WARNING_EVENTS } from "./view";
 
 const LIST_LIMIT = 100;
@@ -49,8 +57,36 @@ async function requestViews(app: FastifyInstance, rows: RequestRow[]) {
             .where(and(eq(approvals.kind, "HOLD"), inArray(approvals.ticketId, ticketIds)))
         ).map((row) => row.ticketId),
   );
+  // Calls from "No phone?", and the tickets whose bill has since been read.
+  const billEvents =
+    ticketIds.length === 0
+      ? []
+      : await app.db
+          .select({
+            ticketId: ticketEvents.ticketId,
+            type: ticketEvents.type,
+            data: ticketEvents.data,
+          })
+          .from(ticketEvents)
+          .where(
+            and(
+              inArray(ticketEvents.type, ["NO_PHONE", "INVOICE_READ"]),
+              inArray(ticketEvents.ticketId, ticketIds),
+            ),
+          );
+  const billRead = new Set(
+    billEvents.filter((row) => row.type === "INVOICE_READ").map((row) => row.ticketId),
+  );
+  const noPhone = new Set(
+    billEvents.filter((row) => row.type === "NO_PHONE").map((row) => row.data.approvalId),
+  );
   return rows.map(({ approval, ticket, material }): StoreRequestView => ({
     approval: approvalView(approval, names, materialsById),
+    needsBill:
+      approval.status === "PENDING" &&
+      ticket?.status === "STARTED" &&
+      noPhone.has(approval.id) &&
+      !billRead.has(ticket.id),
     ticket: ticket && {
       id: ticket.id,
       ticketNo: ticket.ticketNo,
@@ -144,8 +180,32 @@ export async function storeRequest(
   return (await requestViews(app, found))[0]!;
 }
 
-/** The driver pressed Help. Pressing it again while the call is open adds nothing. */
-export async function askForHelp(app: FastifyInstance, ticketId: number | null, actor: Actor) {
+/** Notes on the timeline, once, that this call is from a driver without a phone. */
+async function noteNoPhone(
+  tx: Transaction,
+  ticketId: number,
+  approvalId: number,
+  actor: Actor,
+): Promise<boolean> {
+  const noted = await tx
+    .select({ data: ticketEvents.data })
+    .from(ticketEvents)
+    .where(and(eq(ticketEvents.ticketId, ticketId), eq(ticketEvents.type, "NO_PHONE")));
+  if (noted.some((row) => row.data.approvalId === approvalId)) return false;
+  await addEvent(tx, ticketId, "NO_PHONE", actor, { approvalId });
+  return true;
+}
+
+/**
+ * The driver pressed Help, or "No phone?". Pressing again while the call is open makes no
+ * second call; "No phone?" after Help only adds that a bill is needed.
+ */
+export async function askForHelp(
+  app: FastifyInstance,
+  ticketId: number | null,
+  actor: Actor,
+  noPhone = false,
+) {
   return app.eventTransaction(async (tx) => {
     // One at a time, so two quick presses make one call.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('driver-help'))`);
@@ -160,8 +220,18 @@ export async function askForHelp(app: FastifyInstance, ticketId: number | null, 
           ticketId === null ? isNull(approvals.ticketId) : eq(approvals.ticketId, ticketId),
         ),
       );
-    if (open) return { approvalId: open.id, alreadyAsked: true };
+    if (open) {
+      if (noPhone && ticket && (await noteNoPhone(tx, ticket.id, open.id, actor))) {
+        // The store officer's list now says that a bill is needed.
+        emitAfterCommit("ticket:updated", ["store"], {
+          ticketId: ticket.id,
+          status: ticket.status,
+        });
+      }
+      return { approvalId: open.id, alreadyAsked: true };
+    }
     const approval = await createApproval(tx, ticket, { kind: "DRIVER_HELP" }, actor);
+    if (noPhone && ticket) await noteNoPhone(tx, ticket.id, approval.id, actor);
     return { approvalId: approval.id, alreadyAsked: false };
   });
 }

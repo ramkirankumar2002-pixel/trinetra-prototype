@@ -24,6 +24,7 @@ import {
   ALLOW_CHIPS,
   ALREADY_HANDLED,
   canAccept,
+  decisionWords,
   cancellationOf,
   holdSum,
   INVOICE_WEIGHT_CHIPS,
@@ -366,13 +367,18 @@ function HelpActions({
 function Decision({ request }: { request: StoreRequestView }) {
   const t = useT();
   const { approval } = request;
+  const { result } = decisionWords({
+    ...approval,
+    status: approval.status === "APPROVED" ? "APPROVED" : "REJECTED",
+  });
   return (
     <Card data-testid="decision">
       <CardTitle>{t("store.decision")}</CardTitle>
       <Facts
         facts={[
-          ["slip.status", t(approval.status === "APPROVED" ? "store.approved" : "status.rejected")],
-          ["slip.approvedBy", approval.decidedBy],
+          ["slip.status", t(result)],
+          // Not "Approved by": the answer may have been no.
+          ["store.decidedBy", approval.decidedBy],
           ["sup.decidedAt", approval.decidedAt && formatIST(new Date(approval.decidedAt))],
           ["sup.reasonLabel", approval.reason && reasonWords(approval.reason, t)],
           [
@@ -566,7 +572,7 @@ export function RequestDetail({ approvalId }: { approvalId: number }) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <KindPill approval={approval} />
+        <KindPill approval={approval} needsBill={request.needsBill} />
         {pending && <WaitPill since={approval.createdAt} />}
         {!ticket && <p>{t("store.help.noTicket")}</p>}
       </div>

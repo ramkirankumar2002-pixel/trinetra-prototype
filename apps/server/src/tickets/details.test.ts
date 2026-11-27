@@ -97,4 +97,17 @@ describe.skipIf(!testDatabaseUrl)("PATCH /api/tickets/:id/details", { timeout: 3
     await h.db.update(tickets).set({ status: "COMPLETED" });
     expect((await patch(id, { material: "Sand" })).status).toBe(409);
   });
+
+  it("adds no timeline line for a switch of language alone", async () => {
+    const id = await newTicket();
+    const lines = async () =>
+      (await h.eventTypes(id)).filter((type) => type === "DETAILS_SAVED").length;
+
+    expect((await patch(id, { language: "hi" })).status).toBe(200);
+    expect((await h.ticketRow(id)).language).toBe("hi");
+    expect(await lines()).toBe(0);
+    // With an answer beside it, the answer is recorded.
+    await patch(id, { language: "en", supplier: "Sample Cement Depot" });
+    expect(await lines()).toBe(1);
+  });
 });

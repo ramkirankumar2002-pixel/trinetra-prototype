@@ -65,6 +65,7 @@ export function registerStoreRoutes(app: FastifyInstance): void {
 
   app.post("/api/help", { preHandler: requireRole("KIOSK") }, async (request) => {
     const body = helpSchema.parse(request.body);
-    return askForHelp(app, body?.ticketId ?? null, userActor(request.user.userId));
+    const actor = userActor(request.user.userId);
+    return askForHelp(app, body?.ticketId ?? null, actor, body?.noPhone ?? false);
   });
 }

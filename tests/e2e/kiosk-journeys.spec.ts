@@ -142,7 +142,8 @@ test("1. Type 3, fully automatic: sand", async ({ page, browser }) => {
 
   await heading(page, "First weight");
   await expect(page.getByTestId("ring")).toHaveAttribute("data-state", "empty");
-  await expect(page.getByTestId("ring")).toContainText("Please stay still");
+  // Said once, by the heading: the ring does not repeat it.
+  await expect(page.locator("body").getByText("Please stay still", { exact: true })).toHaveCount(1);
   await look(page, "17-weighing");
   bridge.wobble(false);
   await expect(page.getByTestId("ring")).toHaveAttribute("data-state", "full");

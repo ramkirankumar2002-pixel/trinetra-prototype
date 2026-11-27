@@ -3,7 +3,14 @@
 // Everything about one ticket, as cards: the truck, its photos, the bill and what was read
 // from it, the weights, and the timeline. Used by a request's page and by the read-only
 // ticket page.
-import { formatIST, formatKg, formatPlate, type TicketView } from "@trinetra/shared";
+import {
+  formatDate,
+  formatIST,
+  formatKg,
+  formatPlate,
+  type TicketView,
+  type TimelineEntry,
+} from "@trinetra/shared";
 import { ExternalLink, FileText, Scale } from "lucide-react";
 import type { MessageKey, Translate } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
@@ -12,12 +19,15 @@ import {
   holdSum,
   invoiceAsRead,
   invoiceFile,
+  isLanguageOnly,
   isPdf,
   latestPhoto,
   reasonWords,
+  savedAnswers,
   signed,
   STATUS_KEYS,
 } from "@/lib/store/logic";
+import { isDemoReading } from "@/lib/supervisor/verify";
 import { Banner } from "../ui/banner";
 import { buttonVariants } from "../ui/button";
 import { Card, CardTitle } from "../ui/card";
@@ -151,7 +161,7 @@ export function BillCard({ ticket }: { ticket: TicketView }) {
                       read.weightKg === null ? missing : formatKg(read.weightKg),
                     ],
                     ["store.vendor", read.supplier ?? missing],
-                    ["slip.invoiceDate", ticket.invoice.date],
+                    ["slip.invoiceDate", ticket.invoice.date && formatDate(ticket.invoice.date)],
                     ["store.bill.model", read.model],
                   ]}
                 />
@@ -266,9 +276,17 @@ const eventName = (type: string, t: Translate) => {
 };
 
 /** The few details of an event that a reader wants beside its name. */
-function eventDetail(data: Record<string, unknown>, t: Translate): string {
+function eventDetail({ type, data }: TimelineEntry, ticket: TicketView, t: Translate): string {
   const parts: string[] = [];
   const add = (label: MessageKey, value: string) => parts.push(`${t(label)}: ${value}`);
+  if (type === "DETAILS_SAVED") {
+    return savedAnswers(data)
+      .map(({ label, value, material }) => {
+        if (value === null) return t(label);
+        return `${t(label)}: ${material ? materialText(value, t) : value}`;
+      })
+      .join(" · ");
+  }
   if (typeof data.kg === "number") parts.push(formatKg(data.kg));
   if (typeof data.netKg === "number") add("slip.netWeight", formatKg(data.netKg));
   if (typeof data.acceptedKg === "number") add("store.weight.accepted", formatKg(data.acceptedKg));
@@ -278,7 +296,17 @@ function eventDetail(data: Record<string, unknown>, t: Translate): string {
   if (typeof data.driverSaid === "string") {
     add("store.driverSaid", materialText(data.driverSaid, t));
   }
-  if (typeof data.plateRead === "string") add("sup.photoReads", formatPlate(data.plateRead));
+  if (typeof data.plateRead === "string") {
+    // The photo was the supervisor's, and in demo mode nothing was read from it. The
+    // approval's line has no photo id of its own: it means the newest photo.
+    const photoId =
+      data.photoId ??
+      ticket.timeline.filter((entry) => entry.type === "SUPERVISOR_PHOTO").at(-1)?.data.photoId;
+    add(
+      isDemoReading(ticket, photoId) ? "store.read.demo" : "store.read.supervisor",
+      formatPlate(data.plateRead),
+    );
+  }
   if (typeof data.unloadingPoint === "string") add("slip.unloadedAt", data.unloadingPoint);
   if (typeof data.reason === "string") add("sup.reasonLabel", reasonWords(data.reason, t));
   if (typeof data.note === "string") add("sup.reasonLabel", data.note);
@@ -300,10 +328,14 @@ export function TimelineCard({ ticket }: { ticket: TicketView }) {
       <CardTitle>{t("store.timeline")}</CardTitle>
       <ol data-testid="timeline" className="flex flex-col divide-y divide-border">
         {ticket.timeline.map((entry, index) => {
-          const detail = eventDetail(entry.data, t);
+          const detail = eventDetail(entry, ticket, t);
+          const title =
+            entry.type === "DETAILS_SAVED" && isLanguageOnly(entry.data)
+              ? t("store.event.languageOnly")
+              : eventName(entry.type, t);
           return (
             <li key={`${entry.at}${index}`} data-event={entry.type} className="py-2">
-              <p className="font-semibold">{eventName(entry.type, t)}</p>
+              <p className="font-semibold">{title}</p>
               <p className="text-sm text-muted-foreground">
                 {formatIST(new Date(entry.at))} · {entry.actorName}
               </p>

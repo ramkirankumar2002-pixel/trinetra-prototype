@@ -1,6 +1,12 @@
 import type { PhotoView, TicketView } from "@trinetra/shared";
 import { describe, expect, it } from "vitest";
-import { firstWeightFrontPhoto, photosLeft, reasonIsLongEnough, typedPlateMatches } from "./verify";
+import {
+  firstWeightFrontPhoto,
+  photosLeft,
+  reasonIsLongEnough,
+  typedPlateMatches,
+  isDemoReading,
+} from "./verify";
 
 const photo = (id: string, kind: PhotoView["kind"], takenAt: string): PhotoView => ({
   id,
@@ -41,5 +47,20 @@ describe("the verify page", () => {
   it("compares a typed plate without spaces or dashes", () => {
     expect(typedPlateMatches("mh 12-ab 1234", "MH12AB1234")).toBe(true);
     expect(typedPlateMatches("MH12AB1235", "MH12AB1234")).toBe(false);
+  });
+});
+
+describe("a photo that demo mode did not read", () => {
+  const ticket = {
+    timeline: [
+      { type: "SUPERVISOR_PHOTO", data: { photoId: "a", source: "demo" } },
+      { type: "SUPERVISOR_PHOTO", data: { photoId: "b", source: "plate_recognizer" } },
+    ],
+  } as unknown as Parameters<typeof isDemoReading>[0];
+
+  it("is told apart from one that was read", () => {
+    expect(isDemoReading(ticket, "a")).toBe(true);
+    expect(isDemoReading(ticket, "b")).toBe(false);
+    expect(isDemoReading(ticket, null)).toBe(false);
   });
 });

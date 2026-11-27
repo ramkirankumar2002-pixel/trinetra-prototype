@@ -288,4 +288,37 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       expect((await photo(id, options)).status).toBe(status);
     });
   });
+
+  it("says when a photo's reading came from demo mode, not from the photo", async () => {
+    const id = await flows(h).weighed({ material: "Cement Bags" });
+    const demoReading = async () =>
+      (
+        await h.call<{ tickets: { demoReading: boolean }[] }>(
+          "amit",
+          "GET",
+          "/api/supervisor/tickets?status=pending",
+        )
+      ).body.tickets[0]!.demoReading;
+    const photograph = async (source: "demo" | "plate_recognizer") => {
+      h.app.readers.readSupervisorPlate = async () => ({
+        plate: PLATE,
+        source,
+        model: null,
+        confidence: null,
+        validFormat: true,
+        ms: 1,
+        problems: [],
+      });
+      const body = h.form({ data: await h.jpeg(), type: "image/jpeg" });
+      const url = `/api/supervisor/tickets/${id}/photo`;
+      expect((await h.call("amit", "POST", url, body.payload, body.headers)).status).toBe(200);
+    };
+
+    expect(await demoReading()).toBe(false);
+    await photograph("demo");
+    expect(await demoReading()).toBe(true);
+    // A later real reading replaces it.
+    await photograph("plate_recognizer");
+    expect(await demoReading()).toBe(false);
+  });
 });

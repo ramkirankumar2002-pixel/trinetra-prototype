@@ -3,7 +3,7 @@
 // Screen 5: the driver uploads the invoice from their own phone by scanning the QR code.
 // The kiosk sees it arrive, waits while it is read, and shows what was read.
 import { useQuery } from "@tanstack/react-query";
-import { formatKg, type TicketView, type UploadLinkResponse } from "@trinetra/shared";
+import { formatDate, formatKg, type TicketView, type UploadLinkResponse } from "@trinetra/shared";
 import {
   ArrowRight,
   Box,
@@ -167,7 +167,7 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
     setCallFailed(false);
     const stillHere = sameDriver();
     try {
-      await callStoreOfficer(ticket.id);
+      await callStoreOfficer(ticket.id, true);
       if (stillHere()) setNoPhone(true);
     } catch {
       setCallFailed(true);
@@ -285,7 +285,11 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
             label: t("slip.material"),
             value: invoice.material && materialLabel(t, invoice.material),
           },
-          { icon: CalendarDays, label: t("slip.invoiceDate"), value: invoice.date },
+          {
+            icon: CalendarDays,
+            label: t("slip.invoiceDate"),
+            value: invoice.date && formatDate(invoice.date),
+          },
           { icon: Building2, label: t("slip.supplier"), value: ticket.supplier },
           { icon: Truck, label: t("slip.transporter"), value: ticket.transporter },
         ]}

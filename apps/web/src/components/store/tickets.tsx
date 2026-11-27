@@ -14,6 +14,7 @@ import { useT } from "@/i18n/use-t";
 import { ApiError } from "@/lib/api";
 import {
   cancellationOf,
+  decisionWords,
   kindPill,
   reasonWords,
   signed,
@@ -128,12 +129,10 @@ export function TrucksOnSite() {
   );
 }
 
-/** "Weight HOLD: approved by Ram, 14:05", with the choice and the reason. */
+/** "Approved by supervisor: Vikram Sharma, 00:00", with the choice and the reason. */
 function DecisionLine({ decision }: { decision: StoreTicketDecision }) {
   const t = useT();
-  const approved = decision.status === "APPROVED";
-  const notice =
-    decision.kind === "DRIVER_HELP" || decision.plateWarningReason === "FRONT_BACK_MISMATCH";
+  const { about, result } = decisionWords(decision);
   const details = [
     decision.chosenWeight &&
       t(decision.chosenWeight === "MEASURED_NET" ? "slip.acceptedNet" : "slip.acceptedInvoice"),
@@ -141,11 +140,11 @@ function DecisionLine({ decision }: { decision: StoreTicketDecision }) {
   ].filter(Boolean);
   return (
     <span className="block">
-      <strong>{t(kindPill(decision).key)}:</strong>{" "}
-      {t(notice ? "store.handledBy" : approved ? "store.approvedBy" : "store.rejectedBy", {
-        name: decision.decidedBy ?? "—",
-        time: timeOf(decision.decidedAt),
-      })}
+      <strong>
+        {about ? `${t(about)} · ` : ""}
+        {t(result)}:
+      </strong>{" "}
+      {decision.decidedBy ?? "—"}, {timeOf(decision.decidedAt)}
       {details.length > 0 && (
         <span className="block text-muted-foreground">{details.join(" · ")}</span>
       )}

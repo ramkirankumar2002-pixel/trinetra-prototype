@@ -88,7 +88,9 @@ export async function saveDetails(
       ...(driverName === undefined ? {} : { driverNameSaved: true }),
       ...(driverPhone === undefined ? {} : { driverPhoneSaved: true }),
     };
-    if (Object.keys(saved).length > 0) {
+    // A switch of language alone is not an answer: it is saved on the ticket, and adds
+    // no line to the timeline.
+    if (Object.keys(saved).some((key) => key !== "language")) {
       await addEvent(tx, ticketId, "DETAILS_SAVED", actor, saved);
     }
     if (!materialMatched) {

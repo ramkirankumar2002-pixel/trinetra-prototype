@@ -15,9 +15,15 @@ import { Spinner } from "../ui/spinner";
 import { StatusPill } from "../ui/status-pill";
 import type { TicketStatus } from "@trinetra/shared";
 
-export function KindPill({ approval }: { approval: ApprovalView }) {
+export function KindPill({
+  approval,
+  needsBill = false,
+}: {
+  approval: ApprovalView;
+  needsBill?: boolean;
+}) {
   const t = useT();
-  const { tone, key } = kindPill(approval);
+  const { tone, key } = kindPill(approval, needsBill);
   return <StatusPill tone={tone}>{t(key)}</StatusPill>;
 }
 

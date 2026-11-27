@@ -140,15 +140,17 @@ export function UploadBill({
               ref={showPhoto}
               alt={t("store.bill")}
               data-testid="bill-preview"
-              className="max-h-[50dvh] w-full rounded-xl bg-muted object-contain"
+              // Low enough on a laptop that "Send the bill" is on the screen.
+              className="max-h-[45dvh] w-full rounded-xl bg-muted object-contain lg:max-h-[28dvh]"
             />
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <Button size="lg" variant="outline" onClick={() => chosen(null)}>
               <RotateCcw aria-hidden />
               {t("store.upload.another")}
             </Button>
-            <Button size="lg" onClick={() => void send(file)}>
+            {/* On a laptop the buttons are stacked: the way forward comes first. */}
+            <Button size="lg" className="lg:order-first" onClick={() => void send(file)}>
               <Send aria-hidden />
               {t("store.upload.send")}
             </Button>
@@ -166,7 +168,7 @@ export function UploadBill({
           </Button>
         </>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <Button size="lg" onClick={() => setCamera(true)}>
             <Camera aria-hidden />
             {t("upload.take")}

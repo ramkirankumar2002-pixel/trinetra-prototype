@@ -3,6 +3,7 @@
 import {
   isClosedStatus,
   type ApprovalKind,
+  type ApprovalStatus,
   type PhotoKind,
   type PhotoView,
   type PlateWarningReason,
@@ -45,10 +46,12 @@ interface RequestKind {
   plateWarningReason: PlateWarningReason | null;
 }
 
-export function kindPill({ kind, plateWarningReason }: RequestKind): {
-  tone: Tone;
-  key: MessageKey;
-} {
+export function kindPill(
+  { kind, plateWarningReason }: RequestKind,
+  needsBill = false,
+): { tone: Tone; key: MessageKey } {
+  // A help call that is waiting for a bill says so, not just "Driver help".
+  if (kind === "DRIVER_HELP" && needsBill) return { tone: "wait", key: "store.kind.noPhone" };
   if (kind === "STORE_TYPE2") return { tone: "info", key: "store.kind.type2" };
   if (kind === "HOLD") return { tone: "wait", key: "store.kind.hold" };
   if (kind === "MISMATCH") return { tone: "stop", key: "store.kind.mismatch" };
@@ -225,6 +228,65 @@ export const STATUS_TONES: Record<TicketStatus, Tone> = {
   BLOCKED: "stop",
   ABANDONED: "idle",
 };
+
+// ---- Who decided what ----
+
+/**
+ * What a person's answer to a request really was. The name of the request is left out for
+ * the supervisor's check, whose words already say it.
+ */
+export function decisionWords({
+  kind,
+  plateWarningReason,
+  status,
+}: RequestKind & { status: ApprovalStatus }): { about: MessageKey | null; result: MessageKey } {
+  if (kind === "SUPERVISOR") {
+    return {
+      about: null,
+      result:
+        status === "APPROVED"
+          ? "store.decided.supervisorApproved"
+          : "store.decided.supervisorRejected",
+    };
+  }
+  const about = kindPill({ kind, plateWarningReason }).key;
+  // Warnings and help calls are only marked as seen: nothing was approved.
+  if (kind === "DRIVER_HELP" || plateWarningReason === "FRONT_BACK_MISMATCH") {
+    return { about, result: "store.decided.seen" };
+  }
+  return {
+    about,
+    result: status === "APPROVED" ? "store.decided.storeApproved" : "store.decided.storeRejected",
+  };
+}
+
+// ---- The timeline ----
+
+export interface SavedAnswer {
+  label: MessageKey;
+  /** The answer, or null for one the timeline never holds (name and phone). */
+  value: string | null;
+  /** A material, to be shown in the reader's language. */
+  material?: boolean;
+}
+
+/** What a "driver's answers saved" line saved. */
+export function savedAnswers(data: Record<string, unknown>): SavedAnswer[] {
+  const answers: SavedAnswer[] = [];
+  const material = textOf(data.material);
+  if (material) answers.push({ label: "slip.material", value: material, material: true });
+  const supplier = textOf(data.supplier);
+  if (supplier) answers.push({ label: "slip.supplier", value: supplier });
+  const transporter = textOf(data.transporter);
+  if (transporter) answers.push({ label: "slip.transporter", value: transporter });
+  if (data.driverPhoneSaved) answers.push({ label: "slip.driverPhone", value: null });
+  if (data.driverNameSaved) answers.push({ label: "slip.driverName", value: null });
+  return answers;
+}
+
+/** Older tickets have a line for a switch of language alone. */
+export const isLanguageOnly = (data: Record<string, unknown>): boolean =>
+  data.language !== undefined && savedAnswers(data).length === 0;
 
 // ---- Reasons ----
 

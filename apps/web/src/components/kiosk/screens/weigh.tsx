@@ -88,6 +88,9 @@ export function WeighScreen({ which, ticket }: { which: "first" | "second"; tick
   }
 
   const invoiceNeeded = problem !== null && INVOICE_NEEDED.has(problem.code);
+  // The heading already says "Please stay still" or asks if the weight is right. Under
+  // the ring only something else is said: why no weight can be taken.
+  const ringText = settled || waiting === "kiosk.weigh.stayStill" ? "" : t(waiting);
 
   return (
     <KioskFrame
@@ -146,7 +149,7 @@ export function WeighScreen({ which, ticket }: { which: "first" | "second"; tick
           canCapture={canCapture}
           settled={settled}
           onSettled={() => setFilled(true)}
-          text={t(settled ? "kiosk.weigh.isCorrect" : waiting)}
+          text={ringText}
         />
       </div>
     </KioskFrame>

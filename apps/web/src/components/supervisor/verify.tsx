@@ -28,6 +28,7 @@ import {
 } from "@/lib/supervisor/queries";
 import {
   firstWeightFrontPhoto,
+  isDemoReading,
   photoById,
   photosLeft,
   reasonIsLongEnough,
@@ -165,7 +166,7 @@ function Preview({
       {busy ? (
         <Spinner label={t("sup.reading")} className="min-h-14" />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Button size="lg" variant="outline" onClick={onRetake}>
             <RotateCcw aria-hidden />
             {t("sup.retake")}
@@ -288,6 +289,7 @@ function Result({
   const t = useT();
   const check = supervisorCheck(ticket)!;
   const result = check.matchResult ?? "NOT_READ";
+  const demo = isDemoReading(ticket, check.photoId);
   const left = photosLeft(ticket);
   const [reason, setReason] = useState("");
   const [manual, setManual] = useState(false);
@@ -328,6 +330,11 @@ function Result({
             {t(banner.key)}
           </span>
         </Banner>
+        {demo && (
+          <Banner tone="wait">
+            <strong data-testid="demo-reading">{t("sup.demoReading")}</strong>
+          </Banner>
+        )}
         <div className="flex items-stretch gap-3">
           <ZoomPhoto
             url={photoById(ticket, check.photoId)?.url}
@@ -340,7 +347,9 @@ function Result({
               <dd className="text-xl font-extrabold">{formatPlate(ticket.plate)}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">{t("sup.photoReads")}</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t(demo ? "sup.demoPlate" : "sup.photoReads")}
+              </dt>
               <dd data-testid="plate-read" className="text-xl font-extrabold">
                 {check.plateRead ? formatPlate(check.plateRead) : "—"}
               </dd>
@@ -363,7 +372,7 @@ function Result({
             <Check aria-hidden />
             {t("action.approve")}
           </Button>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {retakeButton()}
             {rejectButton}
           </div>

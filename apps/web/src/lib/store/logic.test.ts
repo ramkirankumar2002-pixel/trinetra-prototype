@@ -4,6 +4,9 @@ import en from "@/i18n/en.json";
 import {
   canAccept,
   cancellationOf,
+  decisionWords,
+  isLanguageOnly,
+  savedAnswers,
   holdSum,
   invoiceAsRead,
   invoiceFile,
@@ -245,5 +248,70 @@ describe("a visit the store officer cancelled", () => {
     // A help call or a front/back warning can still be marked as handled.
     expect(visitHasEnded(cancelled, { kind: "DRIVER_HELP", plateWarningReason: null })).toBe(false);
     expect(visitHasEnded(undefined, request)).toBe(false);
+  });
+});
+
+describe("who decided what (History once called every supervisor decision a block)", () => {
+  const words = (
+    kind: "SUPERVISOR" | "STORE_TYPE2" | "HOLD" | "DRIVER_HELP" | "PLATE_WARNING",
+    status: "APPROVED" | "REJECTED",
+    plateWarningReason: "BLOCKED_HISTORY" | "FRONT_BACK_MISMATCH" | null = null,
+  ) => {
+    const { about, result } = decisionWords({ kind, status, plateWarningReason });
+    return [about && en[about], en[result]];
+  };
+
+  it("says what the supervisor really answered", () => {
+    expect(words("SUPERVISOR", "APPROVED")).toEqual([null, "Approved by supervisor"]);
+    expect(words("SUPERVISOR", "REJECTED")).toEqual([null, "Rejected by supervisor"]);
+  });
+
+  it("says what the store answered, and to what", () => {
+    expect(words("STORE_TYPE2", "APPROVED")).toEqual(["Type 2 check", "Approved by store"]);
+    expect(words("HOLD", "REJECTED")).toEqual(["Weight HOLD", "Rejected by store"]);
+    expect(words("PLATE_WARNING", "APPROVED", "BLOCKED_HISTORY")).toEqual([
+      "Blocked plate",
+      "Approved by store",
+    ]);
+  });
+
+  it("does not call a help call or a plate warning approved", () => {
+    expect(words("DRIVER_HELP", "APPROVED")).toEqual(["Driver help", "Seen by store"]);
+    expect(words("PLATE_WARNING", "APPROVED", "FRONT_BACK_MISMATCH")[1]).toBe("Seen by store");
+  });
+});
+
+describe("a call from a driver without a phone", () => {
+  const help = { kind: "DRIVER_HELP", plateWarningReason: null } as const;
+
+  it("says that a bill is needed", () => {
+    expect(en[kindPill(help, true).key]).toBe("No phone: send bill");
+    expect(en[kindPill(help).key]).toBe("Driver help");
+    // Only a help call can ask for a bill.
+    expect(kindPill({ kind: "HOLD", plateWarningReason: null }, true).key).toBe("store.kind.hold");
+  });
+});
+
+describe("a line of saved answers on the timeline", () => {
+  it("says what was saved, never the name or number themselves", () => {
+    expect(
+      savedAnswers({
+        material: "Steel Bars",
+        supplier: "Ganga Steel Traders",
+        driverPhoneSaved: true,
+        driverNameSaved: true,
+      }),
+    ).toEqual([
+      { label: "slip.material", value: "Steel Bars", material: true },
+      { label: "slip.supplier", value: "Ganga Steel Traders" },
+      { label: "slip.driverPhone", value: null },
+      { label: "slip.driverName", value: null },
+    ]);
+  });
+
+  it("knows an old line that was only a switch of language", () => {
+    expect(isLanguageOnly({ language: "hi" })).toBe(true);
+    expect(isLanguageOnly({ language: "hi", supplier: "A" })).toBe(false);
+    expect(isLanguageOnly({ supplier: "A" })).toBe(false);
   });
 });

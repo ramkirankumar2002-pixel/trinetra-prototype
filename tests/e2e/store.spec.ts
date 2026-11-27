@@ -322,7 +322,9 @@ for (const device of DEVICES) {
       await press(page, "No phone?");
       await expect(page.getByTestId("no-phone")).toBeVisible();
 
-      await expect(rowOf(store, "MH 12 AB 1234")).toContainText("Driver help", { timeout: 5000 });
+      await expect(rowOf(store, "MH 12 AB 1234")).toContainText("No phone: send bill", {
+        timeout: 5000,
+      });
       await openRequest(store, "MH 12 AB 1234");
       await expect(store.getByTestId("upload-bill")).toBeVisible();
       await look(store, "07-driver-help-upload", device);
@@ -480,15 +482,19 @@ for (const device of DEVICES) {
     await look(store, "09-trucks", device);
     await rowOf(store, "DL 01 NP 6789").getByRole("link", { name: /^View/ }).click();
     await expect(store.getByTestId("timeline")).toContainText("Store officer approved");
-    await expect(store.getByTestId("who")).toContainText("approved by Ram (Sr. Manager)");
+    await expect(store.getByTestId("who")).toContainText("Approved by store: Ram (Sr. Manager)");
     // To read only.
     await expect(button(store, "Approve")).toHaveCount(0);
     await look(store, "09b-truck-timeline", device);
 
     await store.goto("/store/history");
     await online(store);
-    await expect(rowOf(store, "UP 32 EF 9012")).toContainText("rejected by Ram (Sr. Manager)");
-    await expect(rowOf(store, "RJ 14 LM 2345")).toContainText("rejected by Vikram Sharma");
+    await expect(rowOf(store, "UP 32 EF 9012")).toContainText(
+      "Rejected by store: Ram (Sr. Manager)",
+    );
+    await expect(rowOf(store, "RJ 14 LM 2345")).toContainText(
+      "Rejected by supervisor: Vikram Sharma",
+    );
     await look(store, "10-history", device);
     await store.getByRole("searchbox").fill("rj 14");
     await expect(store.getByRole("table").getByRole("row")).toHaveCount(2);
@@ -496,7 +502,7 @@ for (const device of DEVICES) {
     await expect(store.getByText("No truck matches")).toBeVisible();
     await store.getByRole("searchbox").fill("");
     await rowOf(store, "RJ 14 LM 2345").getByRole("link", { name: /^View/ }).click();
-    await expect(store.getByTestId("who")).toContainText("Blocked by supervisor");
+    await expect(store.getByTestId("who")).toContainText("Rejected by supervisor");
     await expect(store).toHaveURL(/\/store\/history\/\d+$/);
     await look(store, "10b-history-detail", device);
 

@@ -557,3 +557,26 @@ New for the store officer's pages (and the camera's hint for a bill). Not checke
 | `store.reason.cannotContinue` | Driver cannot continue | ड्राइवर आगे नहीं बढ़ सकता |
 | `store.reason.byMistake` | Visit started by mistake | काम गलती से शुरू हुआ था |
 | `store.event.STORE_CANCELLED` | Store officer cancelled the visit | स्टोर अधिकारी ने काम रद्द किया |
+
+## Fixes from the manual-style check
+
+New texts for the issues in [MANUAL_CHECK.md](MANUAL_CHECK.md). Not checked by a Hindi speaker.
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `store.kind.noPhone` | No phone: send bill | फ़ोन नहीं: बिल भेजें |
+| `store.decided.supervisorApproved` | Approved by supervisor | सुपरवाइज़र ने मंज़ूर किया |
+| `store.decided.supervisorRejected` | Rejected by supervisor | सुपरवाइज़र ने अस्वीकार किया |
+| `store.decided.storeApproved` | Approved by store | स्टोर ने मंज़ूर किया |
+| `store.decided.storeRejected` | Rejected by store | स्टोर ने अस्वीकार किया |
+| `store.decided.seen` | Seen by store | स्टोर ने देखा |
+| `store.decidedBy` | Decided by | फ़ैसला किसने किया |
+| `store.read.supervisor` | Read from the supervisor's photo | सुपरवाइज़र की फ़ोटो से पढ़ा |
+| `store.read.demo` | Demo reading (photo not read) | डेमो रीडिंग (फ़ोटो नहीं पढ़ी गई) |
+| `store.event.NO_PHONE` | Driver has no phone: bill needed | ड्राइवर के पास फ़ोन नहीं: बिल चाहिए |
+| `store.event.languageOnly` | Language changed | भाषा बदली गई |
+| `store.cancel.hint` | For a truck that has left or cannot go on. It is not a rejection: the plate is not blocked. | जब ट्रक जा चुका हो या आगे न बढ़ सके। यह अस्वीकृति नहीं है: प्लेट रोकी नहीं जाती। |
+| `sup.demoReading` | Demo mode: your photo was not read. This result is a demo. | डेमो मोड: आपकी फ़ोटो नहीं पढ़ी गई। यह नतीजा डेमो है। |
+| `sup.demoPlate` | Demo reading (not your photo) | डेमो रीडिंग (आपकी फ़ोटो से नहीं) |
+| `sup.demoShort` | demo reading | डेमो रीडिंग |
+| `kiosk.check.notGiven` | Not given | नहीं बताया |

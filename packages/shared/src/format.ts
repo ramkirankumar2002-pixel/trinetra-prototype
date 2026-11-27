@@ -55,3 +55,13 @@ export function formatIST(date: Date): string {
   const { year, month, day, hour, minute } = inIndia(date);
   return `${day} ${MONTHS[month - 1]} ${year}, ${pad(hour)}:${pad(minute)} IST`;
 }
+
+/**
+ * A date with no time, such as an invoice's "2026-11-26", written like every other date:
+ * "26 Nov 2026". Anything else is returned as it is, never guessed.
+ */
+export function formatDate(isoDate: string): string {
+  const [, year, month, day] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate) ?? [];
+  const name = MONTHS[Number(month) - 1];
+  return year && name && Number(day) >= 1 ? `${Number(day)} ${name} ${year}` : isoDate;
+}

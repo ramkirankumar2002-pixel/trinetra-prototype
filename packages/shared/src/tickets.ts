@@ -89,7 +89,14 @@ export const decideSchema = z
   });
 export type DecideRequest = z.input<typeof decideSchema>;
 
-export const helpSchema = z.strictObject({ ticketId: id.optional() }).optional().nullable();
+export const helpSchema = z
+  .strictObject({
+    ticketId: id.optional(),
+    /** The driver pressed "No phone?": the store officer has to send the bill. */
+    noPhone: z.boolean().optional(),
+  })
+  .optional()
+  .nullable();
 
 export const listStatusSchema = z.object({
   status: z.enum(["pending", "done"]).default("pending"),
@@ -310,6 +317,8 @@ export type InvoiceState = "none" | "reading" | "read" | "failed";
 
 export interface StoreRequestView {
   approval: ApprovalView;
+  /** A driver without a phone is waiting for the store officer to send the bill. */
+  needsBill: boolean;
   ticket: {
     id: number;
     ticketNo: string;
@@ -425,6 +434,8 @@ export interface SupervisorTicketView {
   reason: string | null;
   /** The supervisor's own photo: a link that works for a few minutes. */
   photoUrl: string | null;
+  /** Demo mode gave the plate: the photo itself was not read. */
+  demoReading: boolean;
   photosUsed: number;
 }
 

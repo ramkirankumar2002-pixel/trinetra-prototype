@@ -522,6 +522,53 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
   });
 
+  describe('"No phone?" says that a bill is needed', () => {
+    const press = (body: Record<string, unknown>) => h.call("kiosk", "POST", "/api/help", body);
+    const waiting = async () =>
+      (await get<{ requests: StoreRequestView[] }>("/api/store/requests")).body.requests;
+
+    it("on a new call, and not on a plain call for help", async () => {
+      const id = await started();
+      await press({ ticketId: id });
+      expect(await waiting()).toMatchObject([{ needsBill: false }]);
+      expect(await h.eventTypes(id)).not.toContain("NO_PHONE");
+
+      const other = await started({ plate: OTHER_PLATE });
+      await press({ ticketId: other, noPhone: true });
+      expect((await waiting()).find((row) => row.ticket?.id === other)!.needsBill).toBe(true);
+    });
+
+    it("also after Help, once, and tells the store officer", async () => {
+      const id = await started();
+      await press({ ticketId: id });
+      const rooms = vi.spyOn(h.app.realtime.io, "to");
+      await press({ ticketId: id, noPhone: true });
+      await press({ ticketId: id, noPhone: true });
+      expect(rooms.mock.calls.filter(([to]) => String(to) === "store")).toHaveLength(1);
+      rooms.mockRestore();
+      expect((await h.eventTypes(id)).filter((type) => type === "NO_PHONE")).toHaveLength(1);
+      expect(await h.approvalRows()).toHaveLength(1);
+      expect(await waiting()).toMatchObject([{ needsBill: true }]);
+    });
+
+    it("no longer once the bill has been read, or the call is answered", async () => {
+      const id = await started();
+      await press({ ticketId: id, noPhone: true });
+      await h.db.execute(
+        `insert into ticket_events (ticket_id, type, actor) values (${id}, 'INVOICE_READ', 'system')`,
+      );
+      expect(await waiting()).toMatchObject([{ needsBill: false }]);
+      const [request] = await waiting();
+      await decide(request!.approval.id, { decision: "APPROVE" });
+      const done = await get<StoreRequestView>(`/api/store/requests/${request!.approval.id}`);
+      expect(done.body.needsBill).toBe(false);
+    });
+
+    it("refuses anything else in the call", async () => {
+      expect((await press({ noPhone: "yes" })).status).toBe(400);
+    });
+  });
+
   describe("cancelling a visit that waits for a person", () => {
     const cancel = (id: number, body: unknown = { reason: "Truck has left the site" }) =>
       h.call<TicketView>("store", "POST", `/api/store/tickets/${id}/cancel`, body);

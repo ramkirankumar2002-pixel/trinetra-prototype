@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatIST, formatKg, ticketNumber } from "./format";
+import { formatIST, formatKg, ticketNumber, formatDate } from "./format";
 import { APP_NAME, WEIGHBRIDGE_ID } from "./index";
 import { SEED_SETTINGS } from "./seed/default-data";
 
@@ -79,5 +79,18 @@ describe("formatIST", () => {
 
   it("refuses an invalid date", () => {
     expect(() => formatIST(new Date(Number.NaN))).toThrow(RangeError);
+  });
+});
+
+describe("formatDate", () => {
+  it("writes a bill's date like every other date", () => {
+    expect(formatDate("2026-11-26")).toBe("26 Nov 2026");
+    expect(formatDate("2026-01-05")).toBe("5 Jan 2026");
+  });
+
+  it("leaves what it cannot read as it is", () => {
+    for (const text of ["26/11/2026", "2026-13-01", "2026-11-00", "", "soon"]) {
+      expect(formatDate(text)).toBe(text);
+    }
   });
 });

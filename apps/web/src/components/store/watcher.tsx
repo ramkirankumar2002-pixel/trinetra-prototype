@@ -53,13 +53,16 @@ export function StoreWatcher() {
   // announced too, when the list is loaded again.
   useEffect(() => {
     if (!data) return;
-    const ids = data.requests.map((item) => item.approval.id);
+    // A help call that turns out to need a bill is news again.
+    const key = (item: (typeof data.requests)[number]) =>
+      item.needsBill ? -item.approval.id : item.approval.id;
+    const ids = data.requests.map(key);
     const arrived = newArrivals(known, ids);
     known = new Set([...(known ?? []), ...ids]);
     if (arrived.length === 0) return;
     ringForTruck();
-    for (const item of data.requests.filter((row) => arrived.includes(row.approval.id))) {
-      const kind = t(kindPill(item.approval).key);
+    for (const item of data.requests.filter((row) => arrived.includes(key(row)))) {
+      const kind = t(kindPill(item.approval, item.needsBill).key);
       toast({
         tone: "info",
         title: item.ticket

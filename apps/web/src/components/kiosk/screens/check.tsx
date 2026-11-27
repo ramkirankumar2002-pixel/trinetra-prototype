@@ -29,6 +29,8 @@ interface Line {
   icon: LucideIcon;
   label: MessageKey;
   value: string | null;
+  /** What to say when the driver may leave it out, and did. */
+  skipped?: MessageKey;
   /** The question that changes it. Without one, the line cannot be changed. */
   step?: Step;
 }
@@ -51,7 +53,13 @@ export function CheckScreen({ ticket }: { ticket: TicketView }) {
     { icon: Building2, label: "slip.supplier", value: ticket.supplier, step: "supplier" },
     { icon: Truck, label: "slip.transporter", value: ticket.transporter, step: "transporter" },
     { icon: Phone, label: "slip.driverPhone", value: ticket.driverPhone, step: "phone" },
-    { icon: UserRound, label: "slip.driverName", value: ticket.driverName, step: "name" },
+    {
+      icon: UserRound,
+      label: "slip.driverName",
+      value: ticket.driverName,
+      skipped: "kiosk.check.notGiven",
+      step: "name",
+    },
     { icon: FileText, label: "slip.invoiceNo", value: invoice.number },
     {
       icon: Weight,
@@ -83,7 +91,7 @@ export function CheckScreen({ ticket }: { ticket: TicketView }) {
       }
     >
       <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-2 gap-2">
-        {lines.map(({ icon: Icon, label, value, step }) => {
+        {lines.map(({ icon: Icon, label, value, skipped, step }) => {
           const content = (
             <>
               <span
@@ -94,7 +102,9 @@ export function CheckScreen({ ticket }: { ticket: TicketView }) {
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="leading-tight text-muted-foreground">{t(label)}</span>
-                <span className="leading-tight font-bold break-words">{value ?? "———"}</span>
+                <span className="leading-tight font-bold break-words">
+                  {value ?? (skipped ? t(skipped) : "———")}
+                </span>
               </span>
               {/* In the corner, so a long name keeps the whole width. */}
               {step && (

@@ -8,7 +8,12 @@ import type { MessageKey } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
 import { ApiError } from "@/lib/api";
 import { useSupervisorTicket, useSupervisorTrucks } from "@/lib/supervisor/queries";
-import { firstWeightFrontPhoto, photoById, supervisorCheck } from "@/lib/supervisor/verify";
+import {
+  firstWeightFrontPhoto,
+  isDemoReading,
+  photoById,
+  supervisorCheck,
+} from "@/lib/supervisor/verify";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Card, SURFACE } from "../ui/card";
@@ -79,6 +84,7 @@ export function DoneList() {
               <span className="text-sm text-muted-foreground">
                 {materialText(truck.material, t)}
                 {truck.matchResult && ` · ${t(RESULT_KEYS[truck.matchResult])}`}
+                {truck.demoReading && ` · ${t("sup.demoShort")}`}
               </span>
             </span>
             <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
@@ -95,7 +101,10 @@ function Facts({ ticket }: { ticket: TicketView }) {
   const facts: [MessageKey, string | null][] = [
     ["sup.decidedAt", check.decidedAt && formatIST(new Date(check.decidedAt))],
     ["slip.result", check.matchResult && t(RESULT_KEYS[check.matchResult])],
-    ["sup.photoReads", check.plateRead ? formatPlate(check.plateRead) : "—"],
+    [
+      isDemoReading(ticket, check.photoId) ? "sup.demoPlate" : "sup.photoReads",
+      check.plateRead ? formatPlate(check.plateRead) : "—",
+    ],
     ["sup.typedPlate", check.manualPlate && formatPlate(check.manualPlate)],
     [
       "sup.confidence",

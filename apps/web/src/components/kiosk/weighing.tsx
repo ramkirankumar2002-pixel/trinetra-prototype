@@ -23,7 +23,7 @@ export function WeighingRing({
   /** The ring has filled. */
   settled: boolean;
   onSettled: () => void;
-  /** "Please stay still", or why a weight cannot be taken now. */
+  /** Why a weight cannot be taken now; empty when the heading says all there is to say. */
   text: string;
   durationMs?: number;
 }) {

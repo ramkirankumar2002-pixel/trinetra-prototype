@@ -341,6 +341,12 @@ The other supervisors see an empty list. After pulling this change, run `pnpm db
 
 To try it: make a truck wait (for example **No phone?** on the kiosk). In the store, open it from **Approvals**, or from **Trucks on site → View**, press **Cancel visit**, give a reason and confirm. The kiosk says "This visit has ended".
 
+### Fixes after the manual-style check (2026-11-28)
+
+[MANUAL_CHECK.md](MANUAL_CHECK.md) lists 14 issues: 11 fixed, 3 left as design choices. One more problem, found while fixing, is open: the first tap on a staff home page can be lost.
+
+✅ Checked on 2026-11-28: all 48 browser tests (one of them new, for these fixes), `pnpm journey`, typecheck, lint, format, unit and API tests and the build passed. In the first full run, the laptop "No phone?" test failed once with the weighbridge still on the language screen; it passed in the next full run and was not changed. The fixed screens have not been tried on a real phone.
+
 ### Testing the store officer
 
 **Store officer login (test only; public in the repository, change before Phase 16):** username `ram`, PIN `2001` (Ram, Sr. Manager). Page: <http://localhost:3000/store>.

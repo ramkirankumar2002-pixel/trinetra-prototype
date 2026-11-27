@@ -15,6 +15,18 @@ export const supervisorCheck = (ticket: TicketView): ApprovalView | undefined =>
 export const photoById = (ticket: TicketView, id: string | null | undefined) =>
   id ? ticket.photos.find((photo) => photo.id === id) : undefined;
 
+/**
+ * True if this supervisor photo was never read: demo mode gave the plate. Every page that
+ * shows such a "reading" says so.
+ */
+export const isDemoReading = (ticket: TicketView, photoId: unknown): boolean =>
+  ticket.timeline.some(
+    (entry) =>
+      entry.type === "SUPERVISOR_PHOTO" &&
+      entry.data.photoId === photoId &&
+      entry.data.source === "demo",
+  );
+
 /** The front camera's photo at the first weighing (not one from a later visit). */
 export function firstWeightFrontPhoto(ticket: TicketView): PhotoView | undefined {
   const until = ticket.firstWeightAt ? Date.parse(ticket.firstWeightAt) : Number.POSITIVE_INFINITY;

@@ -35,7 +35,7 @@ export function RequestTable({
         {
           id: "kind",
           header: t("column.request"),
-          cell: (row) => <KindPill approval={row.approval} />,
+          cell: (row) => <KindPill approval={row.approval} needsBill={row.needsBill} />,
         },
         {
           id: "vehicle",

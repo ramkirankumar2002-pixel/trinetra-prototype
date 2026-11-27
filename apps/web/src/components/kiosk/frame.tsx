@@ -40,8 +40,14 @@ export function useFrame(): FrameState {
 }
 
 /** Calls the store officer. True once the backend has the call. */
-export async function callStoreOfficer(ticketId: number | null): Promise<boolean> {
-  await api.post("/api/help", { body: ticketId === null ? {} : { ticketId } });
+export async function callStoreOfficer(
+  ticketId: number | null,
+  /** "No phone?": the officer is told that a bill is needed. */
+  noPhone = false,
+): Promise<boolean> {
+  await api.post("/api/help", {
+    body: ticketId === null ? {} : { ticketId, ...(noPhone ? { noPhone } : {}) },
+  });
   return true;
 }
 

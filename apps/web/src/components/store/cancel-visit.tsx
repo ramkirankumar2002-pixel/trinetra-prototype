@@ -62,11 +62,17 @@ export function CancelVisit({
   }
 
   if (!open) {
+    // Set apart from "Reject", which refuses the truck: quieter, and saying what it is.
     return (
-      <Button size="lg" variant="danger" onClick={() => onOpen(true)}>
-        <Ban aria-hidden />
-        {t("store.cancel.button")}
-      </Button>
+      <div className="flex flex-col gap-1 border-t border-border pt-3">
+        <Button size="lg" variant="outline" onClick={() => onOpen(true)}>
+          <Ban aria-hidden />
+          {t("store.cancel.button")}
+        </Button>
+        <p data-testid="cancel-hint" className="text-sm text-muted-foreground">
+          {t("store.cancel.hint")}
+        </p>
+      </div>
     );
   }
   return (

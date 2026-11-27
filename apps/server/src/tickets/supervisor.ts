@@ -8,7 +8,7 @@ import {
 } from "@trinetra/shared";
 import { and, asc, count, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { approvals, materials, photos, tickets, unloadingPoints } from "../db/schema";
+import { approvals, materials, photos, ticketEvents, tickets, unloadingPoints } from "../db/schema";
 import { AppError } from "../errors/app-error";
 import type { Upload } from "../http/upload";
 import { emitAfterCommit } from "../realtime/after-commit";
@@ -46,6 +46,18 @@ async function photoCounts(db: Reader, ticketIds: number[]): Promise<Map<number,
     .where(and(eq(photos.kind, "SUPERVISOR"), inArray(photos.ticketId, ticketIds)))
     .groupBy(photos.ticketId);
   return new Map(rows.map((row) => [row.ticketId!, row.used]));
+}
+
+/** The supervisor's photos whose "reading" came from demo mode, not from the photo. */
+async function demoReadPhotos(db: Reader, ticketIds: number[]): Promise<Set<unknown>> {
+  if (ticketIds.length === 0) return new Set();
+  const rows = await db
+    .select({ data: ticketEvents.data })
+    .from(ticketEvents)
+    .where(
+      and(eq(ticketEvents.type, "SUPERVISOR_PHOTO"), inArray(ticketEvents.ticketId, ticketIds)),
+    );
+  return new Set(rows.filter((row) => row.data.source === "demo").map((row) => row.data.photoId));
 }
 
 export async function supervisorTickets(
@@ -98,6 +110,10 @@ export async function supervisorTickets(
     app.db,
     rows.map((row) => row.ticket.id),
   );
+  const demoPhotos = await demoReadPhotos(
+    app.db,
+    rows.map((row) => row.ticket.id),
+  );
 
   const trucks = rows.map(({ approval, ticket, material, point }) => ({
     approvalId: approval.id,
@@ -118,6 +134,7 @@ export async function supervisorTickets(
     matchResult: approval.matchResult,
     reason: approval.reason,
     photoUrl: approval.photoId ? (urls.get(approval.photoId) ?? null) : null,
+    demoReading: approval.photoId !== null && demoPhotos.has(approval.photoId),
     photosUsed: used.get(ticket.id) ?? 0,
   }));
   return { tickets: trucks, points };
