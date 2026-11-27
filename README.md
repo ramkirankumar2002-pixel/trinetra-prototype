@@ -7,7 +7,7 @@ A funding prototype of a smart weighbridge, built as **one website** with three 
 - Decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
 - Rules for Claude: [CLAUDE.md](CLAUDE.md)
 
-**Current state:** Phase 10. A truck's first and second visit of every type works by touch at `/kiosk`, in English and Hindi, with the simulator; the driver's invoice goes up from the phone page. The supervisor and store dashboards still show sample data (`pnpm office` makes their decisions meanwhile). The real firmware (Phase 5B) is not built yet.
+**Current state:** Phase 12. A truck's first and second visit of every type works by touch at `/kiosk`, in English and Hindi, with the simulator; the driver's invoice goes up from the phone page. The supervisor's phone pages work (Phase 12; see [testing on your phone](docs/PROGRESS.md#testing-on-your-phone)). The store officer's dashboard still shows sample data (`pnpm office` makes those decisions meanwhile). The real firmware (Phase 5B) is not built yet.
 
 ## Folder layout
 
@@ -439,6 +439,7 @@ Run all commands from the repository root.
 | `pnpm test:e2e`          | Runs the browser tests (see [Browser tests](#browser-tests))                    |
 | `pnpm screenshots`       | Takes the pictures in `docs/screenshots/ui-update` again                        |
 | `pnpm screenshots:kiosk` | Runs the kiosk tests and saves every screen in `docs/screenshots/phase10`       |
+| `pnpm lan`               | Website and backend over https on the Wi-Fi address, for a phone                |
 | `pnpm office`            | Demo pick modes and the supervisor's and store's decisions, for trying by hand  |
 | `pnpm sim`               | Simulates the main ESP32 and both cameras (see [Simulator](#simulator))         |
 | `pnpm journey`           | Runs the five truck journeys (see [Journeys](#journeys))                        |

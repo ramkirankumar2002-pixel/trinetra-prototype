@@ -81,7 +81,7 @@ Related docs:
 
 ## Current status
 
-Phase 10 done (the weighbridge kiosk, the phone upload page and the slips), with invoice reading made asynchronous. Next: Phase 12 (supervisor website), or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run. Nothing has been tried on a real touchscreen, phone or printer. The Hindi text is unchecked ([docs/HINDI_REVIEW.md](docs/HINDI_REVIEW.md)).
+Phase 12 done (the supervisor website), with three Phase 10 fixes: `PUBLIC_WEB_URL` + `pnpm lan`, the demo-mode plate photo and the "No phone?" screen. Next: Phase 13 (store officer website), or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run. **Nothing has been tried on a real touchscreen, phone or printer** (Phase 12's "Done when" passed in the browser test only). The Hindi text is unchecked ([docs/HINDI_REVIEW.md](docs/HINDI_REVIEW.md)). To try on a phone: [docs/PROGRESS.md](docs/PROGRESS.md#testing-on-your-phone).
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website. The ticket API's request schemas and answer types are in `src/tickets.ts`.
 
@@ -91,7 +91,9 @@ Website rules to keep: call the backend only through `api` (`apps/web/src/lib/ap
 
 Kiosk rules to keep: `/kiosk` is one page (`components/kiosk/kiosk-app.tsx`). `lib/kiosk/flow.ts` decides the screen from the ticket's status plus the driver's step; every driver screen is a `KioskFrame`. A press that saves goes through `useAction()` (one at a time, same Idempotency-Key on retry). After any `await`, check the kiosk has not moved on (`sameDriver()`, or `answered(from)`): the truck may have left.
 
-**Phases 11–14 must follow [docs/design/STYLE_GUIDE.md](docs/design/STYLE_GUIDE.md):** two themes (token colour names only), the shared components (`/dev/ui` shows them), status = colour + icon + word, and the driver rules. Every new kiosk screen is checked with `look()` (`tests/e2e/kiosk-world.ts`) at 1366×768 and 1920×1080 in both languages with its longest message showing, and its picture is looked at. `pnpm test:e2e` runs the browser tests (installed Chrome, development database, demo reset); `pnpm screenshots:kiosk` retakes `docs/screenshots/phase10`. The design reference images and side-by-side comparisons are on this computer only: do not commit them (public repository) unless the user says so. `pnpm office` makes the supervisor's and store's decisions until Phases 12 and 13.
+Supervisor rules to keep: the supervisor's pages are `app/supervisor/(signed-in)/` (data in `lib/supervisor/queries.ts`, keys start with `SUPERVISOR_KEY`); `TruckWatcher` in `RoleShell` does live reloading, the sound and the tab title. Staff take photos only with `components/camera/live-camera.tsx` (reuse it for the store pages). The backend judges every photo (`comparePlates`) and refuses an approval without one. Buttons are at least 48 px. `pnpm test:e2e` includes `supervisor.spec.ts`; `PHASE12_SHOTS=1` retakes `docs/screenshots/phase12` (then `pnpm -C scripts run compress-screenshots ../docs/screenshots/phase12`).
+
+**Phases 11–14 must follow [docs/design/STYLE_GUIDE.md](docs/design/STYLE_GUIDE.md):** two themes (token colour names only), the shared components (`/dev/ui` shows them), status = colour + icon + word, and the driver rules. Every new kiosk screen is checked with `look()` (`tests/e2e/kiosk-world.ts`) at 1366×768 and 1920×1080 in both languages with its longest message showing, and its picture is looked at. `pnpm test:e2e` runs the browser tests (installed Chrome, development database, demo reset); `pnpm screenshots:kiosk` retakes `docs/screenshots/phase10`. The design reference images and side-by-side comparisons are on this computer only: do not commit them (public repository) unless the user says so. `pnpm office` makes the store officer's decisions until Phase 13 (it can still make the supervisor's).
 
 Settle before the phases that need it:
 
@@ -100,9 +102,12 @@ Settle before the phases that need it:
 - **Open:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires. (Such a tab goes to the login when it next gets focus.)
 - **Open:** the kiosk's dialogs are not measured by the driver-rule check.
 - **Open:** "Reset demo data" does not delete help calls made before a ticket existed.
-- **Phases 12/13:** replace the dashboard homes' sample data with real data, delete `src/lib/sample-data.ts`, and make the bell count real alerts. The store pages must handle driver help (also from "No phone?": the officer scans the kiosk's QR code).
+- **Phase 13:** replace the store home's sample data with real data, delete `src/lib/sample-data.ts`, and make the store's bell count real alerts. The store pages must handle driver help; from "No phone?" the kiosk hides the QR code, so the officer presses "I found my phone → show code again" and scans it (or the store page gets its own upload).
+- **To try with a real phone (Phase 12):** certificate warning, camera on Android Chrome and iPhone Safari, the live connection on iPhone with the self-signed certificate, sound and vibration.
+- **To decide:** with the current seed only Amit Kumar receives trucks (every Type 1 material is unloaded at Plant). Showing another unloading point's supervisor needs a seed rule change.
+- **To decide:** send the supervisor's GPS with the photo (build plan section 10; the backend accepts it, the page does not send it).
 - **Phase 14:** build `/t/<ticket-no>` (the slips' QR codes point to it) and the demo settings behind the 3 second logo hold (it offers only "Log out" now).
-- **To try with a real phone:** the invoice QR holds `FRONTEND_ORIGIN`, so the phone must be able to open that address. Test "Take photo" and an iPhone HEIC photo.
+- **To try with a real phone:** the QR codes hold `PUBLIC_WEB_URL` (`pnpm lan` sets it). Test "Take photo" and an iPhone HEIC photo.
 - **A high plate confidence is not proof** (a 99% read was wrong in the Phase 7 check): the driver always confirms the plate.
 - **Gemini backup (decided):** `GEMINI_FALLBACK_MODEL` (default `gemini-3.5-flash-lite`) is asked once when `GEMINI_MODEL` is busy, rate limited or times out. Results carry `model`. `gemini-3.8-flash` itself had not answered a request during Phase 7.
 - **To decide:** Whether to ask Gemini for a second opinion when Plate Recognizer's read is not in the vehicle list or front and back differ.
@@ -113,6 +118,7 @@ Settle before the phases that need it:
 - **Before Phase 16:** set `NODE_ENV=production` on Railway (otherwise the login cookie is not `Secure`).
 - **Before Phase 16:** configure Fastify's `trustProxy` safely for Railway, so rate limits use the real client address (otherwise all users may share the limits; login: 20 a minute, phone upload: 30 a minute). With the rewrite, it must cover both hops.
 - **Before Phase 16:** test the Supabase storage driver against the real bucket.
+- **Before Phase 16:** set `PUBLIC_WEB_URL` on Railway and Vercel to the website's address. The demo "pick" photo is drawn with a system font: check its text on Railway (Linux).
 - **Before Phase 16:** set `BACKEND_URL` on Vercel, and test an 8 MB upload and a slow plate reading (up to about 28 s) through Vercel's forwarding.
 - **Before Phase 16:** the "live" room has no limit on how many viewers can connect.
 

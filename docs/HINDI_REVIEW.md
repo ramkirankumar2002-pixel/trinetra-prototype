@@ -86,7 +86,6 @@ The material words in the seed file (`aliasesHi`) are separate and also unchecke
 | `kiosk.invoice.step3` | Send it | भेज दें |
 | `kiosk.invoice.qr` | QR code to upload your invoice | बिल भेजने का QR कोड |
 | `kiosk.invoice.noPhone` | No phone? | फ़ोन नहीं है? |
-| `kiosk.invoice.officerComing` | The store officer is coming to upload it. | बिल भेजने के लिए स्टोर अधिकारी आ रहे हैं। |
 | `kiosk.invoice.arrived` | Your file arrived | आपकी फ़ाइल मिल गई |
 | `kiosk.invoice.reading` | Reading invoice… | बिल पढ़ा जा रहा है… |
 | `kiosk.invoice.failed` | Not read | पढ़ा नहीं गया |
@@ -219,3 +218,105 @@ The material words in the seed file (`aliasesHi`) are separate and also unchecke
 | `material.aggregate-10-mm` | Aggregate 10 mm | गिट्टी 10 एमएम |
 | `material.sand` | Sand | रेत |
 | `material.bricks` | Bricks | ईंट |
+
+## Phase 12
+
+New or changed for the supervisor's pages and the "No phone?" screen. Not checked by a Hindi speaker. The camera steps name Android and iPhone menus in English: check them against a Hindi phone.
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `kiosk.invoice.officerComing` | The store officer is coming to upload your bill. Please wait. | आपका बिल भेजने के लिए स्टोर अधिकारी आ रहे हैं। कृपया रुकें। |
+| `kiosk.invoice.waitingOfficer` | Waiting… | इंतज़ार हो रहा है… |
+| `kiosk.invoice.pleaseWait` | Please wait | कृपया रुकें |
+| `kiosk.invoice.foundPhone` | I found my phone → show code again | मेरा फ़ोन मिल गया → कोड फिर दिखाएँ |
+| `menu.trucks` | My trucks | मेरे ट्रक |
+| `tab.trucks` | My trucks | मेरे ट्रक |
+| `page.trucks.subtitle` | The longest wait comes first | सबसे लंबा इंतज़ार सबसे ऊपर |
+| `camera.starting` | Opening the camera… | कैमरा खुल रहा है… |
+| `camera.hint` | Put the number plate inside the box. | नंबर प्लेट को डिब्बे के अंदर रखें। |
+| `camera.take` | Take photo | फ़ोटो लें |
+| `camera.tryAgain` | Try the camera again | कैमरा फिर चालू करें |
+| `camera.denied` | The camera is blocked. Please allow it: | कैमरा बंद है। कृपया इसकी अनुमति दें: |
+| `camera.stepAndroid` | Android Chrome: tap the lock or settings icon beside the address, then Permissions → Camera → Allow. | Android Chrome: पते के पास ताले या सेटिंग वाले निशान को दबाएँ, फिर Permissions → Camera → Allow। |
+| `camera.stepIphone` | iPhone Safari: tap the icon at the left of the address bar, then Website Settings → Camera → Allow. | iPhone Safari: पते की पट्टी के बाईं ओर वाला निशान दबाएँ, फिर Website Settings → Camera → Allow। |
+| `camera.stepThen` | Then press the button below. | फिर नीचे वाला बटन दबाएँ। |
+| `camera.missing` | No camera was found on this device. | इस फ़ोन पर कोई कैमरा नहीं मिला। |
+| `camera.busy` | The camera is in use. Close other camera apps, then try again. | कैमरा कहीं और चल रहा है। दूसरे कैमरा ऐप बंद करके फिर कोशिश करें। |
+| `camera.failed` | The camera did not open. | कैमरा नहीं खुला। |
+| `camera.noLive` | This page cannot show the camera, so the phone's camera app will be used. | यह पेज कैमरा नहीं दिखा सकता, इसलिए फ़ोन का कैमरा ऐप खुलेगा। |
+| `camera.badPhoto` | That photo could not be used. Take another. | यह फ़ोटो काम नहीं आई। दूसरी फ़ोटो लें। |
+| `sup.newTruck` | New truck: {plate} | नया ट्रक: {plate} |
+| `sup.offline` | No connection. Nothing is sent until the network is back. | कनेक्शन नहीं है। नेटवर्क लौटने तक कुछ भी नहीं भेजा जाएगा। |
+| `sup.connection` | Connection: | कनेक्शन: |
+| `sup.tapForSound` | Tap the screen once to turn on the sound for new trucks. | नए ट्रक की आवाज़ चालू करने के लिए स्क्रीन को एक बार छुएँ। |
+| `sup.loading` | Loading… | लोड हो रहा है… |
+| `sup.loadFailed` | The list could not be loaded. | सूची लोड नहीं हो सकी। |
+| `sup.nextTruck` | Next truck | अगला ट्रक |
+| `sup.noTrucks` | No truck is waiting | कोई ट्रक इंतज़ार में नहीं है |
+| `sup.noDone` | Nothing decided yet today | आज अभी कोई फ़ैसला नहीं हुआ |
+| `sup.today` | Today | आज |
+| `sup.kpi.coming` | Coming to me | मेरे पास आए |
+| `sup.kpi.comingNote` | sent to you today | आज आपको भेजे गए |
+| `sup.kpi.waiting` | Waiting for verify | जाँच बाकी |
+| `sup.verified` | Verified | जाँच पास |
+| `sup.trip` | Trip {trip} | फेरा {trip} |
+| `sup.waitingFor` | waiting {minutes} min | {minutes} मिनट से इंतज़ार |
+| `sup.column.trip` | Trip no. | फेरा नं. |
+| `sup.column.since` | Since first weight | पहले वज़न से |
+| `sup.chainage` | Chainage | चेनेज |
+| `sup.firstWeight` | First weight | पहला वज़न |
+| `sup.frontPhoto` | Weighbridge photo | धर्म कांटे की फ़ोटो |
+| `sup.kioskPhoto` | At the weighbridge | धर्म कांटे पर |
+| `sup.myPhoto` | My photo | मेरी फ़ोटो |
+| `sup.noPhoto` | No photo | फ़ोटो नहीं है |
+| `sup.enlarge` | Show the photo large | फ़ोटो बड़ी करें |
+| `sup.verify.title` | Verify truck | ट्रक की जाँच |
+| `sup.verify.subtitle` | Photograph its number plate | इसकी नंबर प्लेट की फ़ोटो लें |
+| `sup.photographPlate` | Photograph the number plate | नंबर प्लेट की फ़ोटो लें |
+| `sup.retake` | Retake | फिर से लें |
+| `sup.retakeLeft` | Retake ({count} left) | फिर से लें ({count} बाकी) |
+| `sup.usePhoto` | Use this photo | यही फ़ोटो भेजें |
+| `sup.reading` | Reading the plate… | प्लेट पढ़ी जा रही है… |
+| `sup.saving` | Saving… | सेव हो रहा है… |
+| `sup.backToResult` | Back to the result | नतीजे पर वापस |
+| `sup.ticketPlate` | Ticket plate | टिकट की प्लेट |
+| `sup.photoReads` | Read from your photo | आपकी फ़ोटो से पढ़ा |
+| `sup.banner.MATCH` | Plate matches | प्लेट मिल गई |
+| `sup.banner.CLOSE` | Almost matches, check with your eyes | लगभग मिलती है, अपनी आँखों से जाँचें |
+| `sup.banner.NO_MATCH` | Plate does not match | प्लेट नहीं मिलती |
+| `sup.banner.NOT_READ` | Could not read | प्लेट पढ़ी नहीं गई |
+| `sup.result.MATCH` | Plate matches | प्लेट मिलती है |
+| `sup.result.CLOSE` | One letter differs | एक अक्षर अलग |
+| `sup.result.NO_MATCH` | No match | मेल नहीं |
+| `sup.result.NOT_READ` | Not read | पढ़ी नहीं गई |
+| `sup.result.MANUAL` | Manual check | हाथ से जाँच |
+| `sup.overrideReason` | To approve, type why (at least {count} letters) | मंज़ूरी देने के लिए कारण लिखें (कम से कम {count} अक्षर) |
+| `sup.approveAnyway` | Approve anyway | फिर भी मंज़ूरी दें |
+| `sup.manualCheck` | Manual check | हाथ से जाँच |
+| `sup.typePlate` | Type the plate you see on the truck | ट्रक पर जो प्लेट दिख रही है, वह लिखें |
+| `sup.approveManual` | Approve (manual check) | मंज़ूरी दें (हाथ से जाँच) |
+| `sup.rejectWhy` | Why are you rejecting it? | आप इसे क्यों अस्वीकार कर रहे हैं? |
+| `sup.rejectTruck` | Reject truck | ट्रक अस्वीकार करें |
+| `sup.reason.wrongTruck` | Wrong truck | गलत ट्रक |
+| `sup.reason.covered` | Plate covered/fake | प्लेट ढकी या नकली |
+| `sup.reason.notUnloaded` | Material not unloaded | माल नहीं उतारा गया |
+| `sup.reason.other` | Other | कुछ और |
+| `sup.reason.type` | Type the reason | कारण लिखें |
+| `sup.done.approved` | Approved. The truck can go back for the second weighing. | मंज़ूरी दे दी। ट्रक दूसरे वज़न के लिए लौट सकता है। |
+| `sup.done.rejected` | Rejected. The truck is blocked and the store officer is told. | अस्वीकार किया। ट्रक रोक दिया गया है और स्टोर अधिकारी को बता दिया गया है। |
+| `sup.done.taken` | Already done by someone else. | यह काम पहले ही हो चुका है। |
+| `sup.nextTruckPlate` | Next truck: {plate} | अगला ट्रक: {plate} |
+| `sup.backToTrucks` | Back to my trucks | मेरे ट्रक पर वापस |
+| `sup.backToDone` | Back to the list | सूची पर वापस |
+| `sup.detail.title` | Truck details | ट्रक का ब्योरा |
+| `sup.decidedAt` | Decided | फ़ैसले का समय |
+| `sup.typedPlate` | Plate you typed | आपकी लिखी प्लेट |
+| `sup.confidence` | Reader's confidence | पढ़ने का भरोसा |
+| `sup.reasonLabel` | Reason | कारण |
+| `sup.cameraApp` | Taken with the phone's camera app | फ़ोन के कैमरा ऐप से ली गई |
+| `sup.error.photoLimit` | No photos left. Reject, or check by hand. | अब और फ़ोटो नहीं ले सकते। अस्वीकार करें या हाथ से जाँचें। |
+| `sup.error.photoBusy` | The last photo is still being read. Wait a moment. | पिछली फ़ोटो अभी पढ़ी जा रही है। थोड़ा रुकें। |
+| `sup.error.plateDiffers` | That is not this ticket's plate. Check again, or reject the truck. | यह इस टिकट की प्लेट नहीं है। फिर देखें, या ट्रक अस्वीकार करें। |
+| `sup.error.reason` | The reason is too short. | कारण बहुत छोटा है। |
+| `sup.error.notYours` | This truck was not sent to your unloading point. | यह ट्रक आपकी उतारने की जगह पर नहीं भेजा गया। |
+| `sup.error.noTruck` | This truck was not found. | यह ट्रक नहीं मिला। |

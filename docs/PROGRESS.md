@@ -244,12 +244,56 @@ Added 2026-11-26, not one of the 120 steps.
 
 ## Phase 12 — Supervisor website
 
-- [ ] **100.** My trucks list with live updates, sound and vibration.
-- [ ] **101.** Live camera component (back camera, capture, compress), shared with the store pages.
-- [ ] **102.** Verify page: photos, plate match, approve / reject / manual check.
-- [ ] **103.** Done list.
+- [x] **100.** My trucks list with live updates, sound and vibration.
+- [x] **101.** Live camera component (back camera, capture, compress), shared with the store pages.
+- [x] **102.** Verify page: photos, plate match, approve / reject / manual check.
+- [x] **103.** Done list.
+
+**Also in this phase** (added 2026-11-27, not one of the 120 steps), fixes from the Phase 10 review:
+
+- [x] `PUBLIC_WEB_URL` goes into the invoice and slip QR codes; `pnpm lan` serves the website over https on the Wi-Fi address.
+- [x] Demo "pick" plate mode draws a "DEMO PHOTO" with the picked number. It no longer shows a camera's photo, which could carry another plate.
+- [x] Kiosk "No phone?": the QR code and steps go; a waiting card and "I found my phone → show code again".
+- [ ] The new Hindi text needs your review: [HINDI_REVIEW.md](HINDI_REVIEW.md#phase-12).
 
 **Done when:** approving on a phone unlocks the kiosk in under 1 second.
+
+✅ Passed on 2026-11-27 **in the browser test only**: Playwright with a 390×844 window as the phone, a pretend camera stream, the ESP32 simulator and demo "pick" plate mode. The kiosk showed the approval 110–180 ms after the tap, with everything on one computer. A Type 1 truck was weighed at the real kiosk screens, appeared on the phone by itself, was approved there, and finished its second weighing. The tests also cover one letter different, no match, reject, manual check, double tap, lost network, "Already done by someone else", login and back to the same page, another supervisor (403), a refused camera and a page without a camera. All 40 browser tests (the Phase 10 journeys among them) and the five `pnpm journey` scenarios passed. Pictures are in [screenshots/phase12](screenshots/phase12). `pnpm lan` was checked from the laptop itself, through its Wi-Fi address: pages, login (a Secure cookie), live connection by polling and by WebSocket, and another website's origin refused.
+
+- **Not tried on a real phone:** the certificate warning, the real camera, Android Chrome, iPhone Safari (including whether its live connection accepts this certificate; if not, it should keep working by polling), the sound and the vibration (iPhones have no vibration for web pages).
+- No real Plate Recognizer or Gemini call was made. "Could not read" was shown by replacing one answer in the browser; the backend's handling of an unread photo is in the API tests.
+- The supervisor's photo is saved without GPS (build plan section 10 mentions it; the backend accepts it, the page does not send it).
+
+### Testing on your phone
+
+1. Once, after pulling this phase: `pnpm install`, then `pnpm db:migrate`.
+2. Connect the laptop and the phone to the **same Wi-Fi**. A college or office Wi-Fi may stop devices from seeing each other: then use a phone hotspot.
+3. Stop `pnpm dev`, then run `pnpm lan`. It prints the address to open, such as `https://192.168.1.20:3000/supervisor`. (`pnpm lan --ip <address>` if it picked the wrong network.)
+4. On the phone the first time: certificate warning → **Advanced → Proceed** (iPhone: **Show Details → visit this website**).
+5. On the laptop open `https://localhost:3000/kiosk` (the same warning once).
+
+**Windows firewall:** Node.js must be allowed on **private** networks. Windows usually asks the first time: tick **Private networks**. If it did not ask, or the phone cannot connect: Windows Security → Firewall & network protection → Allow an app through firewall → **Node.js JavaScript Runtime** → tick **Private**, and make sure the Wi-Fi is set as a private network.
+
+**One full Type 1 truck:** in a second terminal `pnpm office reset`, then `pnpm office pick cement`; in a third, `pnpm sim --loaded 32560`. Press `a` in the simulator, finish the first visit on the kiosk (material **Cement Bags**), then press `l`. On the phone: **Verify → Take photo → Use this photo → Approve**. Press `a` again: the kiosk offers the second weight. In "pick" mode the photo always "reads" the picked plate; `pnpm office real` after the first weight makes the supervisor's photo use the real readers.
+
+### Supervisor logins (test only)
+
+These are public in the repository. They must be changed before deploying (Phase 16). The unloading point is the one the seed's unloading rules give that supervisor.
+
+| Username | PIN  | Name         | Unloading point                 |
+| -------- | ---- | ------------ | ------------------------------- |
+| amit     | 1001 | Amit Kumar   | Plant                           |
+| suresh   | 1002 | Suresh Yadav | CH-003+750 Bridge Approach Road |
+| ravi     | 1003 | Ravi Singh   | CH-005+250 Hill Section Area    |
+| mahesh   | 1004 | Mahesh Patel | CH-009+800 Near Quarry Area     |
+| vikram   | 1005 | Vikram Sharma| CH-010+500 Middle Section Point |
+| dinesh   | 1006 | Dinesh Verma | Plant (Steel Scrap)             |
+| pankaj   | 1007 | Pankaj Gupta | CH-012+300 Valley Crossing      |
+| ajay     | 1008 | Ajay Kumar   | none in the rules               |
+| deepak   | 1009 | Deepak Yadav | none in the rules               |
+| rohit    | 1010 | Rohit Kumar  | none in the rules               |
+
+**Only `amit` receives trucks with the current seed:** only Type 1 trucks are checked, and every Type 1 material is unloaded at Plant (Amit Kumar). The others see an empty list.
 
 ## Phase 13 — Store officer website
 
