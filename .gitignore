@@ -32,3 +32,6 @@ firmware/**/secrets.h
 *.log
 .DS_Store
 Thumbs.db
+
+# Pictures of the manual-style check: kept on this computer only (docs/MANUAL_CHECK.md)
+docs/screenshots/manual-check/
