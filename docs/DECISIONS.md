@@ -242,3 +242,4 @@ One row per decision. All rows dated 2026-11-26 come from the [build plan](BUILD
 | 2026-11-27 | A cancelled visit that had been weighed still counts for the used-twice bill warning | Its bill was used for a weighing |
 | 2026-11-27 | Waiting times (amber from 5 minutes, red from 10) are also shown on the store officer's "Trucks on site" and on the supervisor's home, truck list and verify page | Requested |
 | 2026-11-27 | The app's preview button runs `scripts/preview-dev.mjs`: `pnpm dev` without the `PORT` variable the preview sets | The backend reads `PORT` too, so both programs took port 3000 |
+| 2026-11-27 | Confirmed: cancelling a visit does not block the plate for 24 hours, also for a truck waiting for its supervisor or on HOLD. Only a rejection blocks | Decided by the user |

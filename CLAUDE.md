@@ -106,7 +106,7 @@ Settle before the phases that need it:
 - **Open:** the kiosk's dialogs are not measured by the driver-rule check.
 - **Open:** "Reset demo data" does not delete help calls made before a ticket existed.
 - **To decide:** a visit that waits for a person now stays open until someone answers or cancels it, also overnight. While it is open, its plate cannot start a new ticket (the old one is carried on).
-- **To decide:** cancelling does not block the plate (Reject does). Check that this is wanted for a truck waiting for its supervisor or on HOLD.
+- **Decided:** cancelling a visit does not block the plate (only a rejection does), also for a truck waiting for its supervisor or on HOLD.
 - **To decide:** should a supervisor's rejection become something the store officer can overrule? Today it is BLOCKED and for information only.
 - **To try with a real phone (Phase 13):** the camera for a bill, opening a PDF bill, the sound.
 - **To try with a real phone (Phase 12):** certificate warning, camera on Android Chrome and iPhone Safari, the live connection on iPhone with the self-signed certificate, sound and vibration.
