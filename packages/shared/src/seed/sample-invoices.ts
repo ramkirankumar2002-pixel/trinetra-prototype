@@ -9,6 +9,7 @@ export const SAMPLE_INVOICE_IDS = [
   "sand",
   "aggregate",
   "steel-bars",
+  "bitumen",
 ] as const;
 export type SampleInvoiceId = (typeof SAMPLE_INVOICE_IDS)[number];
 
@@ -112,5 +113,21 @@ export const SAMPLE_INVOICES: readonly SampleInvoice[] = [
     },
     quantityText: "14.310",
     expected: { material: "Steel Bars", weightKg: 14_310, type: "TYPE_1" },
+  },
+  {
+    id: "bitumen",
+    scenario: "Type 1: the supervisor depends on the trip number",
+    printed: {
+      invoice_number: "SMPL-BIT-006",
+      invoice_date: "2026-11-26",
+      supplier: "Shree Ram Crushers",
+      transporter: "Kisan Roadlines",
+      vehicle_number: "BR 06 QR 4321",
+      material: "VG-30 Bitumen",
+      quantity: 14.31,
+      quantity_unit: "MT",
+    },
+    quantityText: "14.310",
+    expected: { material: "Bitumen", weightKg: 14_310, type: "TYPE_1" },
   },
 ];

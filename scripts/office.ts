@@ -1,6 +1,6 @@
 // For trying the weighbridge by hand before the supervisor and store screens exist
 // (Phases 12 and 13). It sets the demo "pick" modes and makes the people's decisions.
-//   pnpm office pick cement          also: sand, steel-scrap, aggregate, steel-bars
+//   pnpm office pick cement          also: sand, steel-scrap, aggregate, steel-bars, bitumen
 //   pnpm office list                 what is waiting for a person
 //   pnpm office approve              the oldest waiting request
 //   pnpm office reject               the same, refused
@@ -31,6 +31,7 @@ const LOADED_KG: Record<string, number> = {
   // 14,310 kg against 14,500 kg on the invoice: this one fails the tolerance.
   aggregate: 32_560,
   "steel-bars": 32_560,
+  bitumen: 32_560,
 };
 
 /** Those the unloading rules can send a Type 1 truck to. */
