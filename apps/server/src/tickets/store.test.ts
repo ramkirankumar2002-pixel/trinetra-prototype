@@ -1,5 +1,5 @@
 import type { StoreRequestsResponse } from "@trinetra/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { testDatabaseUrl } from "../test/env";
 import { flows } from "../test/flows";
 import { OTHER_PLATE, useTicketHarness } from "../test/ticket-harness";
@@ -89,6 +89,18 @@ describe.skipIf(!testDatabaseUrl)("store requests and help", { timeout: 30_000 }
       await Promise.all([help({ ticketId: id }), help({ ticketId: id })]);
       expect(await h.approvalRows()).toHaveLength(1);
       expect(await h.eventTypes(id)).toContain("APPROVAL_REQUESTED");
+    });
+
+    it("tells the store officer only once while the call is open", async () => {
+      const id = await started();
+      const rooms = vi.spyOn(h.app.realtime.io, "to");
+      await help({ ticketId: id });
+      await help({ ticketId: id });
+      await help({ ticketId: id });
+      // approval:new is the only live event of a help call, and it goes to the store.
+      expect(rooms.mock.calls.filter(([to]) => String(to) === "store")).toHaveLength(1);
+      expect(await h.approvalRows()).toHaveLength(1);
+      rooms.mockRestore();
     });
 
     it("answers 404 and 400", async () => {

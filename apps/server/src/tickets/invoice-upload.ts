@@ -11,7 +11,7 @@ import {
 } from "@trinetra/shared";
 import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import type { Env } from "../config/env";
+import { publicWebUrl, type Env } from "../config/env";
 import { UPLOAD_LINK_MS } from "../config/limits";
 import { approvals, materials, ticketEvents, tickets, uploadLinks } from "../db/schema";
 import { AppError } from "../errors/app-error";
@@ -69,7 +69,7 @@ export async function createUploadLink(
 
   return {
     code,
-    url: `${env.FRONTEND_ORIGIN}/u/${code}`,
+    url: `${publicWebUrl(env)}/u/${code}`,
     expiresAt: expiresAt.toISOString(),
   };
 }

@@ -38,7 +38,8 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRouteOptio
     path: "/",
     httpOnly: true,
     sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    // Also over the local https of "pnpm lan".
+    secure: env.NODE_ENV === "production" || env.FRONTEND_ORIGIN.startsWith("https:"),
   } as const;
 
   app.post(

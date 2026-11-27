@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv } from "./env";
+import { parseEnv, publicWebUrl, webOrigins } from "./env";
 
 const valid = {
   DATABASE_URL: "postgres://postgres:postgres@localhost:5433/trinetra",
@@ -77,6 +77,28 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...valid, STORAGE_DRIVER: "supabase" })).toThrow(
       /SUPABASE_URL is required[\s\S]*SUPABASE_SERVICE_KEY[\s\S]*STORAGE_BUCKET/,
     );
+  });
+
+  it("puts PUBLIC_WEB_URL in the QR codes and lets both addresses call the API", () => {
+    const env = parseEnv({ ...valid, PUBLIC_WEB_URL: "https://192.168.1.20:3000" });
+    expect(publicWebUrl(env)).toBe("https://192.168.1.20:3000");
+    expect(webOrigins(env)).toEqual(["http://localhost:3000", "https://192.168.1.20:3000"]);
+    const without = parseEnv(valid);
+    expect(publicWebUrl(without)).toBe("http://localhost:3000");
+    expect(webOrigins(without)).toEqual(["http://localhost:3000"]);
+  });
+
+  it.each(["https://localhost:3000", "http://127.0.0.1:3000", "https://192.168.1.20:3000/", "x"])(
+    "refuses %s as PUBLIC_WEB_URL",
+    (value) => {
+      expect(() => parseEnv({ ...valid, PUBLIC_WEB_URL: value })).toThrow(/- PUBLIC_WEB_URL /);
+    },
+  );
+
+  it("refuses localhost QR codes in production", () => {
+    expect(() => parseEnv({ ...valid, NODE_ENV: "production" })).toThrow(/- PUBLIC_WEB_URL /);
+    const deployed = { ...valid, NODE_ENV: "production", FRONTEND_ORIGIN: "https://a.example.com" };
+    expect(publicWebUrl(parseEnv(deployed))).toBe("https://a.example.com");
   });
 
   it("never prints a value in the error message", () => {

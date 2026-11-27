@@ -1,5 +1,6 @@
 // Every backend setting, checked once at startup. Nothing else should read process.env
 // for settings. Error messages name variables but never print their values.
+import { isLocalOnlyUrl } from "@trinetra/shared";
 import { z } from "zod";
 import { loadEnvFile } from "./paths";
 
@@ -62,6 +63,17 @@ const envSchema = z
       isOrigin,
       "must be a website address with no path or trailing slash, e.g. http://localhost:3000",
     ),
+    /**
+     * The address phones open: what the QR codes hold, and a second origin that may call
+     * the API. "pnpm lan" sets it. Without it, FRONTEND_ORIGIN is used.
+     */
+    PUBLIC_WEB_URL: z
+      .string()
+      .refine(
+        (value) => isOrigin(value) && !isLocalOnlyUrl(value),
+        "must be an address a phone can open (not localhost), with no path or trailing slash",
+      )
+      .optional(),
     STORAGE_DRIVER: z.enum(["local", "supabase"], {
       error: 'is required and must be "local" or "supabase"',
     }),
@@ -101,6 +113,18 @@ const envSchema = z
       if (token) seen.add(token);
     }
 
+    if (
+      env.NODE_ENV === "production" &&
+      !env.PUBLIC_WEB_URL &&
+      isLocalOnlyUrl(env.FRONTEND_ORIGIN)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["PUBLIC_WEB_URL"],
+        message: "is required in production when FRONTEND_ORIGIN is a localhost address",
+      });
+    }
+
     if (env.STORAGE_DRIVER !== "supabase") return;
     for (const name of ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "STORAGE_BUCKET"] as const) {
       if (!env[name]) {
@@ -114,6 +138,14 @@ const envSchema = z
   });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** The address that goes into QR codes. */
+export const publicWebUrl = (env: Env): string => env.PUBLIC_WEB_URL ?? env.FRONTEND_ORIGIN;
+
+/** The website addresses that may call the API and open a live connection. */
+export const webOrigins = (env: Env): string[] => [
+  ...new Set([env.FRONTEND_ORIGIN, publicWebUrl(env)]),
+];
 
 export class EnvError extends Error {
   override name = "EnvError";

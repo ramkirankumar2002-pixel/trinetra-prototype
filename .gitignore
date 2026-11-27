@@ -19,6 +19,9 @@ uploads/
 # Real phone photos of the model plates: kept on this computer only
 scripts/test-photos/
 
+# The self-signed certificate made by "pnpm lan"
+certificates/
+
 # Secrets: never commit these
 .env
 .env.*

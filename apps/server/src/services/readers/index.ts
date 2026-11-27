@@ -17,6 +17,8 @@ import type { Database } from "../../db/client";
 import { materials, suppliers, transporters, vehicles } from "../../db/schema";
 import { AppError } from "../../errors/app-error";
 import type { PhotoService } from "../../hardware/photos";
+import { drawDemoPhoto } from "../images/demo-photo";
+import { storeFile } from "../images/pipeline";
 import type { StorageService } from "../storage";
 import { createGemini } from "./gemini";
 import { interpretInvoice, readInvoiceWithGemini, type InvoiceLists } from "./invoice";
@@ -91,19 +93,26 @@ export function createReaders(deps: ReaderDependencies) {
   }
 
   /**
-   * The picked plate, with the photos of any camera that is connected: they are evidence
-   * and are shown on the kiosk. A camera that is offline fails at once.
+   * The picked plate, with a drawn photo that shows that same plate. The cameras are not
+   * asked: their photo could show another plate than the one picked.
    */
   async function pickedPlates(modes: ReaderModes, ticketId: number | null): Promise<PlatesRead> {
     const picked = await pickedPlate(modes);
-    const request = await photos.requestPhotos(ticketId);
-    const camera = (id: CameraId): CameraPlateRead => ({
-      ...picked,
-      photoId: request.photos[id]?.id ?? null,
-      cameraFailure: request.failed.find((failure) => failure.camera === id)?.reason ?? null,
-    });
+    async function camera(id: CameraId): Promise<CameraPlateRead> {
+      const photo = await storeFile(
+        { storage, db },
+        {
+          data: await drawDemoPhoto(picked.plate!, id),
+          contentType: "image/jpeg",
+          kind: id === "front" ? "FRONT_PLATE" : "BACK_PLATE",
+          ticketId,
+        },
+      );
+      return { ...picked, photoId: photo.id };
+    }
+    const [front, back] = await Promise.all(CAMERA_IDS.map(camera));
     return {
-      cameras: { front: camera("front"), back: camera("back") },
+      cameras: { front: front!, back: back! },
       match: true,
       plate: picked.plate,
       demo: true,

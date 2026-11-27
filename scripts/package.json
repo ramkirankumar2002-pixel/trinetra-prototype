@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lan": "tsx lan.ts",
     "sim": "tsx esp32-sim.ts",
     "journey": "tsx journey.ts",
     "office": "tsx office.ts",
@@ -17,6 +18,7 @@
   "dependencies": {
     "@trinetra/shared": "workspace:*",
     "pdf-lib": "^1.17.1",
+    "selfsigned": "^5.5.0",
     "sharp": "^0.35.5",
     "tsx": "^4.23.15",
     "ws": "^8.23.0"

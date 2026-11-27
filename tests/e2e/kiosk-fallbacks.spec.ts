@@ -124,10 +124,25 @@ test("the invoice: no phone, being read, not read; then five wrong materials", a
   await confirmPlate(page, "UP 70 GH 3456");
   await heading(page, "Invoice");
 
+  const helpCalls: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/help")) helpCalls.push(request.method());
+  });
   await press(page, "No phone?");
-  await expect(page.getByText("The store officer is coming to upload it.")).toBeVisible();
+  const waiting = page.getByTestId("no-phone");
+  await expect(waiting).toContainText(
+    "The store officer is coming to upload your bill. Please wait.",
+  );
+  // The code and the three steps are gone.
+  await expect(page.getByTestId("upload-qr")).toHaveCount(0);
+  await expect(page.getByText("Scan the code")).toHaveCount(0);
   await look(page, "05-invoice-no-phone");
-  // Leaving the screen drops the banner; the call itself stays with the store officer.
+  expect(helpCalls).toEqual(["POST"]);
+  // The phone turns up: the code is back. Asking again makes no second call to the officer
+  // (the backend's own test checks that).
+  await press(page, "I found my phone → show code again");
+  await expect(page.getByTestId("upload-qr")).toBeVisible();
+  await expect(waiting).toHaveCount(0);
 
   /** The kiosk is told the invoice is in this state. */
   const pretend = async (state: "reading" | "failed") => {

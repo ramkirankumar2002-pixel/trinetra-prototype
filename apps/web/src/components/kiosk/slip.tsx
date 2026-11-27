@@ -39,7 +39,9 @@ const useTimelineQr = (ticketNo: string) => {
     () => window.location.origin,
     () => "",
   );
-  return useQrImage(origin ? `${origin}${timelinePath(ticketNo)}` : null);
+  // PUBLIC_WEB_URL where it is set: a phone cannot open the kiosk's own "localhost".
+  const base = process.env.PUBLIC_WEB_URL || origin;
+  return useQrImage(base ? `${base}${timelinePath(ticketNo)}` : null);
 };
 
 const slipTime = (ticket: TicketView, slip: SlipName) => {

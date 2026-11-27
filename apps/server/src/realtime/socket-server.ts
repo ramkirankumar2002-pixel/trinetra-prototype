@@ -11,7 +11,7 @@ import {
 import type { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
 import type { TokenPayload } from "../auth/tokens";
-import type { Env } from "../config/env";
+import { webOrigins, type Env } from "../config/env";
 import { assertAudience, type Publish } from "./publish";
 import { SOCKET_IO_PATH } from "./upgrades";
 
@@ -48,17 +48,18 @@ export interface SocketServer {
 }
 
 export function createSocketServer(app: FastifyInstance, env: Env): SocketServer {
+  const origins = webOrigins(env);
   const io: RealtimeServer = new Server(app.server, {
     path: SOCKET_IO_PATH,
     serveClient: false,
     // Browsers send nothing, so anything large is not from our website.
     maxHttpBufferSize: 4096,
-    cors: { origin: [env.FRONTEND_ORIGIN], credentials: true },
+    cors: { origin: origins, credentials: true },
     // CORS does not cover WebSockets, so the Origin is checked here as well. Browsers
     // always send it; a request without one is not from a web page.
     allowRequest: (request, decide) => {
       const origin = request.headers.origin;
-      decide(null, origin === undefined || origin === env.FRONTEND_ORIGIN);
+      decide(null, origin === undefined || origins.includes(origin));
     },
     // Other upgrade requests belong to /device.
     destroyUpgrade: false,

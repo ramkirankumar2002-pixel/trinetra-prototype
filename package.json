@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @trinetra/web --filter @trinetra/server run dev",
+    "lan": "pnpm -C scripts run lan",
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "eslint . --max-warnings 0",

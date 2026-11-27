@@ -165,7 +165,12 @@ export function KioskApp() {
   useTicketLanguage(ticket, ticketId);
 
   const screen = screenOf({ step, ticketId, collect }, ticket, positionBad);
-  const { stage, stay } = useInactivity(QUESTION_SCREENS.has(screen), `${driver}:${screen}`);
+  // Waiting for the store officer is not a driver who has stopped answering.
+  const waitingForOfficer = useKiosk((state) => state.noPhone) && screen === "invoice";
+  const { stage, stay } = useInactivity(
+    QUESTION_SCREENS.has(screen) && !waitingForOfficer,
+    `${driver}:${screen}`,
+  );
   const [staffOpen, setStaffOpen] = useState(false);
 
   return (

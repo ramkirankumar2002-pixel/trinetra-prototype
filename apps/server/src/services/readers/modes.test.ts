@@ -15,6 +15,9 @@ import { createReaders } from "./index";
 describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => {
   let connection: ReturnType<typeof createDb>;
   const requestPhotos = vi.fn(async () => ({ photos: {}, failed: [] }));
+  const save = vi.fn<(data: Buffer, path: string, type: string) => Promise<object>>(
+    async (_data, path) => ({ path, sha256: "test" }),
+  );
   // Any call at all is an error: pick mode must not use the network.
   const apis = fakeApis({});
   const log = { warn: () => {} } as unknown as FastifyBaseLogger;
@@ -22,7 +25,7 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
     createReaders({
       env: testEnv(),
       db: connection.db,
-      storage: {} as StorageService,
+      storage: { save } as unknown as StorageService,
       photos: { requestPhotos },
       log,
       fetch: apis.fetch,
@@ -45,6 +48,7 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
   beforeEach(async () => {
     await seedDatabase(connection.db, { reset: true });
     requestPhotos.mockClear();
+    save.mockClear();
   }, 60_000);
 
   it("is real by default", async () => {
@@ -68,23 +72,22 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
         plate: "UP32EF9012",
         source: "demo",
         confidence: null,
-        photoId: null,
         cameraFailure: null,
       });
-      // The cameras are still asked, so their photos can be shown and kept.
-      expect(requestPhotos).toHaveBeenCalledWith(null);
       expect(apis.calls.plateRecognizer).toHaveLength(0);
     });
 
-    it("keeps a connected camera's photo, and says why another has none", async () => {
+    it("asks no camera, and saves a drawn photo of the picked plate for each", async () => {
       await set({ anpr_mode: "pick", demo_plate: "UP32EF9012" });
-      requestPhotos.mockResolvedValueOnce({
-        photos: { front: { id: "a-photo", storagePath: "photos/a.jpg", sha256: "a" } },
-        failed: [{ camera: "back", reason: "OFFLINE" }],
-      } as never);
       const { cameras } = await readers().readPlates(null);
-      expect(cameras.front).toMatchObject({ photoId: "a-photo", cameraFailure: null });
-      expect(cameras.back).toMatchObject({ photoId: null, cameraFailure: "OFFLINE" });
+      // A camera's photo could show another plate than the one picked.
+      expect(requestPhotos).not.toHaveBeenCalled();
+      expect(cameras.front.photoId).toEqual(expect.any(String));
+      expect(cameras.back.photoId).not.toBe(cameras.front.photoId);
+      expect(save).toHaveBeenCalledTimes(2);
+      const [data, , type] = save.mock.calls[0]!;
+      expect(type).toBe("image/jpeg");
+      expect(data.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
     });
 
     it("refuses a plate that is not in the vehicle list", async () => {

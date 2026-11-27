@@ -25,7 +25,7 @@ import { useEffect, useState } from "react";
 import type { MessageKey } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
 import { api } from "@/lib/api";
-import { useKiosk } from "@/lib/kiosk/flow";
+import { sameDriver, useKiosk } from "@/lib/kiosk/flow";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { SURFACE } from "../../ui/card";
@@ -122,12 +122,36 @@ function QrPanel({ ticketId }: { ticketId: number }) {
   );
 }
 
+/** After "No phone?": nothing for the driver to do but wait. */
+function WaitingForOfficer({ onFoundPhone }: { onFoundPhone: () => void }) {
+  const t = useT();
+  return (
+    <div
+      data-testid="no-phone"
+      className={`${SURFACE} flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center`}
+    >
+      <PhoneOff aria-hidden className="size-24 text-highlight" strokeWidth={1.5} />
+      <p role="alert" className="max-w-5xl text-[3rem] leading-tight font-extrabold text-balance">
+        {t("kiosk.invoice.officerComing")}
+      </p>
+      <Spinner label={t("kiosk.invoice.waitingOfficer")} />
+      <Button variant="outline" onClick={onFoundPhone}>
+        <ScanLine aria-hidden />
+        {t("kiosk.invoice.foundPhone")}
+      </Button>
+    </div>
+  );
+}
+
 export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
   const t = useT();
   const qrAfter = useKiosk((state) => state.qrAfter);
   const uploadAgain = useKiosk((state) => state.uploadAgain);
   const answered = useKiosk((state) => state.answered);
-  const [helpAsked, setHelpAsked] = useState<"no" | "yes" | "failed">("no");
+  const noPhone = useKiosk((state) => state.noPhone);
+  const setNoPhone = useKiosk((state) => state.setNoPhone);
+  const [calling, setCalling] = useState(false);
+  const [callFailed, setCallFailed] = useState(false);
   const uploads = uploadsOf(ticket);
   const { state } = ticket.invoice;
   // The QR code: before any upload, and after "send another" until one arrives.
@@ -138,29 +162,41 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
     subtitle: t(subtitle),
   });
 
+  async function callForUpload() {
+    setCalling(true);
+    setCallFailed(false);
+    const stillHere = sameDriver();
+    try {
+      await callStoreOfficer(ticket.id);
+      if (stillHere()) setNoPhone(true);
+    } catch {
+      setCallFailed(true);
+    }
+    setCalling(false);
+  }
+
+  if (showQr && noPhone) {
+    return (
+      <KioskFrame header={header("kiosk.invoice.pleaseWait")}>
+        <WaitingForOfficer onFoundPhone={() => setNoPhone(false)} />
+      </KioskFrame>
+    );
+  }
+
   if (showQr) {
     return (
       <KioskFrame
         header={header("kiosk.invoice.scan")}
         actions={
-          <Button
-            variant="outline"
-            onClick={() =>
-              void callStoreOfficer(ticket.id)
-                .then(() => setHelpAsked("yes"))
-                .catch(() => setHelpAsked("failed"))
-            }
-          >
+          <Button variant="outline" disabled={calling} onClick={() => void callForUpload()}>
             <PhoneOff aria-hidden />
             {t("kiosk.invoice.noPhone")}
           </Button>
         }
       >
-        {helpAsked !== "no" && (
-          <Banner tone={helpAsked === "yes" ? "info" : "stop"}>
-            <span role="alert">
-              {t(helpAsked === "yes" ? "kiosk.invoice.officerComing" : "kiosk.helpFailed")}
-            </span>
+        {callFailed && (
+          <Banner tone="stop">
+            <span role="alert">{t("kiosk.helpFailed")}</span>
           </Banner>
         )}
         <QrPanel ticketId={ticket.id} />

@@ -15,6 +15,10 @@ export function testEnv(overrides: Record<string, string> = {}): Env {
     JWT_SECRET: "a-test-secret-that-is-long-enough-123",
     FRONTEND_ORIGIN: "http://localhost:3000",
     STORAGE_DRIVER: "local",
+    // Production refuses QR codes that hold a localhost address.
+    ...(overrides.NODE_ENV === "production"
+      ? { PUBLIC_WEB_URL: "https://weighbridge.example.com" }
+      : {}),
     ...overrides,
   });
 }

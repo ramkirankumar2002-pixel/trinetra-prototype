@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { demoPlateSvg } from "./demo-photo";
 import { describe, expect, it } from "vitest";
 import { MAX_UPLOAD_BYTES } from "../../config/limits";
 import { processFile } from "./pipeline";
@@ -121,5 +122,14 @@ describe("processFile", () => {
       statusCode: 413,
       code: "FILE_TOO_LARGE",
     });
+  });
+});
+
+describe("demoPlateSvg", () => {
+  it("shows the picked plate, and says it is a demo photo", () => {
+    const svg = demoPlateSvg("UP32EF9012", "front");
+    expect(svg).toContain(">UP 32 EF 9012<");
+    expect(svg).toContain("DEMO PHOTO");
+    expect(svg).not.toContain("MH 12");
   });
 });

@@ -97,6 +97,8 @@ export interface Session {
   qrRound: number;
   /** Uploads already on the ticket when the driver asked to send another. */
   qrAfter: number | null;
+  /** "No phone?": the store officer has been called, and the driver is waiting. */
+  noPhone: boolean;
   /** This truck is finished with: it must leave before the kiosk wakes again. */
   served: boolean;
   /** A slip opened from the "Ready to collect" list. */
@@ -111,6 +113,7 @@ const FRESH: Omit<Session, "driver" | "served"> = {
   fixing: false,
   qrRound: 0,
   qrAfter: null,
+  noPhone: false,
   collect: null,
   plate: NEW_PLATE,
 };
@@ -130,6 +133,8 @@ interface KioskStore extends Session {
   setPlate: (plate: Partial<PlateState>) => void;
   readAgain: () => void;
   uploadAgain: (uploadsSoFar: number) => void;
+  /** True once the call has reached the backend; false shows the QR code again. */
+  setNoPhone: (waiting: boolean) => void;
   /** This driver is done: back to Ready while the truck may still be on the bridge. */
   finish: () => void;
   truckLeft: () => void;
@@ -173,6 +178,7 @@ export const useKiosk = create<KioskStore>()((set, get) => {
       })),
     uploadAgain: (uploadsSoFar) =>
       set((state) => ({ qrAfter: uploadsSoFar, qrRound: state.qrRound + 1 })),
+    setNoPhone: (noPhone) => set({ noPhone }),
     finish: () => clear(true),
     truckLeft: () => {
       // A slip being read from the list is not part of the truck that left.

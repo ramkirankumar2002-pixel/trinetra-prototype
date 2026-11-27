@@ -1,5 +1,6 @@
+import { isLocalOnlyUrl } from "@trinetra/shared";
 import { buildApp } from "./app";
-import { EnvError, loadConfig, type Env } from "./config/env";
+import { EnvError, loadConfig, publicWebUrl, type Env } from "./config/env";
 
 let env: Env;
 try {
@@ -11,6 +12,11 @@ try {
 }
 
 const app = await buildApp({ env, logger: true });
+if (isLocalOnlyUrl(publicWebUrl(env))) {
+  app.log.warn(
+    'The QR codes hold a localhost address, which a phone cannot open. Run "pnpm lan" to use a phone.',
+  );
+}
 
 // Hosts stop the server with SIGTERM: finish open requests first.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

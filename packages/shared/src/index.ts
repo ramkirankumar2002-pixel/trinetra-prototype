@@ -23,6 +23,7 @@ export { matchMaterial, type MatchableMaterial, type MaterialMatch } from "./mat
 export { parseDigits, parseYesNo } from "./matching/speech";
 export * from "./rules/ticket-state";
 export * from "./format";
+export * from "./public-url";
 export * from "./hardware";
 export * from "./readers";
 export * from "./realtime";

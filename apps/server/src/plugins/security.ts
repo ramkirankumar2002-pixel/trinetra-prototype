@@ -5,7 +5,7 @@ import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import type { FastifyInstance } from "fastify";
-import type { Env } from "../config/env";
+import { webOrigins, type Env } from "../config/env";
 import { GENERAL_RATE_LIMIT, MAX_UPLOAD_BYTES } from "../config/limits";
 import { AppError } from "../errors/app-error";
 
@@ -17,7 +17,7 @@ export async function registerSecurityPlugins(app: FastifyInstance, env: Env): P
 
   // A list, so other websites get no CORS permission at all.
   await app.register(cors, {
-    origin: [env.FRONTEND_ORIGIN],
+    origin: webOrigins(env),
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
   });
