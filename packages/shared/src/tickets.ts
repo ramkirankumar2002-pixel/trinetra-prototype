@@ -2,12 +2,15 @@
 // No request carries a weight: the backend takes every weight from the weighbridge itself.
 import { z } from "zod";
 import {
+  CAPTURE_SOURCES,
   LANGUAGES,
   type ApprovalKind,
   type ApprovalStatus,
+  type CaptureSource,
   type HoldWeightChoice,
   type Language,
   type PhotoKind,
+  type PlateMatchResult,
   type PlateWarningReason,
   type TicketStatus,
   type TicketType,
@@ -71,9 +74,14 @@ export const decideSchema = z
     reason: z.string().trim().min(1).max(300).optional(),
     chosenWeight: z.enum(WEIGHT_CHOICES).optional(),
     chosenMaterial: shortText.optional(),
-    /** Supervisor only: approve although the photo does not match. Needs a note. */
+    /**
+     * Supervisor only: approve although the photo does not match. For one character
+     * different this says "I checked with my eyes"; otherwise a note is needed too.
+     */
     manualCheck: z.boolean().optional(),
     note: z.string().trim().min(1).max(500).optional(),
+    /** Supervisor only, when the photo could not be read: the plate they see. */
+    seenPlate: plateSchema.optional(),
   })
   .refine((value) => value.decision !== "REJECT" || value.reason !== undefined, {
     path: ["reason"],
@@ -89,6 +97,7 @@ export const listStatusSchema = z.object({
 
 export const supervisorPhotoFieldsSchema = z
   .object({
+    captureSource: z.enum(CAPTURE_SOURCES),
     lat: z.coerce.number().min(-90).max(90),
     lng: z.coerce.number().min(-180).max(180),
     accuracyM: z.coerce.number().min(0).max(100_000),
@@ -196,6 +205,12 @@ export interface ApprovalView {
   decidedBy: string | null;
   plateRead: string | null;
   plateMatch: boolean | null;
+  matchResult: PlateMatchResult | null;
+  /** 0 to 1; null where the reader gives none. */
+  plateConfidence: number | null;
+  captureSource: CaptureSource | null;
+  /** With MANUAL: the plate the supervisor typed. */
+  manualPlate: string | null;
   photoId: string | null;
   gps: { lat: number; lng: number; accuracyM?: number } | null;
   createdAt: string;
@@ -332,18 +347,56 @@ export interface SupervisorTicketView {
   supplier: string | null;
   invoiceWeightKg: number | null;
   unloadingPoint: { code: string; name: string } | null;
+  tripNo: number | null;
   firstWeightAt: string | null;
   plateRead: string | null;
   plateMatch: boolean | null;
+  matchResult: PlateMatchResult | null;
+  /** Why it was rejected, or the note of an approval without a match. */
+  reason: string | null;
+  /** The supervisor's own photo: a link that works for a few minutes. */
+  photoUrl: string | null;
   photosUsed: number;
 }
 
+/** GET /api/supervisor/tickets. With status=done: only today's decisions (India time). */
+export interface SupervisorTicketsResponse {
+  tickets: SupervisorTicketView[];
+  /** The unloading points this supervisor is in charge of. */
+  points: { code: string; name: string }[];
+}
+
 export const MAX_SUPERVISOR_PHOTOS = 3;
+
+/** The shortest reason for approving a truck whose photo did not match. */
+export const OVERRIDE_REASON_MIN = 10;
+
+/** The supervisor's numbers for today, from their waiting and decided trucks. */
+export function supervisorDayStats(
+  waiting: readonly SupervisorTicketView[],
+  doneToday: readonly SupervisorTicketView[],
+) {
+  const waits = doneToday.flatMap(({ firstWeightAt, decidedAt }) =>
+    firstWeightAt && decidedAt ? [Date.parse(decidedAt) - Date.parse(firstWeightAt)] : [],
+  );
+  const total = waits.reduce((sum, ms) => sum + Math.max(0, ms), 0);
+  return {
+    /** Every truck sent to this supervisor: decided today, or still waiting. */
+    coming: waiting.length + doneToday.length,
+    waiting: waiting.length,
+    verified: doneToday.filter((item) => item.approvalStatus === "APPROVED").length,
+    rejected: doneToday.filter((item) => item.approvalStatus === "REJECTED").length,
+    /** From the first weight to the decision. Null before the first decision. */
+    averageWaitMin: waits.length === 0 ? null : Math.round(total / waits.length / 60_000),
+  };
+}
 
 export interface SupervisorPhotoResponse {
   photoId: string;
   plateRead: string | null;
   match: boolean;
+  matchResult: PlateMatchResult;
+  confidence: number | null;
   photosUsed: number;
   photosLeft: number;
 }

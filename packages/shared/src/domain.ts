@@ -59,5 +59,17 @@ export type UserRole = (typeof USER_ROLES)[number];
 export const PHOTO_KINDS = ["FRONT_PLATE", "BACK_PLATE", "INVOICE", "SUPERVISOR", "STORE"] as const;
 export type PhotoKind = (typeof PHOTO_KINDS)[number];
 
+/**
+ * How the supervisor's photo compares with the ticket's plate. CLOSE is one character
+ * different. MANUAL is set at the decision: the photo could not be read, and the
+ * supervisor typed the plate they saw.
+ */
+export const PLATE_MATCH_RESULTS = ["MATCH", "CLOSE", "NO_MATCH", "NOT_READ", "MANUAL"] as const;
+export type PlateMatchResult = (typeof PLATE_MATCH_RESULTS)[number];
+
+/** The in-page camera, or the phone's own camera app where the page cannot open one. */
+export const CAPTURE_SOURCES = ["camera", "fallback"] as const;
+export type CaptureSource = (typeof CAPTURE_SOURCES)[number];
+
 export const LANGUAGES = ["en", "hi"] as const;
 export type Language = (typeof LANGUAGES)[number];

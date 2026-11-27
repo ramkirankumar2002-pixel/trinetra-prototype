@@ -3,10 +3,12 @@
 import {
   APPROVAL_KINDS,
   APPROVAL_STATUSES,
+  CAPTURE_SOURCES,
   CLOSED_TICKET_STATUSES,
   HOLD_WEIGHT_CHOICES,
   LANGUAGES,
   PHOTO_KINDS,
+  PLATE_MATCH_RESULTS,
   PLATE_WARNING_REASONS,
   TICKET_STATUSES,
   TICKET_TYPES,
@@ -38,6 +40,8 @@ export const approvalStatus = pgEnum("approval_status", APPROVAL_STATUSES);
 export const plateWarningReason = pgEnum("plate_warning_reason", PLATE_WARNING_REASONS);
 export const holdWeightChoice = pgEnum("hold_weight_choice", HOLD_WEIGHT_CHOICES);
 export const userRole = pgEnum("user_role", USER_ROLES);
+export const plateMatchResult = pgEnum("plate_match_result", PLATE_MATCH_RESULTS);
+export const captureSource = pgEnum("capture_source", CAPTURE_SOURCES);
 export const photoKind = pgEnum("photo_kind", PHOTO_KINDS);
 export const language = pgEnum("language", LANGUAGES);
 
@@ -256,6 +260,11 @@ export const approvals = pgTable(
     photoId: uuid("photo_id").references(() => photos.id),
     plateRead: text("plate_read"),
     plateMatch: boolean("plate_match"),
+    // The supervisor's check: how the newest photo compared, and how it was taken.
+    matchResult: plateMatchResult("match_result"),
+    plateConfidence: numeric("plate_confidence", { precision: 5, scale: 4, mode: "number" }),
+    captureSource: captureSource("capture_source"),
+    manualPlate: text("manual_plate"),
     gps: jsonb().$type<{ lat: number; lng: number; accuracyM?: number }>(),
     createdAt: createdAt(),
     decidedAt: time("decided_at"),

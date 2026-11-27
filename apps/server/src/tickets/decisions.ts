@@ -1,6 +1,7 @@
 // POST /api/approvals/:id/decide: a person's answer to a request, and what it does
 // (build plan sections 6, 10 and 11). A decision can never be changed.
 import {
+  OVERRIDE_REASON_MIN,
   supervisorRoom,
   type decideSchema,
   type Room,
@@ -75,23 +76,59 @@ const readyToPrint = (ticket: TicketRow) =>
     plate: ticket.plate,
   });
 
-async function supervisorDecision(effect: Effect): Promise<void> {
-  const { request, decision, approve, data } = effect;
+const notAllowed = (code: string, message: string) => new AppError(409, code, message);
+
+/** What a supervisor must have done to approve a truck whose photo did not match. */
+function checkOverride({ request, decision, ticket }: Effect, changes: ApprovalChanges): void {
+  const result = request.matchResult ?? "NOT_READ";
+  if (!decision.manualCheck) {
+    throw notAllowed(
+      "PLATE_NOT_CHECKED",
+      "The photo does not match. Take another, or check it yourself.",
+    );
+  }
+  // One character different: "I checked with my eyes" is enough.
+  if (result === "CLOSE") return;
+  if ((decision.note?.length ?? 0) < OVERRIDE_REASON_MIN) {
+    throw notAllowed(
+      "REASON_REQUIRED",
+      `Type a reason of at least ${OVERRIDE_REASON_MIN} letters.`,
+    );
+  }
+  if (result !== "NOT_READ") return;
+  if (!decision.seenPlate) {
+    throw notAllowed("SEEN_PLATE_REQUIRED", "Type the number plate you see on the truck.");
+  }
+  if (decision.seenPlate !== ticket.plate) {
+    throw notAllowed(
+      "PLATE_DIFFERS",
+      "The plate you typed is not this ticket's plate. Check again, or reject the truck.",
+    );
+  }
+  changes.matchResult = "MANUAL";
+  changes.manualPlate = decision.seenPlate;
+}
+
+async function supervisorDecision(effect: Effect, changes: ApprovalChanges): Promise<void> {
+  const { request, approve, data } = effect;
   data.plateRead = request.plateRead;
   data.plateMatch = request.plateMatch;
+  data.matchResult = request.matchResult;
   if (!approve) {
     await move(effect, "SUPERVISOR_REJECTED");
     return;
   }
-  if (request.plateMatch !== true) {
-    if (!decision.manualCheck || !decision.note) {
-      throw new AppError(
-        409,
-        "PLATE_NOT_CHECKED",
-        "The photo does not match. Take another, or approve as a manual check with a note.",
-      );
-    }
+  // Nothing is approved without a live photo of the truck at the unloading point.
+  if (!request.photoId) {
+    throw notAllowed("PHOTO_REQUIRED", "Take a photo of the number plate first.");
+  }
+  if (request.matchResult !== "MATCH") {
+    checkOverride(effect, changes);
     data.manualCheck = true;
+    if (changes.matchResult) {
+      data.matchResult = changes.matchResult;
+      data.seenPlate = changes.manualPlate;
+    }
   }
   await move(effect, "SUPERVISOR_APPROVED");
 }
@@ -166,7 +203,7 @@ async function mismatchDecision(effect: Effect, changes: ApprovalChanges): Promi
 
 async function applyEffect(effect: Effect, changes: ApprovalChanges): Promise<void> {
   const { request, approve } = effect;
-  if (request.kind === "SUPERVISOR") return supervisorDecision(effect);
+  if (request.kind === "SUPERVISOR") return supervisorDecision(effect, changes);
   if (request.kind === "STORE_TYPE2") return type2Decision(effect);
   if (request.kind === "HOLD") return holdDecision(effect, changes);
   if (request.kind === "MISMATCH") return mismatchDecision(effect, changes);
@@ -204,7 +241,8 @@ export async function decideApproval(
       status: approve ? "APPROVED" : "REJECTED",
       decidedBy: who.userId,
       decidedAt: new Date(),
-      reason: decision.reason ?? null,
+      // For an approval without a match, the supervisor's note is the reason.
+      reason: decision.reason ?? decision.note ?? null,
     };
     const data: Record<string, unknown> = {
       approvalId,

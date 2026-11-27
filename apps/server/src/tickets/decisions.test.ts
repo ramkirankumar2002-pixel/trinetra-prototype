@@ -45,7 +45,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
     const next = await started();
     return { old: id, id: next, request: await pending(next, "PLATE_WARNING") };
   }
-  async function photoOf(id: number, seen: string) {
+  async function photoOf(id: number, seen: string | null) {
     h.supervisorSees(seen);
     const body = h.form({ data: await h.jpeg(), type: "image/jpeg" });
     await h.call("amit", "POST", `/api/supervisor/tickets/${id}/photo`, body.payload, body.headers);
@@ -122,37 +122,104 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       expect(done.body.tickets).toMatchObject([{ ticketId: id, approvalStatus: "APPROVED" }]);
     });
 
-    it("cannot approve without a photo that matches", async () => {
+    /** One character from PLATE (MH12AB1234). */
+    const CLOSE_PLATE = "MH12AB1235";
+    const override = { ...approve, manualCheck: true, note: "Plate is muddy" };
+    const refusal = async (request: number, body: Record<string, unknown>) =>
+      (await decide("amit", request, body)).body.error?.code;
+
+    it("cannot approve without a photo, not even as a manual check", async () => {
       const { id, request } = await type1();
-      expect((await decide("amit", request, approve)).body.error?.code).toBe("PLATE_NOT_CHECKED");
-      await photoOf(id, OTHER_PLATE);
-      expect((await decide("amit", request, approve)).status).toBe(409);
+      expect(await refusal(request, approve)).toBe("PHOTO_REQUIRED");
+      expect(await refusal(request, { ...override, seenPlate: PLATE })).toBe("PHOTO_REQUIRED");
       expect((await view(id)).status).toBe("SUPERVISOR_PENDING");
     });
 
-    it.each([{ manualCheck: true }, { note: "Plate is muddy" }])(
-      "needs both for a manual check, not only %o",
-      async (extra) => {
-        const { request } = await type1();
-        expect((await decide("amit", request, { ...approve, ...extra })).status).toBe(409);
-      },
-    );
-
-    it("approves as a manual check with a note, marked on the timeline", async () => {
+    it("cannot simply approve a photo that does not match", async () => {
       const { id, request } = await type1();
       await photoOf(id, OTHER_PLATE);
-      const response = await decide("amit", request, {
-        ...approve,
-        manualCheck: true,
-        note: "Plate is muddy",
-      });
+      expect(await refusal(request, approve)).toBe("PLATE_NOT_CHECKED");
+      expect((await view(id)).status).toBe("SUPERVISOR_PENDING");
+    });
+
+    it("approves one character different once the supervisor has looked", async () => {
+      const { id, request } = await type1();
+      await photoOf(id, CLOSE_PLATE);
+      expect(await refusal(request, approve)).toBe("PLATE_NOT_CHECKED");
+      const { body } = await decide("amit", request, { ...approve, manualCheck: true });
+      expect(body.approval).toMatchObject({ status: "APPROVED", matchResult: "CLOSE" });
+      expect((await view(id)).status).toBe("READY_FOR_SECOND");
+    });
+
+    it("needs a reason of 10 letters for a plate that does not match", async () => {
+      const { id, request } = await type1();
+      await photoOf(id, OTHER_PLATE);
+      expect(await refusal(request, { ...approve, manualCheck: true })).toBe("REASON_REQUIRED");
+      expect(await refusal(request, { ...override, note: "too short" })).toBe("REASON_REQUIRED");
+      expect(await refusal(request, { ...approve, note: "Plate is muddy" })).toBe(
+        "PLATE_NOT_CHECKED",
+      );
+      expect((await view(id)).status).toBe("SUPERVISOR_PENDING");
+    });
+
+    it("approves a mismatch with a reason, marked on the timeline", async () => {
+      const { id, request } = await type1();
+      await photoOf(id, OTHER_PLATE);
+      const response = await decide("amit", request, override);
       expect(response.status).toBe(200);
+      expect(response.body.approval).toMatchObject({
+        matchResult: "NO_MATCH",
+        reason: "Plate is muddy",
+        manualPlate: null,
+        decidedBy: "Amit Kumar",
+        decidedAt: expect.any(String),
+      });
       const event = (await view(id)).timeline.find((e) => e.type === "SUPERVISOR_APPROVED");
       expect(event?.data).toMatchObject({
         manualCheck: true,
         note: "Plate is muddy",
         plateMatch: false,
+        matchResult: "NO_MATCH",
       });
+    });
+
+    it("logs a manual check of an unread photo with the plate the supervisor typed", async () => {
+      const { id, request } = await type1();
+      await photoOf(id, null);
+      expect(await refusal(request, override)).toBe("SEEN_PLATE_REQUIRED");
+      expect(await refusal(request, { ...override, seenPlate: OTHER_PLATE })).toBe("PLATE_DIFFERS");
+      expect((await decide("amit", request, { ...override, seenPlate: "hello" })).status).toBe(400);
+
+      const { body } = await decide("amit", request, { ...override, seenPlate: "mh 12 ab-1234" });
+      expect(body.approval).toMatchObject({
+        status: "APPROVED",
+        matchResult: "MANUAL",
+        manualPlate: PLATE,
+        plateRead: null,
+        reason: "Plate is muddy",
+      });
+      const event = (await view(id)).timeline.find((e) => e.type === "SUPERVISOR_APPROVED");
+      expect(event?.data).toMatchObject({ matchResult: "MANUAL", seenPlate: PLATE });
+    });
+
+    it("approves once when the button is tapped twice", async () => {
+      const { id, request } = await type1();
+      await photoOf(id, PLATE);
+      const tap = () =>
+        h.call<{ approval: ApprovalView }>(
+          "amit",
+          "POST",
+          `/api/approvals/${request}/decide`,
+          approve,
+          { "idempotency-key": "one-tap" },
+        );
+      const [first, second] = await Promise.all([tap(), tap()]);
+      expect([first.status, second.status]).toEqual([200, 200]);
+      expect(second.body).toEqual(first.body);
+      expect([first, second].filter((r) => r.headers["idempotent-replayed"])).toHaveLength(1);
+      expect((await h.eventTypes(id)).filter((t) => t === "SUPERVISOR_APPROVED")).toHaveLength(1);
+      // A new press after that is told that it is already decided.
+      expect(await refusal(request, approve)).toBe("ALREADY_DECIDED");
     });
 
     it("rejects: the truck is blocked, with no second weight and no final slip", async () => {

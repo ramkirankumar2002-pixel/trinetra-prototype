@@ -32,6 +32,7 @@ const PUBLIC_KEYS = new Set([
   "manual",
   "manualCheck",
   "match",
+  "matchResult",
   "material",
   "message",
   "netKg",
