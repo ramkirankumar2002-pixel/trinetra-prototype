@@ -330,6 +330,17 @@ The other supervisors see an empty list. After pulling this change, run `pnpm db
 - A supervisor's rejection is **not** a HOLD: the ticket is BLOCKED, as before (no new state). The store officer is told by a message and sees it in History; there is nothing to approve.
 - The bill reader gives no confidence figure, so none is shown.
 
+### Waiting for a person, and cancelling (added 2026-11-27, after the Phase 13 review)
+
+- [x] No auto-abandon while a visit waits for the store officer or the supervisor; the 10 minutes apply only to the driver's turn.
+- [x] "Cancel visit" for the store officer (on a request's page, and on a truck's page from "Trucks on site"), with a reason.
+- [x] Waiting times on the supervisor's pages and on "Trucks on site".
+- [x] The app's preview button starts the website on 3000 and the backend on 4000.
+
+✅ Passed on 2026-11-27: API tests for both cases (each of the six waits survives two idle days; the driver's turn still ends after 10 minutes) and for cancelling; a browser test that cancels a Type 2 truck waiting at the weighbridge screen and a truck waiting for its supervisor. All 47 browser tests, `pnpm journey`, typecheck, lint, unit and API tests and the build passed. The preview button was started once: website on 3000, backend on 4000. Overnight waits and a real phone were not tried.
+
+To try it: make a truck wait (for example **No phone?** on the kiosk). In the store, open it from **Approvals**, or from **Trucks on site → View**, press **Cancel visit**, give a reason and confirm. The kiosk says "This visit has ended".
+
 ### Testing the store officer
 
 **Store officer login (test only; public in the repository, change before Phase 16):** username `ram`, PIN `2001` (Ram, Sr. Manager). Page: <http://localhost:3000/store>.

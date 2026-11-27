@@ -3,14 +3,28 @@
 import {
   CLOSED_TICKET_STATUSES,
   normalizePlate,
+  waitsForPerson,
   type StoreSummaryResponse,
   type StoreTicketDecision,
   type StoreTicketsResponse,
   type StoreTicketView,
 } from "@trinetra/shared";
-import { and, asc, count, desc, eq, gte, ilike, inArray, ne, notInArray, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  gte,
+  ilike,
+  inArray,
+  ne,
+  notInArray,
+  or,
+} from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { approvals, materials, tickets, unloadingPoints, users } from "../db/schema";
+import { approvals, materials, ticketEvents, tickets, unloadingPoints, users } from "../db/schema";
 import { startOfDayIST } from "./public";
 import { pendingApprovals } from "./store";
 import { finalWeightOf, userNames } from "./view";
@@ -78,10 +92,26 @@ async function ticketViews(
             ),
           )
           .orderBy(asc(approvals.id));
-  const names = await userNames(
-    app.db,
-    requests.map((row) => row.decidedBy).filter((id): id is number => id !== null),
-  );
+  const cancellations =
+    rows.length === 0
+      ? []
+      : await app.db
+          .select()
+          .from(ticketEvents)
+          .where(
+            and(
+              eq(ticketEvents.type, "STORE_CANCELLED"),
+              inArray(
+                ticketEvents.ticketId,
+                rows.map((row) => row.ticket.id),
+              ),
+            ),
+          );
+  const officerOf = (actor: string) => Number(actor.replace("user:", ""));
+  const names = await userNames(app.db, [
+    ...requests.map((row) => row.decidedBy).filter((id): id is number => id !== null),
+    ...cancellations.map((row) => officerOf(row.actor)),
+  ]);
   const waiting = new Map<number, number>();
   for (const { approval } of await pendingApprovals(app)) {
     if (approval.kind === "SUPERVISOR" || approval.ticketId === null) continue;
@@ -91,6 +121,12 @@ async function ticketViews(
 
   return rows.map(({ ticket, material, point, supervisor }) => {
     const mine = requests.filter((row) => row.ticketId === ticket.id);
+    const open = mine.filter((row) => row.status === "PENDING");
+    // The oldest request somebody still has to answer; a front/back warning holds no one up.
+    const waitingFor = waitsForPerson(ticket.status, open)
+      ? open.find((row) => row.plateWarningReason !== "FRONT_BACK_MISMATCH")
+      : undefined;
+    const cancelled = cancellations.find((row) => row.ticketId === ticket.id);
     return {
       ticketId: ticket.id,
       ticketNo: ticket.ticketNo,
@@ -122,6 +158,14 @@ async function ticketViews(
               },
             ],
       ),
+      waitingSince: waitingFor?.createdAt.toISOString() ?? null,
+      cancelled: cancelled
+        ? {
+            by: names.get(officerOf(cancelled.actor))?.name ?? "Unknown user",
+            at: cancelled.createdAt.toISOString(),
+            reason: String(cancelled.data.reason ?? ""),
+          }
+        : null,
       isDemo: ticket.isDemo,
       createdAt: ticket.createdAt.toISOString(),
       firstWeightAt: ticket.firstWeightAt?.toISOString() ?? null,
@@ -143,8 +187,8 @@ export async function trucksOnSite(app: FastifyInstance): Promise<StoreTicketsRe
 const likeText = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
 /**
- * Today's completed, rejected and blocked tickets, the newest first. A visit the driver
- * walked away from before the first weight is not listed.
+ * Today's completed, rejected, blocked and cancelled tickets, the newest first. A visit
+ * the driver walked away from is not listed.
  */
 export async function storeHistory(
   app: FastifyInstance,
@@ -162,7 +206,21 @@ export async function storeHistory(
     .where(
       and(
         inArray(tickets.status, [...CLOSED_TICKET_STATUSES]),
-        ne(tickets.status, "ABANDONED"),
+        // Of the abandoned ones, only those the store officer cancelled.
+        or(
+          ne(tickets.status, "ABANDONED"),
+          exists(
+            app.db
+              .select({ id: ticketEvents.id })
+              .from(ticketEvents)
+              .where(
+                and(
+                  eq(ticketEvents.ticketId, tickets.id),
+                  eq(ticketEvents.type, "STORE_CANCELLED"),
+                ),
+              ),
+          ),
+        ),
         gte(tickets.closedAt, startOfDayIST(new Date())),
         found,
       ),

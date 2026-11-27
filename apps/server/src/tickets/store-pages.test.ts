@@ -522,6 +522,117 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
   });
 
+  describe("cancelling a visit that waits for a person", () => {
+    const cancel = (id: number, body: unknown = { reason: "Truck has left the site" }) =>
+      h.call<TicketView>("store", "POST", `/api/store/tickets/${id}/cancel`, body);
+    const helpOn = async (ticketId: number) =>
+      (await h.call<{ approvalId: number }>("kiosk", "POST", "/api/help", { ticketId })).body
+        .approvalId;
+    const type2 = () => weighed({ material: "Sand", invoiceKg: 14_500 });
+
+    it("is only for the store officer", async () => {
+      await h.expectRoles("POST", "/api/store/tickets/1/cancel", ["store"], { reason: "x" });
+    });
+
+    it("needs a reason, and nothing else", async () => {
+      const id = await type2();
+      for (const body of [{}, { reason: "  " }, { reason: "x", status: "COMPLETED" }]) {
+        expect((await cancel(id, body)).status).toBe(400);
+      }
+      expect((await view(id)).status).toBe("STORE_PENDING");
+    });
+
+    it("ends it, on record, and empties the queues", async () => {
+      const id = await type2();
+      const answer = await cancel(id);
+      expect(answer.status).toBe(200);
+      expect(answer.body.status).toBe("ABANDONED");
+      expect(answer.body.closedAt).not.toBeNull();
+
+      const event = await lastEvent(id, "STORE_CANCELLED");
+      expect(event.actor).toBe(`user:${h.userId("store")}`);
+      expect(event.data).toMatchObject({
+        from: "STORE_PENDING",
+        to: "ABANDONED",
+        reason: "Truck has left the site",
+      });
+      expect(await summary()).toMatchObject({ waiting: 0, onSite: 0, approved: 0, rejected: 0 });
+      expect(await trucks()).toEqual([]);
+      expect(await history()).toMatchObject([
+        {
+          ticketId: id,
+          status: "ABANDONED",
+          cancelled: { by: "Ram (Sr. Manager)", reason: "Truck has left the site" },
+        },
+      ]);
+    });
+
+    it("takes a supervisor's waiting truck off their list; nobody can decide it", async () => {
+      const id = await weighed({ material: "Cement Bags" });
+      const request = await pending(id, "SUPERVISOR");
+      const rooms = vi.spyOn(h.app.realtime.io, "to");
+      expect((await cancel(id)).status).toBe(200);
+      // The supervisor's phone is told at once.
+      expect(rooms.mock.calls.flatMap(([to]) => String(to)).join()).toContain(
+        `supervisor:${h.userId("amit")}`,
+      );
+      rooms.mockRestore();
+
+      const mine = await h.call<{ tickets: unknown[] }>(
+        "amit",
+        "GET",
+        "/api/supervisor/tickets?status=pending",
+      );
+      expect(mine.body.tickets).toEqual([]);
+      const late = await h.call("amit", "POST", `/api/approvals/${request}/decide`, {
+        decision: "REJECT",
+        reason: "Wrong truck",
+      });
+      expect(late.body.error?.code).toBe("WRONG_STAGE");
+      // Cancelled is not rejected: it is not shown as a truck the supervisor blocked.
+      expect((await history())[0]).toMatchObject({ status: "ABANDONED", decisions: [] });
+    });
+
+    it("closes the driver's call for help with it", async () => {
+      const id = await started();
+      const call = await helpOn(id);
+      expect((await cancel(id)).status).toBe(200);
+      const row = (await h.approvalRows()).find((item) => item.id === call)!;
+      expect(row).toMatchObject({
+        status: "APPROVED",
+        decidedBy: h.userId("store"),
+        reason: "Visit cancelled: Truck has left the site",
+      });
+      expect((await get<{ requests: unknown[] }>("/api/store/requests")).body.requests).toEqual([]);
+    });
+
+    it("is refused while it is the driver's turn, and once it has ended", async () => {
+      const id = await started();
+      expect(await cancel(id)).toMatchObject({
+        status: 409,
+        body: { error: { code: "WRONG_STAGE" } },
+      });
+      await helpOn(id);
+      await cancel(id);
+      expect((await cancel(id)).body.error?.code).toBe("WRONG_STAGE");
+      expect((await cancel(999)).status).toBe(404);
+    });
+
+    it("lets the plate come again: cancelled is not rejected", async () => {
+      await cancel(await weighed({ material: "Cement Bags" }));
+      const next = await started();
+      expect((await view(next)).plateCheck).toBe("NOT_NEEDED");
+    });
+
+    it("shows how long a truck on site has waited, and nothing for a driver's turn", async () => {
+      const driving = await started();
+      const waiting = await weighed({ plate: OTHER_PLATE, material: "Cement Bags" });
+      const rows = await trucks();
+      expect(rows.find((row) => row.ticketId === driving)!.waitingSince).toBeNull();
+      expect(rows.find((row) => row.ticketId === waiting)!.waitingSince).not.toBeNull();
+    });
+  });
+
   describe("bitumen trips", () => {
     it("go to Suresh Yadav for trips 1 and 2, and to Pankaj Gupta after", async () => {
       const seen: (string | undefined)[] = [];

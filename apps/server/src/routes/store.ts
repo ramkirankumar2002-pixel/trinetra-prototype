@@ -1,8 +1,14 @@
-import { helpSchema, listStatusSchema, storeHistorySchema } from "@trinetra/shared";
+import {
+  cancelVisitSchema,
+  helpSchema,
+  listStatusSchema,
+  storeHistorySchema,
+} from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/guard";
 import { AppError } from "../errors/app-error";
 import { readUpload } from "../http/upload";
+import { cancelVisit } from "../tickets/cancel";
 import { receiveStoreInvoice } from "../tickets/invoice-upload";
 import { userActor } from "../tickets/repo";
 import { storeHistory, storeSummary, trucksOnSite } from "../tickets/store-lists";
@@ -33,6 +39,12 @@ export function registerStoreRoutes(app: FastifyInstance): void {
     // "Accepted": the invoice is still being read.
     reply.status(202);
     return answer;
+  });
+
+  /** Ends a visit that is waiting for a person. */
+  app.post("/api/store/tickets/:id/cancel", store, async (request) => {
+    const { reason } = cancelVisitSchema.parse(request.body);
+    return cancelVisit(app, idOf(request.params), request.user.userId, reason);
   });
 
   app.get("/api/store/summary", store, async (_request, reply) => {

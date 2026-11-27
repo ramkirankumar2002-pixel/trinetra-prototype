@@ -7,6 +7,7 @@ import {
   formatIST,
   formatKg,
   formatPlate,
+  waitsForPerson,
   type DecideRequest,
   type StoreRequestView,
   type TicketView,
@@ -23,12 +24,14 @@ import {
   ALLOW_CHIPS,
   ALREADY_HANDLED,
   canAccept,
+  cancellationOf,
   holdSum,
   INVOICE_WEIGHT_CHIPS,
   mayUploadBill,
   plateWarningData,
   reasonWords,
   REJECT_CHIPS,
+  visitHasEnded,
   type ReasonChip,
 } from "@/lib/store/logic";
 import {
@@ -43,7 +46,9 @@ import { Button } from "../ui/button";
 import { Card, CardTitle } from "../ui/card";
 import { Spinner } from "../ui/spinner";
 import { materialText, PlateText } from "../supervisor/parts";
-import { BackLink, Facts, KindPill, LoadFailed, Loading, PageState, WaitPill } from "./parts";
+import { WaitPill } from "../wait-pill";
+import { CancelVisit } from "./cancel-visit";
+import { BackLink, Facts, KindPill, LoadFailed, Loading, PageState } from "./parts";
 import { FIELD, ReasonForm } from "./reason-form";
 import {
   BillCard,
@@ -67,7 +72,8 @@ const PROBLEMS: Partial<Record<string, MessageKey>> = {
   CHOICE_NOT_AVAILABLE: "store.error.choice",
 };
 
-type Outcome = "approved" | "rejected" | "seen" | "handled" | "uploaded" | "material" | "taken";
+type Outcome =
+  "approved" | "rejected" | "seen" | "handled" | "uploaded" | "material" | "cancelled" | "taken";
 
 const OUTCOMES: Record<Outcome, { tone: "go" | "stop" | "info"; key: MessageKey }> = {
   approved: { tone: "go", key: "store.done.approved" },
@@ -76,6 +82,7 @@ const OUTCOMES: Record<Outcome, { tone: "go" | "stop" | "info"; key: MessageKey 
   handled: { tone: "go", key: "store.done.handled" },
   uploaded: { tone: "go", key: "store.done.uploaded" },
   material: { tone: "go", key: "store.done.material" },
+  cancelled: { tone: "go", key: "store.done.cancelled" },
   taken: { tone: "info", key: "store.done.taken" },
 };
 
@@ -429,6 +436,7 @@ export function RequestDetail({ approvalId }: { approvalId: number }) {
   const ticketQuery = useStoreTicket(query.data?.ticket?.id);
   const { busy, run } = useAction();
   const [asking, setAsking] = useState<Asking | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [problem, setProblem] = useState<MessageKey | null>(null);
   /** What was last sent from this page: its answer may have been lost on the way back. */
@@ -438,7 +446,9 @@ export function RequestDetail({ approvalId }: { approvalId: number }) {
 
   const request = query.data;
   const ticket = ticketQuery.data;
-  const pending = request?.approval.status === "PENDING";
+  // A request whose visit has ended (cancelled, for example) is no longer waiting.
+  const pending =
+    request?.approval.status === "PENDING" && !visitHasEnded(ticket, request.approval);
   if (pending && !wasWaiting) setWasWaiting(true);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: STORE_KEY });
@@ -491,8 +501,11 @@ export function RequestDetail({ approvalId }: { approvalId: number }) {
   // It was waiting here and now it is not, while nothing of this page is on its way.
   if (wasWaiting && !pending && !busy) {
     // This page's own, if it was saved as it was sent: the answer was lost on the way.
-    const own = sent !== null && (approval.status === "APPROVED") === (sent !== "rejected");
-    return <Finished outcome={own ? sent : "taken"} approvalId={approvalId} />;
+    const own =
+      sent === "cancelled"
+        ? ticket !== undefined && cancellationOf(ticket) !== null
+        : sent !== null && (approval.status === "APPROVED") === (sent !== "rejected");
+    return <Finished outcome={own && sent ? sent : "taken"} approvalId={approvalId} />;
   }
 
   const props: ActionProps = {
@@ -514,9 +527,9 @@ export function RequestDetail({ approvalId }: { approvalId: number }) {
   const actions = !pending ? (
     <>
       <Banner tone="info">{t("store.done.taken")}</Banner>
-      <Decision request={request} />
+      {approval.status !== "PENDING" && <Decision request={request} />}
     </>
-  ) : asking ? (
+  ) : cancelling ? null : asking ? (
     <ReasonForm
       title={asking.title}
       chips={asking.chips}
@@ -575,6 +588,21 @@ export function RequestDetail({ approvalId }: { approvalId: number }) {
             </p>
           )}
           {actions}
+          {pending &&
+            !asking &&
+            ticket &&
+            waitsForPerson(
+              ticket.status,
+              ticket.approvals.filter((row) => row.status === "PENDING"),
+            ) && (
+              <CancelVisit
+                ticket={ticket}
+                open={cancelling}
+                onOpen={setCancelling}
+                onSend={() => setSent("cancelled")}
+                onDone={setOutcome}
+              />
+            )}
           <BackLink href={LIST} label="store.backToApprovals" />
         </div>
         {ticket && (

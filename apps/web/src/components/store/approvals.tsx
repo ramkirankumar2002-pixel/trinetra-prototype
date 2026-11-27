@@ -15,7 +15,8 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { EmptyState } from "../ui/empty-state";
 import { materialText, PlateText } from "../supervisor/parts";
-import { KindPill, LoadFailed, Loading, timeOf, WaitPill } from "./parts";
+import { WaitPill } from "../wait-pill";
+import { KindPill, LoadFailed, Loading, timeOf } from "./parts";
 
 export function RequestTable({
   label,

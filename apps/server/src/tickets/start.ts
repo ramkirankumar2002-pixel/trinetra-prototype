@@ -30,6 +30,7 @@ import {
   type TicketRow,
 } from "./repo";
 import { ticketView } from "./view";
+import { isWaitingForPerson } from "./waiting";
 
 type StartRequest = z.output<typeof createTicketSchema>;
 
@@ -92,7 +93,12 @@ export async function startTicket(
     let open: TicketRow | undefined = found ? await lockTicket(tx, found.id) : undefined;
 
     // Left alone for too long, but the minute job has not reached it yet.
-    if (open?.status === "STARTED" && Date.now() - open.updatedAt.getTime() >= ABANDON_AFTER_MS) {
+    // A visit waiting for a person is not old, however long they take.
+    if (
+      open?.status === "STARTED" &&
+      Date.now() - open.updatedAt.getTime() >= ABANDON_AFTER_MS &&
+      !(await isWaitingForPerson(tx, open))
+    ) {
       await changeStatus(tx, open, "ABANDON", { actor: "system" });
       open = undefined;
     }

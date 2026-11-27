@@ -322,7 +322,6 @@
   "sup.kpi.waiting": "Waiting for verify",
   "sup.verified": "Verified",
   "sup.trip": "Trip {trip}",
-  "sup.waitingFor": "waiting {minutes} min",
   "sup.column.trip": "Trip no.",
   "sup.column.since": "Since first weight",
   "sup.chainage": "Chainage",
@@ -594,5 +593,17 @@
   "store.event.HOLD_REJECTED": "Store officer rejected the truck",
   "store.event.PLATE_WARNING_APPROVED": "Store officer allowed the plate",
   "store.event.PLATE_WARNING_REJECTED": "Store officer refused the plate",
-  "store.event.ABANDON": "Driver left before the first weight"
+  "store.event.ABANDON": "Driver left before the first weight",
+  "store.cancel.button": "Cancel visit",
+  "store.cancel.title": "Cancel the visit of {plate}",
+  "store.cancel.warning": "The visit ends without approving or rejecting. The plate is not blocked. This cannot be undone.",
+  "store.cancel.confirm": "Yes, cancel visit",
+  "store.done.cancelled": "Visit cancelled. The weighbridge has been told.",
+  "store.status.cancelled": "Cancelled",
+  "store.cancelledBy": "Cancelled by {name}, {time}",
+  "store.waitingForPerson": "Waiting for a decision:",
+  "store.reason.left": "Truck has left the site",
+  "store.reason.cannotContinue": "Driver cannot continue",
+  "store.reason.byMistake": "Visit started by mistake",
+  "store.event.STORE_CANCELLED": "Store officer cancelled the visit"
 }

@@ -21,6 +21,7 @@ import {
   changeStatus,
   getTicket,
   lockTicket,
+  updateTicket,
   userActor,
   type Actor,
   type ApprovalRow,
@@ -287,6 +288,9 @@ export async function decideApproval(
         throw new AppError(409, "CANNOT_REJECT", "This can only be marked as handled.");
       }
       if (ticket) await markHandled(tx, ticket, actor, data);
+      // The wait for a person is over: the driver's 10 minutes start now, not from before
+      // the wait. (A front/back warning never held the driver up, so it changes no clock.)
+      if (ticket && request.kind === "DRIVER_HELP") await updateTicket(tx, ticket, {});
     } else {
       await applyEffect({ tx, ticket: ticket!, request, decision, approve, actor, data }, changes);
     }

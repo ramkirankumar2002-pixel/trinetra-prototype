@@ -42,9 +42,3 @@ export function useNow(): number {
     () => 0,
   );
 }
-
-/** Whole minutes since `from`, or null when either time is not known. */
-export function minutesSince(from: string | null, now: number): number | null {
-  if (!from || now === 0) return null;
-  return Math.max(0, Math.floor((now - Date.parse(from)) / MINUTE_MS));
-}

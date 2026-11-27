@@ -322,7 +322,6 @@
   "sup.kpi.waiting": "जाँच बाकी",
   "sup.verified": "जाँच पास",
   "sup.trip": "फेरा {trip}",
-  "sup.waitingFor": "{minutes} मिनट से इंतज़ार",
   "sup.column.trip": "फेरा नं.",
   "sup.column.since": "पहले वज़न से",
   "sup.chainage": "चेनेज",
@@ -594,5 +593,17 @@
   "store.event.HOLD_REJECTED": "स्टोर अधिकारी ने ट्रक अस्वीकार किया",
   "store.event.PLATE_WARNING_APPROVED": "स्टोर अधिकारी ने प्लेट को अनुमति दी",
   "store.event.PLATE_WARNING_REJECTED": "स्टोर अधिकारी ने प्लेट को मना किया",
-  "store.event.ABANDON": "ड्राइवर पहली तौल से पहले चला गया"
+  "store.event.ABANDON": "ड्राइवर पहली तौल से पहले चला गया",
+  "store.cancel.button": "यह काम रद्द करें",
+  "store.cancel.title": "{plate} का काम रद्द करें",
+  "store.cancel.warning": "काम बिना मंज़ूरी या अस्वीकृति के ख़त्म होगा। प्लेट रोकी नहीं जाएगी। इसे वापस नहीं किया जा सकता।",
+  "store.cancel.confirm": "हाँ, रद्द करें",
+  "store.done.cancelled": "काम रद्द हो गया। वेब्रिज को बता दिया गया है।",
+  "store.status.cancelled": "रद्द",
+  "store.cancelledBy": "{name} ने रद्द किया, {time}",
+  "store.waitingForPerson": "फ़ैसले का इंतज़ार:",
+  "store.reason.left": "ट्रक साइट से जा चुका है",
+  "store.reason.cannotContinue": "ड्राइवर आगे नहीं बढ़ सकता",
+  "store.reason.byMistake": "काम गलती से शुरू हुआ था",
+  "store.event.STORE_CANCELLED": "स्टोर अधिकारी ने काम रद्द किया"
 }

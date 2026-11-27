@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/preview-dev.mjs"],
       "port": 3000
     }
   ]

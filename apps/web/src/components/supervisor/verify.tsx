@@ -40,6 +40,7 @@ import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Card, CardTitle } from "../ui/card";
 import { Spinner } from "../ui/spinner";
+import { WaitPill } from "../wait-pill";
 import { materialText, PlateText, REJECT_REASONS, ZoomPhoto } from "./parts";
 
 const FIELD =
@@ -97,6 +98,11 @@ function TruckSummary({ ticket }: { ticket: TicketView }) {
   return (
     <Card>
       <PlateText plate={ticket.plate} className="self-center" />
+      {ticket.status === "SUPERVISOR_PENDING" && ticket.firstWeightAt && (
+        <span className="self-center">
+          <WaitPill since={ticket.firstWeightAt} />
+        </span>
+      )}
       <div className="flex items-start gap-3">
         <dl className="grid min-w-0 flex-1 gap-1">
           {facts.map(([label, value]) => (

@@ -7,8 +7,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { MessageKey } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
-import { kindPill, STATUS_KEYS, STATUS_TONES, waitingFor } from "@/lib/store/logic";
-import { useNow } from "@/lib/supervisor/queries";
+import { kindPill, statusShown } from "@/lib/store/logic";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -22,21 +21,16 @@ export function KindPill({ approval }: { approval: ApprovalView }) {
   return <StatusPill tone={tone}>{t(key)}</StatusPill>;
 }
 
-export function TicketStatusPill({ status }: { status: TicketStatus }) {
+export function TicketStatusPill({
+  status,
+  cancelled = false,
+}: {
+  status: TicketStatus;
+  cancelled?: boolean;
+}) {
   const t = useT();
-  return <StatusPill tone={STATUS_TONES[status]}>{t(STATUS_KEYS[status])}</StatusPill>;
-}
-
-/** How long a request has waited: amber after 5 minutes, red after 10. */
-export function WaitPill({ since }: { since: string }) {
-  const t = useT();
-  const waiting = waitingFor(since, useNow());
-  if (!waiting) return null;
-  return (
-    <StatusPill tone={waiting.tone} data-testid="wait">
-      {t("kpi.minutes", { count: waiting.minutes })}
-    </StatusPill>
-  );
+  const { tone, key } = statusShown(status, cancelled);
+  return <StatusPill tone={tone}>{t(key)}</StatusPill>;
 }
 
 /** "14:05" in India. */

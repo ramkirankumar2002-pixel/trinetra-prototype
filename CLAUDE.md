@@ -96,7 +96,7 @@ Supervisor rules to keep: the supervisor's pages are `app/supervisor/(signed-in)
 
 **Phases 11–14 must follow [docs/design/STYLE_GUIDE.md](docs/design/STYLE_GUIDE.md):** two themes (token colour names only), the shared components (`/dev/ui` shows them), status = colour + icon + word, and the driver rules. Every new kiosk screen is checked with `look()` (`tests/e2e/kiosk-world.ts`) at 1366×768 and 1920×1080 in both languages with its longest message showing, and its picture is looked at. `pnpm test:e2e` runs the browser tests (installed Chrome, development database, demo reset); `pnpm screenshots:kiosk` retakes `docs/screenshots/phase10`. The design reference images and side-by-side comparisons are on this computer only: do not commit them (public repository) unless the user says so. `pnpm office` can make the store officer's and the supervisors' decisions without their pages.
 
-Store officer rules to keep: pages are `app/store/(signed-in)/` (data in `lib/store/queries.ts`, keys start with `STORE_KEY`; wording and sums in `lib/store/logic.ts`); `StoreWatcher` in `RoleShell` does live reloading, sound, messages and the tab title. Every store route uses `requireRole("STORE")`. The server, not only the page, requires a reason to reject, to accept the invoice weight and to allow a blocked plate. A refusal `WRONG_STAGE` or `ALREADY_DECIDED` shows "Already handled" and returns to the list. `store.spec.ts` covers both sizes; `PHASE13_SHOTS=1` retakes `docs/screenshots/phase13` (then compress). `lookAt()` (`tests/e2e/staff-look.ts`) checks every staff screen.
+Store officer rules to keep: pages are `app/store/(signed-in)/` (data in `lib/store/queries.ts`, keys start with `STORE_KEY`; wording and sums in `lib/store/logic.ts`); `StoreWatcher` in `RoleShell` does live reloading, sound, messages and the tab title. Every store route uses `requireRole("STORE")`. The server, not only the page, requires a reason to reject, to accept the invoice weight and to allow a blocked plate. A refusal `WRONG_STAGE` or `ALREADY_DECIDED` shows "Already handled" and returns to the list. A visit waiting for a person (`waitsForPerson()` in shared) is never auto-abandoned; use that rule, not the status alone. The store officer's "Cancel visit" (`tickets/cancel.ts`) ends it as ABANDONED with a `STORE_CANCELLED` event. `store.spec.ts` covers both sizes; `PHASE13_SHOTS=1` retakes `docs/screenshots/phase13` (then compress). `lookAt()` (`tests/e2e/staff-look.ts`) checks every staff screen.
 
 Settle before the phases that need it:
 
@@ -105,7 +105,8 @@ Settle before the phases that need it:
 - **Open:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires. (Such a tab goes to the login when it next gets focus.)
 - **Open:** the kiosk's dialogs are not measured by the driver-rule check.
 - **Open:** "Reset demo data" does not delete help calls made before a ticket existed.
-- **To decide:** a driver waiting for the store officer to upload the bill is still STARTED, so the visit is abandoned after 10 minutes without activity (the same as the blocked-plate wait).
+- **To decide:** a visit that waits for a person now stays open until someone answers or cancels it, also overnight. While it is open, its plate cannot start a new ticket (the old one is carried on).
+- **To decide:** cancelling does not block the plate (Reject does). Check that this is wanted for a truck waiting for its supervisor or on HOLD.
 - **To decide:** should a supervisor's rejection become something the store officer can overrule? Today it is BLOCKED and for information only.
 - **To try with a real phone (Phase 13):** the camera for a bill, opening a PDF bill, the sound.
 - **To try with a real phone (Phase 12):** certificate warning, camera on Android Chrome and iPhone Safari, the live connection on iPhone with the self-signed certificate, sound and vibration.
@@ -115,7 +116,6 @@ Settle before the phases that need it:
 - **A high plate confidence is not proof** (a 99% read was wrong in the Phase 7 check): the driver always confirms the plate.
 - **Gemini backup (decided):** `GEMINI_FALLBACK_MODEL` (default `gemini-3.5-flash-lite`) is asked once when `GEMINI_MODEL` is busy, rate limited or times out. Results carry `model`. `gemini-3.8-flash` itself had not answered a request during Phase 7.
 - **To decide:** Whether to ask Gemini for a second opinion when Plate Recognizer's read is not in the vehicle list or front and back differ.
-- **To decide:** a ticket waiting for the store officer's blocked-plate approval is still STARTED, so it is abandoned after 10 minutes without activity.
 - **To decide:** ticket numbers can be guessed, so anyone can open another ticket's public timeline (`/t/<ticket-no>`).
 - **Before Phase 16:** change the demo usernames and PINs; they are public in the repository.
 - **Before Phase 16:** set a new `ADMIN_PIN` on Railway.

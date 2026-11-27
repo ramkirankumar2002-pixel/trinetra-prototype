@@ -2,7 +2,9 @@
 // does so through transition(). The website may use canTransition() to enable buttons.
 import {
   CLOSED_TICKET_STATUSES,
+  type ApprovalKind,
   type ApprovalStatus,
+  type PlateWarningReason,
   type TicketStatus,
   type TicketType,
 } from "../domain";
@@ -32,8 +34,10 @@ export const TICKET_EVENTS = [
   /** The blocked-plate check: the store officer's answer to its PLATE_WARNING. */
   "PLATE_WARNING_APPROVED",
   "PLATE_WARNING_REJECTED",
-  /** No activity for 10 minutes before the first weight. */
+  /** No activity for 10 minutes before the first weight, while it was the driver's turn. */
   "ABANDON",
+  /** The store officer ends a visit that is waiting for a person, with a reason. */
+  "STORE_CANCELLED",
 ] as const;
 export type TicketEvent = (typeof TICKET_EVENTS)[number];
 
@@ -48,15 +52,21 @@ export const TICKET_TRANSITIONS: Readonly<
     PLATE_WARNING_APPROVED: "STARTED",
     PLATE_WARNING_REJECTED: "REJECTED",
     ABANDON: "ABANDONED",
+    STORE_CANCELLED: "ABANDONED",
   },
   MISMATCH_PENDING: {
+    STORE_CANCELLED: "ABANDONED",
     MISMATCH_RESOLVED: "STARTED",
     MISMATCH_REJECTED: "REJECTED",
     // The officer may answer the plate warning while the mismatch is still open.
     PLATE_WARNING_APPROVED: "MISMATCH_PENDING",
     PLATE_WARNING_REJECTED: "REJECTED",
   },
-  STORE_PENDING: { STORE_APPROVED: "READY_FOR_UNLOAD", STORE_REJECTED: "REJECTED" },
+  STORE_PENDING: {
+    STORE_APPROVED: "READY_FOR_UNLOAD",
+    STORE_REJECTED: "REJECTED",
+    STORE_CANCELLED: "ABANDONED",
+  },
   READY_FOR_UNLOAD: {
     SUPERVISOR_REQUESTED: "SUPERVISOR_PENDING",
     SECOND_WEIGHT_ALLOWED: "READY_FOR_SECOND",
@@ -64,12 +74,17 @@ export const TICKET_TRANSITIONS: Readonly<
   SUPERVISOR_PENDING: {
     SUPERVISOR_APPROVED: "READY_FOR_SECOND",
     SUPERVISOR_REJECTED: "BLOCKED",
+    STORE_CANCELLED: "ABANDONED",
   },
   READY_FOR_SECOND: {
     SECOND_WEIGHT_PASSED: "COMPLETED",
     SECOND_WEIGHT_FAILED: "HOLD_PENDING",
   },
-  HOLD_PENDING: { HOLD_APPROVED: "COMPLETED", HOLD_REJECTED: "REJECTED" },
+  HOLD_PENDING: {
+    HOLD_APPROVED: "COMPLETED",
+    HOLD_REJECTED: "REJECTED",
+    STORE_CANCELLED: "ABANDONED",
+  },
   COMPLETED: {},
   REJECTED: {},
   BLOCKED: {},
@@ -160,6 +175,35 @@ export const afterFirstWeightEvent = (type: TicketType): TicketEvent =>
 
 export const secondWeightEvent = (passed: boolean): TicketEvent =>
   passed ? "SECOND_WEIGHT_PASSED" : "SECOND_WEIGHT_FAILED";
+
+/** These statuses exist only while a person has to decide. */
+const PERSON_STATUSES: ReadonlySet<TicketStatus> = new Set([
+  "MISMATCH_PENDING",
+  "STORE_PENDING",
+  "SUPERVISOR_PENDING",
+  "HOLD_PENDING",
+]);
+
+export interface OpenRequest {
+  kind: ApprovalKind;
+  plateWarningReason: PlateWarningReason | null;
+}
+
+/**
+ * Does this request hold a STARTED visit up until a person acts? A driver who asked for
+ * help, or whose blocked plate must be allowed, waits. A front/back warning stops nobody.
+ */
+export const holdsUpDriver = ({ kind, plateWarningReason }: OpenRequest): boolean =>
+  kind === "DRIVER_HELP" || plateWarningReason === "BLOCKED_HISTORY";
+
+/**
+ * Is the visit waiting for a person's decision (the store officer or the supervisor),
+ * rather than for the driver? Such a visit is never abandoned by the clock; the store
+ * officer may cancel it. `pending` are the ticket's requests nobody has answered.
+ */
+export function waitsForPerson(status: TicketStatus, pending: readonly OpenRequest[]): boolean {
+  return PERSON_STATUSES.has(status) || (status === "STARTED" && pending.some(holdsUpDriver));
+}
 
 export const PLATE_BLOCK_HOURS = 24;
 

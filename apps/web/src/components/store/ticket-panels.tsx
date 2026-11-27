@@ -8,6 +8,7 @@ import { ExternalLink, FileText, Scale } from "lucide-react";
 import type { MessageKey, Translate } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
 import {
+  cancellationOf,
   holdSum,
   invoiceAsRead,
   invoiceFile,
@@ -33,7 +34,7 @@ export function TruckCard({ ticket }: { ticket: TicketView }) {
     <Card>
       <div className="flex flex-wrap items-center gap-3">
         <PlateText plate={ticket.plate} />
-        <TicketStatusPill status={ticket.status} />
+        <TicketStatusPill status={ticket.status} cancelled={cancellationOf(ticket) !== null} />
         {ticket.isDemo && (
           <span className="rounded-md border border-border px-2 py-0.5 text-xs font-semibold">
             {t("slip.demo")}

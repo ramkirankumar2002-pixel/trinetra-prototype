@@ -1,13 +1,25 @@
 "use client";
 
 // Trucks on site, today's history, and one ticket to read.
-import { formatKg, type StoreTicketDecision, type StoreTicketView } from "@trinetra/shared";
+import {
+  formatKg,
+  waitsForPerson,
+  type StoreTicketDecision,
+  type StoreTicketView,
+} from "@trinetra/shared";
 import { ArrowRight, CircleCheckBig, Search, Truck } from "lucide-react";
 import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 import { useT } from "@/i18n/use-t";
 import { ApiError } from "@/lib/api";
-import { kindPill, reasonWords, signed, truckPlace } from "@/lib/store/logic";
+import {
+  cancellationOf,
+  kindPill,
+  reasonWords,
+  signed,
+  truckPlace,
+  visitHasEnded,
+} from "@/lib/store/logic";
 import { useStoreHistory, useStoreTicket, useTrucksOnSite } from "@/lib/store/queries";
 import { DataTable } from "../dashboard/data-table";
 import { Banner } from "../ui/banner";
@@ -16,6 +28,8 @@ import { Card, CardTitle } from "../ui/card";
 import { EmptyState } from "../ui/empty-state";
 import { StatusPill } from "../ui/status-pill";
 import { materialText, PlateText } from "../supervisor/parts";
+import { WaitPill } from "../wait-pill";
+import { CancelVisit } from "./cancel-visit";
 import { BackLink, LoadFailed, Loading, PageState, TicketStatusPill, timeOf } from "./parts";
 import { FIELD } from "./reason-form";
 import { BillCard, PhotosCard, TimelineCard, TruckCard, WeightsCard } from "./ticket-panels";
@@ -77,6 +91,13 @@ export function TrucksOnSite() {
                 },
               },
               {
+                id: "waiting",
+                header: t("column.waiting"),
+                nowrap: true,
+                cell: (truck) =>
+                  truck.waitingSince ? <WaitPill since={truck.waitingSince} /> : "—",
+              },
+              {
                 id: "since",
                 header: t("store.column.since"),
                 nowrap: true,
@@ -132,14 +153,27 @@ function DecisionLine({ decision }: { decision: StoreTicketDecision }) {
   );
 }
 
+/** "Cancelled by Ram, 14:05", with the reason. */
+function CancelLine({ cancelled }: { cancelled: NonNullable<StoreTicketView["cancelled"]> }) {
+  const t = useT();
+  return (
+    <span data-testid="cancelled" className="block">
+      <strong>{t("store.cancelledBy", { name: cancelled.by, time: timeOf(cancelled.at) })}</strong>
+      <span className="block text-muted-foreground">{reasonWords(cancelled.reason, t)}</span>
+    </span>
+  );
+}
+
 function Decisions({ truck }: { truck: StoreTicketView }) {
   const t = useT();
-  if (truck.decisions.length === 0) return <span>{t("store.noPerson")}</span>;
+  const { decisions, cancelled } = truck;
+  if (decisions.length === 0 && !cancelled) return <span>{t("store.noPerson")}</span>;
   return (
     <span data-testid="decisions" className="flex flex-col gap-1 text-left text-sm">
-      {truck.decisions.map((decision) => (
+      {decisions.map((decision) => (
         <DecisionLine key={decision.approvalId} decision={decision} />
       ))}
+      {cancelled && <CancelLine cancelled={cancelled} />}
     </span>
   );
 }
@@ -203,7 +237,7 @@ export function History() {
                 header: t("slip.result"),
                 cell: (truck) => (
                   <span className="flex flex-col items-end gap-1 @2xl:items-start">
-                    <TicketStatusPill status={truck.status} />
+                    <TicketStatusPill status={truck.status} cancelled={!!truck.cancelled} />
                     <span className="text-xs text-muted-foreground">
                       {truck.closedAt && timeOf(truck.closedAt)}
                     </span>
@@ -261,10 +295,12 @@ function TicketDecisions({ ticketId }: { ticketId: number }) {
   const { data: ticket } = useStoreTicket(ticketId);
   if (!ticket) return null;
   const decided = ticket.approvals.filter((row) => row.status !== "PENDING");
+  const cancelled = cancellationOf(ticket);
   return (
     <Card data-testid="who">
       <CardTitle>{t("store.column.who")}</CardTitle>
-      {decided.length === 0 ? (
+      {cancelled && <CancelLine cancelled={cancelled} />}
+      {decided.length === 0 && !cancelled ? (
         <p>{t("store.noPerson")}</p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -293,6 +329,8 @@ function TicketDecisions({ ticketId }: { ticketId: number }) {
 export function TicketPage({ ticketId, from }: { ticketId: number; from: "trucks" | "history" }) {
   const t = useT();
   const { data: ticket, error, refetch } = useStoreTicket(ticketId);
+  const [cancelling, setCancelling] = useState(false);
+  const [result, setResult] = useState<"cancelled" | "taken" | null>(null);
   const back = (
     <BackLink
       href={`/store/${from}`}
@@ -314,19 +352,49 @@ export function TicketPage({ ticketId, from }: { ticketId: number; from: "trucks
       </PageState>
     );
   }
-  const waiting = ticket.approvals.find(
-    (row) => row.status === "PENDING" && row.kind !== "SUPERVISOR",
-  );
+  const open = ticket.approvals.filter((row) => row.status === "PENDING");
+  // A request that closed with its ticket cannot be decided any more.
+  const waiting = open.find((row) => row.kind !== "SUPERVISOR" && !visitHasEnded(ticket, row));
+  const mayCancel = waitsForPerson(ticket.status, open);
+  const since = mayCancel
+    ? open.find((row) => row.plateWarningReason !== "FRONT_BACK_MISMATCH")?.createdAt
+    : undefined;
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
       <TruckCard ticket={ticket} />
-      {waiting && (
+      {result && (
+        <div data-testid="outcome" data-outcome={result}>
+          <Banner tone={result === "cancelled" ? "go" : "info"}>
+            <span role="status">
+              {t(result === "cancelled" ? "store.done.cancelled" : "store.done.taken")}
+            </span>
+          </Banner>
+        </div>
+      )}
+      {since && (
+        <p className="flex items-center gap-2">
+          {t("store.waitingForPerson")}
+          <WaitPill since={since} />
+        </p>
+      )}
+      {waiting && !cancelling && (
         <Button asChild size="lg">
           <Link href={`/store/approvals/${waiting.id}`}>
             <StatusPill tone={kindPill(waiting).tone}>{t(kindPill(waiting).key)}</StatusPill>
             {t("store.decide")}
           </Link>
         </Button>
+      )}
+      {mayCancel && !result && (
+        <CancelVisit
+          ticket={ticket}
+          open={cancelling}
+          onOpen={setCancelling}
+          onDone={(done) => {
+            setCancelling(false);
+            setResult(done);
+          }}
+        />
       )}
       <WeightsCard ticket={ticket} />
       <TicketDecisions ticketId={ticketId} />

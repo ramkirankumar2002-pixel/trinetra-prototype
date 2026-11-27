@@ -514,6 +514,73 @@ for (const device of DEVICES) {
   });
 }
 
+test("the store officer cancels visits that wait for a person", async ({ page, browser }) => {
+  const device = DEVICES[0]!;
+  await emptyQueue();
+  await office.pick("UP32EF9012", "steel-scrap");
+  const store = await storePage(device);
+
+  // A Type 2 truck waits at the real weighbridge screen for a decision.
+  await openKiosk(page);
+  await arrive(page, bridge, 19_750);
+  await confirmPlate(page, "UP 32 EF 9012");
+  await uploadFromPhone(browser, page, "steel-scrap.jpg");
+  await press(page, "Next");
+  await answerQuestions(page, "Steel Scrap", "9000000004");
+  await press(page, "Next");
+  await confirmWeight(page, "19,750 kg");
+  await expect(page.getByTestId("message-waitStore")).toBeVisible();
+
+  await openRequest(store, "UP 32 EF 9012");
+  await button(store, "Cancel visit").click();
+  // The decision's own buttons are out of the way while the reason is asked.
+  await expect(store.getByTestId("actions")).toHaveCount(0);
+  await expect(button(store, "Yes, cancel visit")).toBeDisabled();
+  await button(store, "Truck has left the site").click();
+  await look(store, "11-cancel-reason", device);
+  await button(store, "Yes, cancel visit").click();
+  await outcome(store, "cancelled");
+  await expect(store).toHaveTitle("Trinetra");
+  await expect(page.getByTestId("message-timedOut")).toContainText("This visit has ended.");
+  await leave(page, bridge);
+
+  // A truck waiting for its supervisor can be cancelled from "Trucks on site".
+  const id = await startVisit("RJ14LM2345", "steel-bars");
+  await say(id, "Steel Bars");
+  await weigh(id, 32_560);
+  await store.goto("/store/trucks");
+  await online(store);
+  const row = rowOf(store, "RJ 14 LM 2345");
+  await expect(row).toContainText("waiting for Vikram Sharma");
+  await expect(row.getByTestId("wait")).toHaveText("0 min");
+  await row.getByRole("link", { name: /^View/ }).click();
+  await expect(store.getByText("Waiting for a decision:")).toBeVisible();
+  await button(store, "Cancel visit").click();
+  await store.getByLabel("More words").fill("Sent back at the gate");
+  await button(store, "Yes, cancel visit").click();
+  await outcome(store, "cancelled");
+  await expect(store.getByTestId("timeline")).toContainText("Store officer cancelled the visit");
+  await expect(button(store, "Cancel visit")).toHaveCount(0);
+
+  const vikram = await browser.newContext();
+  await signIn(vikram, "vikram");
+  const answer = await vikram.request.get(`${WEB_URL}/api/supervisor/tickets?status=pending`);
+  expect(((await answer.json()) as { tickets: unknown[] }).tickets).toEqual([]);
+  await vikram.close();
+
+  await store.goto("/store/history");
+  await online(store);
+  for (const [plate, why] of [
+    ["UP 32 EF 9012", "Truck has left the site"],
+    ["RJ 14 LM 2345", "Sent back at the gate"],
+  ] as const) {
+    await expect(rowOf(store, plate)).toContainText("Cancelled by Ram (Sr. Manager)");
+    await expect(rowOf(store, plate)).toContainText(why);
+  }
+  await look(store, "11b-history-cancelled", device);
+  await store.close();
+});
+
 test("a Bitumen truck in demo mode is sent to Suresh Yadav", async ({ page, browser }) => {
   await emptyQueue();
   await office.pick("BR06QR4321", "bitumen");

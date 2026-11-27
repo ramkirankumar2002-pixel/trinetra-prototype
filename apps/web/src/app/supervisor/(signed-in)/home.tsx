@@ -18,6 +18,7 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Panel } from "@/components/dashboard/panel";
 import { WelcomeBanner } from "@/components/dashboard/welcome-banner";
 import { useCurrentUser } from "@/components/require-role";
+import { WaitPill } from "@/components/wait-pill";
 import { RoleShell } from "@/components/role-shell";
 import { materialText, PlateText, WaitingPill } from "@/components/supervisor/parts";
 import { Banner } from "@/components/ui/banner";
@@ -26,22 +27,21 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { useT } from "@/i18n/use-t";
 import { soundIsOn, subscribeSound } from "@/lib/supervisor/alerts";
-import { minutesSince, useNow, useSupervisorTrucks } from "@/lib/supervisor/queries";
+import { useSupervisorTrucks } from "@/lib/supervisor/queries";
 
 function NextTruck({ truck }: { truck: SupervisorTicketView }) {
   const t = useT();
-  const minutes = minutesSince(truck.firstWeightAt, useNow());
   return (
     <div data-testid="next-truck" className="flex flex-col gap-3 md:flex-row md:items-center">
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <PlateText plate={truck.plate} />
           <WaitingPill truck={truck} />
+          {truck.firstWeightAt && <WaitPill since={truck.firstWeightAt} />}
         </div>
         <p className="text-muted-foreground">
           {materialText(truck.material, t)} · {t("sup.trip", { trip: truck.tripNo ?? "—" })}
           {truck.invoiceWeightKg !== null && ` · ${formatKg(truck.invoiceWeightKg)}`}
-          {minutes !== null && ` · ${t("sup.waitingFor", { minutes })}`}
         </p>
       </div>
       <Button asChild size="lg" className="min-h-16 text-xl md:min-w-56">

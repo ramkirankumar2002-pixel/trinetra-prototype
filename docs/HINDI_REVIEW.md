@@ -540,3 +540,20 @@ New for the store officer's pages (and the camera's hint for a bill). Not checke
 | `store.event.PLATE_WARNING_APPROVED` | Store officer allowed the plate | स्टोर अधिकारी ने प्लेट को अनुमति दी |
 | `store.event.PLATE_WARNING_REJECTED` | Store officer refused the plate | स्टोर अधिकारी ने प्लेट को मना किया |
 | `store.event.ABANDON` | Driver left before the first weight | ड्राइवर पहली तौल से पहले चला गया |
+
+### Cancelling a visit (added after Phase 13)
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `store.cancel.button` | Cancel visit | यह काम रद्द करें |
+| `store.cancel.title` | Cancel the visit of {plate} | {plate} का काम रद्द करें |
+| `store.cancel.warning` | The visit ends without approving or rejecting. The plate is not blocked. This cannot be undone. | काम बिना मंज़ूरी या अस्वीकृति के ख़त्म होगा। प्लेट रोकी नहीं जाएगी। इसे वापस नहीं किया जा सकता। |
+| `store.cancel.confirm` | Yes, cancel visit | हाँ, रद्द करें |
+| `store.done.cancelled` | Visit cancelled. The weighbridge has been told. | काम रद्द हो गया। वेब्रिज को बता दिया गया है। |
+| `store.status.cancelled` | Cancelled | रद्द |
+| `store.cancelledBy` | Cancelled by {name}, {time} | {name} ने रद्द किया, {time} |
+| `store.waitingForPerson` | Waiting for a decision: | फ़ैसले का इंतज़ार: |
+| `store.reason.left` | Truck has left the site | ट्रक साइट से जा चुका है |
+| `store.reason.cannotContinue` | Driver cannot continue | ड्राइवर आगे नहीं बढ़ सकता |
+| `store.reason.byMistake` | Visit started by mistake | काम गलती से शुरू हुआ था |
+| `store.event.STORE_CANCELLED` | Store officer cancelled the visit | स्टोर अधिकारी ने काम रद्द किया |

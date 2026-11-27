@@ -362,6 +362,10 @@ export interface StoreTicketDecision {
   chosenWeight: HoldWeightChoice | null;
 }
 
+/** POST /api/store/tickets/:id/cancel: why the store officer ends a waiting visit. */
+export const cancelVisitSchema = z.strictObject({ reason: z.string().trim().min(1).max(300) });
+export type CancelVisitRequest = z.input<typeof cancelVisitSchema>;
+
 /** One ticket of the store officer's "trucks on site" and "history" lists. */
 export interface StoreTicketView {
   ticketId: number;
@@ -380,6 +384,10 @@ export interface StoreTicketView {
   /** The request waiting for the store officer, if there is one: the oldest. */
   pendingStoreApprovalId: number | null;
   decisions: StoreTicketDecision[];
+  /** While the visit waits for a person: since when. Otherwise null. */
+  waitingSince: string | null;
+  /** The store officer ended the visit while it was waiting for a person. */
+  cancelled: { by: string; at: string; reason: string } | null;
   isDemo: boolean;
   createdAt: string;
   firstWeightAt: string | null;

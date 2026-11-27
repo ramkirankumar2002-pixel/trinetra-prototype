@@ -1,13 +1,14 @@
 // What the store officer's pages work out from the backend's answers. The backend makes
 // every judgement (the weights, the tolerance, who may decide): this only words them.
-import type {
-  ApprovalKind,
-  PhotoKind,
-  PhotoView,
-  PlateWarningReason,
-  StoreTicketView,
-  TicketStatus,
-  TicketView,
+import {
+  isClosedStatus,
+  type ApprovalKind,
+  type PhotoKind,
+  type PhotoView,
+  type PlateWarningReason,
+  type StoreTicketView,
+  type TicketStatus,
+  type TicketView,
 } from "@trinetra/shared";
 import type { Tone } from "@/components/ui/tone";
 import type { MessageKey, MessageParams } from "@/i18n/translate";
@@ -56,23 +57,6 @@ export function kindPill({ kind, plateWarningReason }: RequestKind): {
   return plateWarningReason === "BLOCKED_HISTORY"
     ? { tone: "stop", key: "store.kind.blocked" }
     : { tone: "wait", key: "store.kind.frontBack" };
-}
-
-export const AMBER_AFTER_MIN = 5;
-export const RED_AFTER_MIN = 10;
-
-/** How loudly a wait is shown: amber after more than 5 minutes, red after more than 10. */
-export function waitTone(minutes: number): Tone {
-  if (minutes >= RED_AFTER_MIN) return "stop";
-  return minutes >= AMBER_AFTER_MIN ? "wait" : "idle";
-}
-
-/** Whole minutes and the seconds beyond them, so "more than 5 minutes" is exact. */
-export function waitingFor(from: string, now: number): { minutes: number; tone: Tone } | null {
-  if (now === 0) return null;
-  const ms = Math.max(0, now - Date.parse(from));
-  const minutes = Math.floor(ms / 60_000);
-  return { minutes, tone: waitTone(ms / 60_000) };
 }
 
 // ---- One ticket ----
@@ -276,7 +260,13 @@ const SUPERVISOR_CHIPS: readonly ReasonChip[] = [
   { value: "Material not unloaded", key: "sup.reason.notUnloaded" },
 ];
 
-const ALL_CHIPS = [...REJECT_CHIPS, ...INVOICE_WEIGHT_CHIPS, ...ALLOW_CHIPS, ...SUPERVISOR_CHIPS];
+const allChips = () => [
+  ...REJECT_CHIPS,
+  ...INVOICE_WEIGHT_CHIPS,
+  ...ALLOW_CHIPS,
+  ...CANCEL_CHIPS,
+  ...SUPERVISOR_CHIPS,
+];
 export const REASON_MAX = 300;
 
 /** The chosen chip, the typed words, or both. Null while there is neither. */
@@ -287,12 +277,48 @@ export function reasonOf(chip: string | null, typed: string): string | null {
 
 /** A saved reason in the reader's language, as far as it is one of the chips. */
 export function reasonWords(reason: string, t: (key: MessageKey) => string): string {
-  for (const { value, key } of ALL_CHIPS) {
+  for (const { value, key } of allChips()) {
     if (reason === value) return t(key);
     if (reason.startsWith(`${value}: `)) return `${t(key)}${reason.slice(value.length)}`;
   }
   return reason;
 }
+
+export const CANCEL_CHIPS: readonly ReasonChip[] = [
+  { value: "Truck has left the site", key: "store.reason.left" },
+  { value: "Driver cannot continue", key: "store.reason.cannotContinue" },
+  { value: "Visit started by mistake", key: "store.reason.byMistake" },
+];
+
+/** A cancelled visit ends as ABANDONED: who cancelled it is on its timeline. */
+export function cancellationOf(ticket: TicketView) {
+  const entry = lastEvent(ticket, "STORE_CANCELLED");
+  return entry
+    ? { by: entry.actorName, at: entry.at, reason: textOf(entry.data.reason) ?? "" }
+    : null;
+}
+
+/** The words and colour of a ticket's status. "Left early" would be wrong if cancelled. */
+export const statusShown = (
+  status: TicketStatus,
+  cancelled: boolean,
+): { tone: Tone; key: MessageKey } =>
+  cancelled
+    ? { tone: "stop", key: "store.status.cancelled" }
+    : { tone: STATUS_TONES[status], key: STATUS_KEYS[status] };
+
+/** A request that closed with its ticket: there is nothing left to decide. */
+export const visitHasEnded = (
+  ticket: TicketView | undefined,
+  {
+    kind,
+    plateWarningReason,
+  }: { kind: ApprovalKind; plateWarningReason: PlateWarningReason | null },
+): boolean =>
+  ticket !== undefined &&
+  isClosedStatus(ticket.status) &&
+  kind !== "DRIVER_HELP" &&
+  plateWarningReason !== "FRONT_BACK_MISMATCH";
 
 /** Someone has already answered this request, or its truck has moved on. */
 export const ALREADY_HANDLED = new Set(["WRONG_STAGE", "ALREADY_DECIDED"]);

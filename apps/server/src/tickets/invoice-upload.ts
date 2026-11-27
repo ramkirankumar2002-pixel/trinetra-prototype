@@ -9,7 +9,7 @@ import {
   type UploadLinkResponse,
   type UploadResponse,
 } from "@trinetra/shared";
-import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { publicWebUrl, type Env } from "../config/env";
 import { UPLOAD_LINK_MS } from "../config/limits";
@@ -120,8 +120,9 @@ async function warnIfDuplicate(
     .where(
       and(
         ne(tickets.id, ticket.id),
-        // A ticket the driver walked away from did not use the invoice.
-        ne(tickets.status, "ABANDONED"),
+        // A ticket the driver walked away from did not use the invoice. One the store
+        // officer cancelled after a weighing did.
+        or(ne(tickets.status, "ABANDONED"), isNotNull(tickets.firstWeightAt)),
         sql`lower(${tickets.invoiceNo}) = ${number}`,
         sql`lower(${tickets.supplier}) = ${name}`,
       ),

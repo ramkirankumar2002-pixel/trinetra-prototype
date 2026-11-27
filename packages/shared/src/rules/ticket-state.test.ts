@@ -9,6 +9,7 @@ import {
   secondWeightEvent,
   TICKET_EVENTS,
   transition,
+  waitsForPerson,
   WrongStageError,
   type PlateCheck,
   type TicketEvent,
@@ -36,6 +37,12 @@ const ALLOWED: [TicketStatus, TicketEvent, TicketStatus][] = [
   ["READY_FOR_SECOND", "SECOND_WEIGHT_FAILED", "HOLD_PENDING"],
   ["HOLD_PENDING", "HOLD_APPROVED", "COMPLETED"],
   ["HOLD_PENDING", "HOLD_REJECTED", "REJECTED"],
+  // The store officer may end any visit that waits for a person.
+  ["STARTED", "STORE_CANCELLED", "ABANDONED"],
+  ["MISMATCH_PENDING", "STORE_CANCELLED", "ABANDONED"],
+  ["STORE_PENDING", "STORE_CANCELLED", "ABANDONED"],
+  ["SUPERVISOR_PENDING", "STORE_CANCELLED", "ABANDONED"],
+  ["HOLD_PENDING", "STORE_CANCELLED", "ABANDONED"],
 ];
 
 const cleared = { plateCheck: "NOT_NEEDED" } as const;
@@ -104,7 +111,13 @@ describe("transition", () => {
       const reached = new Set(
         ALLOWED.filter(([from, event, to]) => {
           // The plate warning is the added check; it is not in the plan's table.
-          return from === status && from !== to && !event.startsWith("PLATE_WARNING");
+          return (
+            from === status &&
+            from !== to &&
+            !event.startsWith("PLATE_WARNING") &&
+            // Added later, like the plate warning.
+            event !== "STORE_CANCELLED"
+          );
         }).map(([, , to]) => to),
       );
       expect({ status, next: [...reached].sort() }).toEqual({
@@ -254,4 +267,31 @@ describe("needsPlateApproval", () => {
   it("counts a closing time slightly in the future (clock difference)", () => {
     expect(needsPlateApproval([{ status: "BLOCKED", closedAt: ago(-1) }], now)).toBe(true);
   });
+});
+
+describe("waiting for a person", () => {
+  const help = { kind: "DRIVER_HELP", plateWarningReason: null } as const;
+  const blocked = { kind: "PLATE_WARNING", plateWarningReason: "BLOCKED_HISTORY" } as const;
+  const frontBack = { kind: "PLATE_WARNING", plateWarningReason: "FRONT_BACK_MISMATCH" } as const;
+
+  it.each(["MISMATCH_PENDING", "STORE_PENDING", "SUPERVISOR_PENDING", "HOLD_PENDING"] as const)(
+    "%s always waits for one",
+    (status) => {
+      expect(waitsForPerson(status, [])).toBe(true);
+    },
+  );
+
+  it("a STARTED visit waits for one only after a help call or on a blocked plate", () => {
+    expect(waitsForPerson("STARTED", [])).toBe(false);
+    expect(waitsForPerson("STARTED", [frontBack])).toBe(false);
+    expect(waitsForPerson("STARTED", [help])).toBe(true);
+    expect(waitsForPerson("STARTED", [frontBack, blocked])).toBe(true);
+  });
+
+  it.each(["READY_FOR_UNLOAD", "READY_FOR_SECOND", ...CLOSED_TICKET_STATUSES] as const)(
+    "%s does not, whatever was left open",
+    (status) => {
+      expect(waitsForPerson(status, [help, blocked])).toBe(false);
+    },
+  );
 });

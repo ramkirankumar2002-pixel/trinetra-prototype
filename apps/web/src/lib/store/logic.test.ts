@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import en from "@/i18n/en.json";
 import {
   canAccept,
+  cancellationOf,
   holdSum,
   invoiceAsRead,
   invoiceFile,
@@ -14,9 +15,11 @@ import {
   reasonWords,
   signed,
   STATUS_KEYS,
+  statusShown,
   truckPlace,
-  waitingFor,
+  visitHasEnded,
 } from "./logic";
+import { waitingFor } from "../waiting";
 
 const MINUTE = 60_000;
 const START = Date.parse("2026-11-27T10:00:00Z");
@@ -214,5 +217,33 @@ describe("reasons", () => {
     expect(reasonWords("Wrong material: sand", t)).toBe("[store.reason.wrongMaterial]: sand");
     expect(reasonWords("Something else", t)).toBe("Something else");
     expect(reasonWords("Wrong truck", t)).toBe("[sup.reason.wrongTruck]");
+  });
+});
+
+describe("a visit the store officer cancelled", () => {
+  const cancelled = ticket({
+    status: "ABANDONED",
+    timeline: [
+      { ...event("STORE_CANCELLED", { reason: "Truck has left the site" }), actorName: "Ram" },
+    ],
+  });
+
+  it("says who cancelled it and why, and is not called 'left early'", () => {
+    expect(cancellationOf(cancelled)).toMatchObject({
+      by: "Ram",
+      reason: "Truck has left the site",
+    });
+    expect(cancellationOf(ticket())).toBeNull();
+    expect(statusShown("ABANDONED", true).key).toBe("store.status.cancelled");
+    expect(statusShown("ABANDONED", false).key).toBe("store.status.ABANDONED");
+  });
+
+  it("leaves its unanswered request with nothing to decide", () => {
+    const request = { kind: "STORE_TYPE2", plateWarningReason: null } as const;
+    expect(visitHasEnded(cancelled, request)).toBe(true);
+    expect(visitHasEnded(ticket(), request)).toBe(false);
+    // A help call or a front/back warning can still be marked as handled.
+    expect(visitHasEnded(cancelled, { kind: "DRIVER_HELP", plateWarningReason: null })).toBe(false);
+    expect(visitHasEnded(undefined, request)).toBe(false);
   });
 });

@@ -6,18 +6,18 @@ import { formatKg } from "@trinetra/shared";
 import { ShieldCheck, Truck } from "lucide-react";
 import Link from "next/link";
 import { useT } from "@/i18n/use-t";
-import { minutesSince, useNow, useSupervisorTrucks } from "@/lib/supervisor/queries";
+import { useSupervisorTrucks } from "@/lib/supervisor/queries";
 import { DataTable } from "../dashboard/data-table";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { EmptyState } from "../ui/empty-state";
 import { Spinner } from "../ui/spinner";
+import { WaitPill } from "../wait-pill";
 import { materialText, PlateText, WaitingPill } from "./parts";
 
 export function Trucks() {
   const t = useT();
-  const now = useNow();
   const { data, isError, refetch } = useSupervisorTrucks("pending");
 
   return (
@@ -65,10 +65,8 @@ export function Trucks() {
               {
                 id: "waiting",
                 header: t("sup.column.since"),
-                cell: (truck) => {
-                  const minutes = minutesSince(truck.firstWeightAt, now);
-                  return minutes === null ? "—" : t("kpi.minutes", { count: minutes });
-                },
+                cell: (truck) =>
+                  truck.firstWeightAt ? <WaitPill since={truck.firstWeightAt} /> : "—",
               },
               {
                 id: "status",
