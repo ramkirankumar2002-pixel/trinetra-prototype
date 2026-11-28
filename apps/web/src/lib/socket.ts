@@ -2,6 +2,7 @@
 // and nothing the browser holds is ever sent back as a weight.
 import type { ClientToServerEvents, ServerToClientEvents } from "@trinetra/shared";
 import { io, type Socket } from "socket.io-client";
+import { appHeaders } from "./areas";
 import { socketUrl } from "./config";
 
 export type LiveSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -31,12 +32,18 @@ export interface SocketClientOptions {
   /** "live" is the read-only room that needs no login (the projector screen). */
   mode?: "user" | "live";
   fetch?: typeof fetch;
+  /** The page's path now: it says whose login the token is for. */
+  currentPath?: () => string;
   /** First wait before trying again after a refusal; it doubles up to ten times this. */
   retryMs?: number;
 }
 
 export function createSocketClient(options: SocketClientOptions): SocketClient {
-  const { mode = "user", retryMs = 1000 } = options;
+  const {
+    mode = "user",
+    retryMs = 1000,
+    currentPath = () => (typeof window === "undefined" ? "/" : window.location.pathname),
+  } = options;
   const statusListeners = new Set<() => void>();
   const reconnectListeners = new Set<() => void>();
 
@@ -58,6 +65,7 @@ export function createSocketClient(options: SocketClientOptions): SocketClient {
     const send = options.fetch ?? fetch;
     // On the website's own address, so the login cookie goes with it.
     const response = await send("/api/auth/socket-token", {
+      headers: appHeaders(currentPath()),
       credentials: "include",
       cache: "no-store",
     });

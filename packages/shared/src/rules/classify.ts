@@ -49,3 +49,13 @@ export function classifyType(
     ? { ok: true, type: "TYPE_2", reason: `${name}: the invoice weight is above ${limit} kg.` }
     : { ok: true, type: "TYPE_3", reason: `${name}: the invoice weight is ${limit} kg or less.` };
 }
+
+/**
+ * The type of a loaded truck that has no invoice at all. There is no weight to decide by, so
+ * a material with a weight rule counts as store-controlled (TYPE_2); a material without one
+ * keeps its own type (a Type 1 truck still goes to its supervisor, Bricks stay TYPE_3).
+ * Whatever the type, the store officer must approve it first (firstWeightEvent).
+ */
+export function classifyWithoutInvoice(material: TypedMaterial): TicketType {
+  return material.type2AboveKg === null ? material.type : "TYPE_2";
+}

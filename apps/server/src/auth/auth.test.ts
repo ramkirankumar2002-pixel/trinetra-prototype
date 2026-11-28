@@ -2,7 +2,7 @@ import { SEED_USERS } from "@trinetra/shared/seed";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { buildApp } from "../app";
-import { SESSION_COOKIE } from "../plugins/security";
+import { SESSION_COOKIES } from "../plugins/security";
 import { createDb } from "../db/client";
 import { seedDatabase } from "../db/seed";
 import { resetTestDatabase } from "../test/database";
@@ -31,14 +31,20 @@ describe.skipIf(!testDatabaseUrl)("auth", { timeout: 30_000 }, () => {
 
   async function sessionFor(username: string, pin: string): Promise<string> {
     const response = await login(username, pin);
-    return response.cookies.find((cookie) => cookie.name === SESSION_COOKIE)!.value;
+    return response.cookies[0]!.value;
   }
 
+  /** The role inside a token, or KIOSK's cookie for something that is not a token. */
+  const roleOf = (token: string) =>
+    (token.includes(".") && app.jwt.decode<{ role: keyof typeof SESSION_COOKIES }>(token)?.role) ||
+    "KIOSK";
+
+  /** A token goes in the cookie of its own role. */
   const get = (url: string, session?: string) =>
     app.inject({
       method: "GET",
       url,
-      ...(session ? { cookies: { [SESSION_COOKIE]: session } } : {}),
+      ...(session ? { cookies: { [SESSION_COOKIES[roleOf(session)]]: session } } : {}),
     });
 
   const lifetime = (token: string) => {
@@ -62,7 +68,8 @@ describe.skipIf(!testDatabaseUrl)("auth", { timeout: 30_000 }, () => {
 
     it("sets a 12 hour httpOnly cookie that holds userId, role and name", async () => {
       const response = await login("amit", "1001");
-      const cookie = response.cookies.find((c) => c.name === SESSION_COOKIE)!;
+      const cookie = response.cookies.find((c) => c.name === SESSION_COOKIES.SUPERVISOR)!;
+      expect(response.cookies).toHaveLength(1);
 
       expect(cookie).toMatchObject({ httpOnly: true, sameSite: "Lax", path: "/", maxAge: 43200 });
       expect(cookie.secure).toBeUndefined();
@@ -186,9 +193,14 @@ describe.skipIf(!testDatabaseUrl)("auth", { timeout: 30_000 }, () => {
     it("logout clears the cookie", async () => {
       const response = await app.inject({ method: "POST", url: "/api/auth/logout" });
       expect(response.statusCode).toBe(200);
-      const cookie = response.cookies.find((c) => c.name === SESSION_COOKIE)!;
-      expect(cookie.value).toBe("");
-      expect(cookie.expires!.getTime()).toBeLessThan(Date.now());
+      // With no app named, every app's cookie goes.
+      expect(response.cookies.map((c) => c.name).sort()).toEqual(
+        Object.values(SESSION_COOKIES).sort(),
+      );
+      for (const cookie of response.cookies) {
+        expect(cookie.value).toBe("");
+        expect(cookie.expires!.getTime()).toBeLessThan(Date.now());
+      }
     });
 
     it("gives a 60 second socket token that cannot be used as a login", async () => {
@@ -204,6 +216,120 @@ describe.skipIf(!testDatabaseUrl)("auth", { timeout: 30_000 }, () => {
 
     it("gives no socket token without a login", async () => {
       expect((await get("/api/auth/socket-token")).statusCode).toBe(401);
+    });
+  });
+
+  describe("three apps in one browser", () => {
+    const APPS = {
+      kiosk: { username: "wb01", pin: "3001", role: "KIOSK" },
+      supervisor: { username: "amit", pin: "1001", role: "SUPERVISOR" },
+      store: { username: "ram", pin: "2001", role: "STORE" },
+    } as const;
+    type AppName = keyof typeof APPS;
+    const NAMES = Object.keys(APPS) as AppName[];
+
+    /** A browser: one cookie jar, and each page names its app. */
+    function browser() {
+      const jar: Record<string, string> = {};
+      const send = async (app_: AppName, method: "GET" | "POST", url: string, body?: object) => {
+        const response = await app.inject({
+          method,
+          url,
+          headers: { "x-trinetra-app": app_ },
+          cookies: { ...jar },
+          ...(body ? { payload: body } : {}),
+        });
+        for (const { name, value } of response.cookies) {
+          if (value) jar[name] = value;
+          else delete jar[name];
+        }
+        return response;
+      };
+      const logIn = (app_: AppName, as: AppName = app_) =>
+        send(app_, "POST", "/api/auth/login", {
+          username: APPS[as].username,
+          pin: APPS[as].pin,
+        });
+      const who = async (app_: AppName) =>
+        (await send(app_, "GET", "/api/auth/me")).json().user?.role ?? null;
+      return { jar, send, logIn, who };
+    }
+
+    async function allThree() {
+      const tab = browser();
+      for (const name of NAMES) expect((await tab.logIn(name)).statusCode).toBe(200);
+      return tab;
+    }
+
+    it("keeps all three logged in, each seen as itself", async () => {
+      const tab = await allThree();
+      expect(Object.keys(tab.jar).sort()).toEqual(Object.values(SESSION_COOKIES).sort());
+      for (const name of NAMES) expect(await tab.who(name)).toBe(APPS[name].role);
+    });
+
+    it("still checks the role on every request, by the cookie of the app that asks", async () => {
+      const tab = await allThree();
+      for (const asking of NAMES) {
+        for (const owner of NAMES) {
+          const url = `/api/test/${APPS[owner].role.toLowerCase()}`;
+          const response = await tab.send(asking, "GET", url);
+          expect(response.statusCode, `${asking} asking ${url}`).toBe(asking === owner ? 200 : 403);
+        }
+      }
+    });
+
+    it("gives each app the live token of its own login", async () => {
+      const tab = await allThree();
+      for (const name of NAMES) {
+        const { token } = (await tab.send(name, "GET", "/api/auth/socket-token")).json();
+        expect(app.jwt.decode(token)).toMatchObject({ role: APPS[name].role, use: "socket" });
+      }
+    });
+
+    it.each(NAMES)("logging out of the %s leaves the other two logged in", async (leaving) => {
+      const tab = await allThree();
+      await tab.send(leaving, "POST", "/api/auth/logout");
+      for (const name of NAMES) {
+        expect(await tab.who(name)).toBe(name === leaving ? null : APPS[name].role);
+      }
+    });
+
+    it("logs nobody in for another app's PIN, and keeps that app's login", async () => {
+      const tab = browser();
+      await tab.logIn("supervisor");
+      const before = { ...tab.jar };
+
+      const refused = await tab.logIn("kiosk", "supervisor");
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json().error).toMatchObject({
+        code: "WRONG_APP",
+        details: { role: "SUPERVISOR" },
+      });
+      expect(refused.cookies).toHaveLength(0);
+      expect(tab.jar).toEqual(before);
+      expect(await tab.who("kiosk")).toBeNull();
+    });
+
+    it("does not believe a login put in another app's cookie", async () => {
+      const session = await sessionFor("ram", "2001");
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/test/kiosk",
+        headers: { "x-trinetra-app": "kiosk" },
+        cookies: { [SESSION_COOKIES.KIOSK]: session },
+      });
+      expect(response.statusCode).toBe(401);
+    });
+
+    it("treats an unknown app name as no login", async () => {
+      const session = await sessionFor("ram", "2001");
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/auth/me",
+        headers: { "x-trinetra-app": "admin" },
+        cookies: { [SESSION_COOKIES.STORE]: session },
+      });
+      expect(response.statusCode).toBe(401);
     });
   });
 });

@@ -7,6 +7,8 @@ import { useLanguageStore } from "@/i18n/language-store";
 export type Step =
   | "language"
   | "plate"
+  /** Loaded or empty. */
+  | "load"
   | "invoice"
   | "material"
   | "supplier"
@@ -15,6 +17,8 @@ export type Step =
   | "name"
   | "check"
   | "weigh1"
+  /** The one weighing of an empty truck. */
+  | "weighEmpty"
   | "result1"
   | "visit2"
   | "weigh2";
@@ -32,6 +36,16 @@ const ORDER: Step[] = [
 ];
 
 export const nextStep = (step: Step): Step => ORDER[ORDER.indexOf(step) + 1] ?? "check";
+
+/**
+ * Is "loaded or empty" still to be asked? Not once the driver has given an answer that only
+ * a loaded truck has (a visit continued a few minutes later): that goes on where it was.
+ */
+export const needsLoadQuestion = (ticket: TicketView): boolean =>
+  ticket.material === null &&
+  !ticket.noInvoice &&
+  ticket.mismatchAttempts === 0 &&
+  !ticket.timeline.some((entry) => entry.type === "INVOICE_RECEIVED");
 
 // ---- Reading the number plate ----
 
@@ -128,8 +142,11 @@ interface KioskStore extends Session {
    */
   answered: (from: Step) => void;
   fix: (step: Step) => void;
-  /** The plate is confirmed and the ticket known. */
-  startTicket: (ticketId: number, visit: 1 | 2) => void;
+  /**
+   * The plate is confirmed and the ticket known. A first visit starts at "loaded or empty"
+   * unless that is already clear.
+   */
+  startTicket: (ticketId: number, visit: 1 | 2, first?: "load" | "invoice") => void;
   setPlate: (plate: Partial<PlateState>) => void;
   readAgain: () => void;
   uploadAgain: (uploadsSoFar: number) => void;
@@ -162,8 +179,8 @@ export const useKiosk = create<KioskStore>()((set, get) => {
       if (step === from) set({ step: fixing ? "check" : nextStep(from), fixing: false });
     },
     fix: (step) => set({ step, fixing: true }),
-    startTicket: (ticketId, visit) =>
-      set({ ticketId, visit, step: visit === 2 ? "visit2" : "invoice" }),
+    startTicket: (ticketId, visit, first = "load") =>
+      set({ ticketId, visit, step: visit === 2 ? "visit2" : first }),
     setPlate: (plate) => set((state) => ({ plate: { ...state.plate, ...plate } })),
     readAgain: () =>
       set((state) => ({
@@ -224,11 +241,13 @@ export type Screen =
   | "blocked"
   | "hold"
   | "finalSlip"
+  | "emptySlip"
   | "timedOut";
 
 /** Steps that need the truck standing fully on the bridge. */
 const NEEDS_POSITION: ReadonlySet<Screen> = new Set<Screen>([
   "plate",
+  "load",
   "invoice",
   "material",
   "supplier",
@@ -237,6 +256,7 @@ const NEEDS_POSITION: ReadonlySet<Screen> = new Set<Screen>([
   "name",
   "check",
   "weigh1",
+  "weighEmpty",
   "weigh2",
 ]);
 
@@ -255,7 +275,7 @@ function screenOfTicket(step: Step, ticket: TicketView): Screen {
     case "HOLD_PENDING":
       return "hold";
     case "COMPLETED":
-      return "finalSlip";
+      return ticket.load === "EMPTY" ? "emptySlip" : "finalSlip";
     case "STARTED":
       return ticket.plateCheck === "PENDING" ? "notApprovedEarlier" : step;
     case "READY_FOR_UNLOAD":
@@ -291,6 +311,7 @@ export function screenOf(
 export const QUESTION_SCREENS: ReadonlySet<Screen> = new Set<Screen>([
   "language",
   "plate",
+  "load",
   "invoice",
   "material",
   "supplier",
@@ -299,12 +320,14 @@ export const QUESTION_SCREENS: ReadonlySet<Screen> = new Set<Screen>([
   "name",
   "check",
   "weigh1",
+  "weighEmpty",
   "weigh2",
 ]);
 
 const FIRST_VISIT_DOT: Partial<Record<Screen, number>> = {
   language: 1,
   plate: 2,
+  load: 3,
   invoice: 3,
   material: 4,
   supplier: 4,
@@ -313,6 +336,7 @@ const FIRST_VISIT_DOT: Partial<Record<Screen, number>> = {
   name: 4,
   check: 5,
   weigh1: 6,
+  weighEmpty: 6,
 };
 const SECOND_VISIT_DOT: Partial<Record<Screen, number>> = {
   language: 1,

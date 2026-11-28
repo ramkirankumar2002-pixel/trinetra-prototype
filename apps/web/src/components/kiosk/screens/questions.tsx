@@ -28,7 +28,7 @@ import { LetterKeypad } from "../keypads";
 import { materialIcon, materialLabel } from "../material-look";
 import { ChoiceTiles } from "../tiles";
 
-function useSaveDetails(ticket: TicketView) {
+export function useSaveDetails(ticket: TicketView) {
   const putTicket = usePutTicket();
   const { busy, run } = useAction();
   const [problem, setProblem] = useState<MessageKey | null>(null);

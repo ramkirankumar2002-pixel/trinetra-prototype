@@ -10,6 +10,7 @@ import {
   PHOTO_KINDS,
   PLATE_MATCH_RESULTS,
   PLATE_WARNING_REASONS,
+  TICKET_LOADS,
   TICKET_STATUSES,
   TICKET_TYPES,
   USER_ROLES,
@@ -35,6 +36,7 @@ import {
 
 export const ticketStatus = pgEnum("ticket_status", TICKET_STATUSES);
 export const ticketType = pgEnum("ticket_type", TICKET_TYPES);
+export const ticketLoad = pgEnum("ticket_load", TICKET_LOADS);
 export const approvalKind = pgEnum("approval_kind", APPROVAL_KINDS);
 export const approvalStatus = pgEnum("approval_status", APPROVAL_STATUSES);
 export const plateWarningReason = pgEnum("plate_warning_reason", PLATE_WARNING_REASONS);
@@ -179,6 +181,10 @@ export const tickets = pgTable(
     plate: text().notNull(),
     status: ticketStatus().notNull().default("STARTED"),
     language: language().notNull(),
+    /** EMPTY: an empty truck, weighed once. It has no material, type or invoice. */
+    load: ticketLoad().notNull().default("LOADED"),
+    /** A loaded truck without an invoice: no tolerance check, and the store must approve. */
+    noInvoice: boolean("no_invoice").notNull().default(false),
 
     materialId: integer("material_id").references(() => materials.id),
     type: ticketType(),
@@ -228,6 +234,10 @@ export const tickets = pgTable(
     index("tickets_supervisor").on(t.supervisorId),
     check("tickets_plate_normalised", isNormalisedPlate(t.plate)),
     check("tickets_invoice_weight_positive", sql`${t.invoiceWeightKg} > 0`),
+    check(
+      "tickets_no_invoice_has_none",
+      sql`not ${t.noInvoice} or (${t.invoiceNo} is null and ${t.invoiceWeightKg} is null)`,
+    ),
     check("tickets_held_weight_not_negative", sql`${t.heldWeightKg} >= 0`),
     check("tickets_first_weight_not_negative", sql`${t.firstWeightKg} >= 0`),
     check("tickets_second_weight_not_negative", sql`${t.secondWeightKg} >= 0`),

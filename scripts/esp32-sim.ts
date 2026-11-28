@@ -3,7 +3,7 @@
 //   pnpm sim                 cameras send the matching plate pair
 //   pnpm sim --mismatch      the back camera shows another plate
 //   pnpm sim --loaded 19150  what the loaded truck of key "a" weighs
-//   pnpm sim --scale 40      if "1 g = X kg" on /settings is not 100
+//   pnpm sim --scale 40      use this "1 g = X kg" instead of asking the backend
 //   pnpm sim --url ws://host:4000/device
 // The device tokens come from apps/server/.env. Start the backend first.
 import { existsSync } from "node:fs";
@@ -16,7 +16,9 @@ import {
   formatKg,
   MAX_MODEL_SCALE,
   TAMPER_REASONS,
+  type DemoSettings,
 } from "@trinetra/shared";
+import { SEED_USERS } from "@trinetra/shared/seed";
 import { SimCamera, SimMainBoard } from "./sim/board";
 import { EMPTY_KG, LOADED_KG } from "./sim/weight-model";
 
@@ -52,6 +54,33 @@ let mismatch = args.mismatch;
 
 function token(name: string): string {
   return process.env[name] || fail(`${name} is not set in apps/server/.env (see .env.example).`);
+}
+
+/**
+ * The backend's "1 g = X kg", asked with the weighbridge's demo login and ADMIN_PIN.
+ * Undefined if it cannot be asked (no backend, no ADMIN_PIN): the last value is kept.
+ */
+async function currentScale(): Promise<number | undefined> {
+  const pin = process.env.ADMIN_PIN;
+  const kiosk = SEED_USERS.find((user) => user.role === "KIOSK")!;
+  if (!pin) return undefined;
+  try {
+    const login = await fetch(`${httpBase}/api/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: kiosk.username, pin: kiosk.pin }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!login.ok) return undefined;
+    const answer = await fetch(`${httpBase}/api/demo/settings`, {
+      headers: { cookie: login.headers.getSetCookie()[0]!.split(";")[0]!, "x-admin-pin": pin },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!answer.ok) return undefined;
+    return ((await answer.json()) as DemoSettings).modelScaleKgPerG;
+  } catch {
+    return undefined;
+  }
 }
 
 const log = (text: string) => console.log(`${new Date().toLocaleTimeString("en-GB")}  ${text}`);
@@ -107,7 +136,8 @@ const cameras = CAMERA_IDS.map(
 );
 
 const HELP = `
-  a  truck arrives (${formatKg(loadedKg)})     e  empty truck (${formatKg(EMPTY_KG)})
+  a  LOADED truck arrives (${formatKg(loadedKg)})   e  EMPTY truck arrives (${formatKg(EMPTY_KG)})
+  (a loaded truck's second weighing is the same truck coming back empty: press e)
   l  truck leaves                  p  position: OK -> move forward -> move back
   u  toggle unstable wobble        o  all boards offline for 5 s
   m  switch matching / mismatched plate photos
@@ -127,15 +157,19 @@ function quit(): void {
 let tamperReason = 0;
 let tampered = false;
 
+/** The truck weighs the same in kg whatever "1 g = X kg" is set to on /settings. */
+async function arrive(kg: number, what: string): Promise<void> {
+  if (args.scale === undefined) {
+    const current = await currentScale();
+    if (current !== undefined) main.kgPerGram = current;
+  }
+  main.model.arrive(kg, now());
+  log(`${what} arrives: ${formatKg(kg)} (1 g = ${main.kgPerGram} kg)`);
+}
+
 const keys: Record<string, () => void> = {
-  a: () => {
-    main.model.arrive(loadedKg, now());
-    log("key a: a loaded truck arrives");
-  },
-  e: () => {
-    main.model.arrive(EMPTY_KG, now());
-    log("key e: an empty truck arrives");
-  },
+  a: () => void arrive(loadedKg, "key a: a LOADED truck"),
+  e: () => void arrive(EMPTY_KG, "key e: an EMPTY truck"),
   l: () => {
     main.model.leave(now());
     log("key l: the truck leaves");
@@ -184,6 +218,9 @@ process.stdin.on("data", (data: string) => {
   for (const key of data) keys[key.toLowerCase()]?.();
 });
 
-console.log(`Trinetra ESP32 simulator -> ${url}  (1 g = ${kgPerGram} kg)\n${HELP}`);
+console.log(`Trinetra ESP32 simulator -> ${url}
+${HELP}`);
+main.kgPerGram = (args.scale === undefined ? await currentScale() : undefined) ?? kgPerGram;
+log(`model scale: 1 g = ${main.kgPerGram} kg`);
 main.start();
 cameras.forEach((camera) => camera.start());

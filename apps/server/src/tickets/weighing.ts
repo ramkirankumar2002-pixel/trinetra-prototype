@@ -1,10 +1,12 @@
-// The two weighings (build plan section 6, rules 4 and 7 to 10). THE BACKEND OWNS THE
+// The two weighings (build plan section 6, rules 4 and 7 to 10), and the one weighing of
+// an empty truck. THE BACKEND OWNS THE
 // WEIGHT: it comes from one canCapture() answer, and nothing here takes a number from a
 // request.
 import {
   afterFirstWeightEvent,
   checkTolerance,
   classifyType,
+  classifyWithoutInvoice,
   computeNet,
   DEFAULT_TOLERANCE_PCT,
   firstWeightEvent,
@@ -19,7 +21,14 @@ import {
 import { and, count, eq, gte, isNotNull, ne } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { CAPTURED_BEEP, goTo, SIGNALS } from "../hardware/signals";
-import { materials, tickets, unloadingPoints, unloadingRules, users } from "../db/schema";
+import {
+  materials,
+  ticketEvents,
+  tickets,
+  unloadingPoints,
+  unloadingRules,
+  users,
+} from "../db/schema";
 import { AppError } from "../errors/app-error";
 import type { Transaction } from "../realtime/after-commit";
 import { bridgeNotReady } from "./blocked";
@@ -121,7 +130,7 @@ async function unloadingFor(tx: Transaction, materialId: number, tripNo: number)
 /**
  * Saves a first weight and sends the truck to unload: trip number, unloading point and
  * supervisor, then READY_FOR_UNLOAD, then on to the supervisor (Type 1) or straight to
- * ready for the second weight. For Type 2 this runs when the store officer approves.
+ * ready for the second weight. For a held weight this runs when the store officer approves.
  */
 export async function sendToUnload(
   tx: Transaction,
@@ -168,6 +177,39 @@ export async function sendToUnload(
   });
 }
 
+/**
+ * Did the truck show an invoice? One that was read counts, even if its weight could not be
+ * made out. A truck without one is not weighed without the store officer, whether or not
+ * the driver pressed "No invoice".
+ */
+async function hasInvoice(tx: Transaction, ticket: TicketRow): Promise<boolean> {
+  if (ticket.noInvoice) return false;
+  if (ticket.invoiceNo !== null || ticket.invoiceWeightKg !== null) return true;
+  const [read] = await tx
+    .select({ id: ticketEvents.id })
+    .from(ticketEvents)
+    .where(and(eq(ticketEvents.ticketId, ticket.id), eq(ticketEvents.type, "INVOICE_READ")))
+    .limit(1);
+  return read !== undefined;
+}
+
+/** An empty truck: its one weight is saved, and the visit is over. */
+async function saveEmptyWeight(
+  app: FastifyInstance,
+  tx: Transaction,
+  ticket: TicketRow,
+  move: { actor: Actor; context: TransitionContext },
+): Promise<void> {
+  const demo = await isDemoActive(tx, app.hardware);
+  const { kg, ...how } = captureWeight(app);
+  const tagged = await tagDemo(tx, ticket, demo);
+  await changeStatus(tx, tagged, "EMPTY_WEIGHT_SAVED", {
+    ...move,
+    set: { firstWeightKg: kg, firstWeightAt: new Date() },
+    data: { kg, ...how },
+  });
+}
+
 export async function takeFirstWeight(app: FastifyInstance, ticketId: number, actor: Actor) {
   app.bridgeTicket.id = ticketId;
   await app.eventTransaction(async (tx) => {
@@ -183,11 +225,22 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
         "Not approved earlier. Please go to the store office.",
       );
     }
+    if (ticket.load === "EMPTY") {
+      await saveEmptyWeight(app, tx, ticket, { actor, context: { plateCheck } });
+      return;
+    }
     if (ticket.materialId === null) {
       throw new AppError(409, "DETAILS_REQUIRED", "Choose the material first.");
     }
     const material = await lockMaterial(tx, ticket.materialId);
-    const classified = classifyType(material, ticket.invoiceWeightKg);
+    const noInvoice = !(await hasInvoice(tx, ticket));
+    const classified = noInvoice
+      ? {
+          ok: true as const,
+          type: classifyWithoutInvoice(material),
+          reason: `${material.name} without an invoice: the store officer must approve.`,
+        }
+      : classifyType(material, ticket.invoiceWeightKg);
     if (!classified.ok) throw new AppError(409, classified.error, classified.reason);
     const demo = await isDemoActive(tx, app.hardware);
 
@@ -197,17 +250,23 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
     ticket = await tagDemo(tx, ticket, demo);
     const move = {
       actor,
-      event: firstWeightEvent(classified.type),
+      event: firstWeightEvent(classified.type, noInvoice),
       context: { plateCheck },
     };
 
-    if (classified.type === "TYPE_2") {
+    if (move.event === "FIRST_WEIGHT_HELD") {
       // Held, not saved: the store officer decides first.
       ticket = await changeStatus(tx, ticket, move.event, {
         actor,
         context: move.context,
-        set: { type: classified.type, heldWeightKg: kg, firstWeightAt: takenAt },
-        data: { kg, ...how, type: classified.type, why: classified.reason },
+        set: { type: classified.type, noInvoice, heldWeightKg: kg, firstWeightAt: takenAt },
+        data: {
+          kg,
+          ...how,
+          type: classified.type,
+          why: classified.reason,
+          ...(noInvoice ? { noInvoice } : {}),
+        },
         request: "STORE_TYPE2",
       });
     } else {
@@ -222,8 +281,14 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
   });
   const saved = await ticketView(app.db, app.storage, ticketId);
   app.hardware.commands.buzz(CAPTURED_BEEP.ms, CAPTURED_BEEP.times);
-  // A Type 2 truck waits aside; the others are told where to unload.
-  app.hardware.signals.show(saved.unloadingPoint ? goTo(saved.unloadingPoint.code) : SIGNALS.wait);
+  // An empty truck is done; a held one waits aside; the others are told where to unload.
+  app.hardware.signals.show(
+    saved.status === "COMPLETED"
+      ? SIGNALS.thankYou
+      : saved.unloadingPoint
+        ? goTo(saved.unloadingPoint.code)
+        : SIGNALS.wait,
+  );
   return saved;
 }
 
@@ -254,12 +319,13 @@ export async function takeSecondWeight(app: FastifyInstance, ticketId: number, a
     ticket = await tagDemo(tx, ticket, demo);
 
     const net = computeNet(ticket.firstWeightKg!, kg);
-    // Without usable weights or an invoice weight there is nothing to pass.
+    // Without usable weights nothing passes. A truck the store officer let in without an
+    // invoice has no tolerance check; an invoice whose weight is unknown cannot pass one.
     const tolerance =
       net.valid && ticket.invoiceWeightKg !== null
         ? checkTolerance(net.netKg, ticket.invoiceWeightKg, tolerancePct)
         : undefined;
-    const passed = tolerance?.valid === true && tolerance.pass;
+    const passed = ticket.noInvoice ? net.valid : tolerance?.valid === true && tolerance.pass;
     const variancePct = tolerance?.valid ? tolerance.variancePct : null;
     const holdReason = holdReasonOf(
       { netKg: net.netKg, invoiceWeightKg: ticket.invoiceWeightKg },
@@ -275,7 +341,7 @@ export async function takeSecondWeight(app: FastifyInstance, ticketId: number, a
         netKg: net.netKg,
         invoiceWeightKg: ticket.invoiceWeightKg,
         variancePct,
-        tolerancePct,
+        ...(ticket.noInvoice ? { noInvoice: true } : { tolerancePct }),
         ...(holdReason ? { holdReason } : {}),
       },
       ...(passed ? {} : { request: "HOLD" }),

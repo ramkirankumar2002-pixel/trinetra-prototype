@@ -1,5 +1,6 @@
 import {
   loginSchema,
+  USER_ROLES,
   type AuthResponse,
   type AuthUser,
   type SocketTokenResponse,
@@ -12,8 +13,8 @@ import { LOGIN_RATE_LIMIT, SESSION_SECONDS, SOCKET_TOKEN_SECONDS } from "../conf
 import type { Database } from "../db/client";
 import { users } from "../db/schema";
 import { AppError } from "../errors/app-error";
-import { SESSION_COOKIE } from "../plugins/security";
-import { readSession } from "./guard";
+import { SESSION_COOKIES } from "../plugins/security";
+import { appRole, readSession } from "./guard";
 import { lockedError, type LoginLockout } from "./lockout";
 
 // Compared against when the username does not exist, so both cases take the same time.
@@ -77,17 +78,35 @@ export function registerAuthRoutes(app: FastifyInstance, options: AuthRouteOptio
       }
       attempt.succeed();
 
+      // A correct PIN for another app's role, typed on this app's login page: nobody is
+      // logged in, so that other app's login in this browser is left as it was.
+      const named = appRole(request);
+      if (named !== undefined && named !== user.role) {
+        throw new AppError(403, "WRONG_APP", "That login is for another page.", {
+          role: user.role,
+        });
+      }
+
       const token = app.jwt.sign(
         { userId: user.id, role: user.role, name: user.name, use: "session" },
         { expiresIn: SESSION_SECONDS },
       );
-      reply.setCookie(SESSION_COOKIE, token, { ...cookieOptions, maxAge: SESSION_SECONDS });
+      reply.setCookie(SESSION_COOKIES[user.role], token, {
+        ...cookieOptions,
+        maxAge: SESSION_SECONDS,
+      });
       return { user };
     },
   );
 
-  app.post("/api/auth/logout", async (_request, reply) => {
-    reply.clearCookie(SESSION_COOKIE, cookieOptions);
+  // Logs out the app that asks, and no other. Without a named app, all of them.
+  app.post("/api/auth/logout", async (request, reply) => {
+    const named = appRole(request);
+    for (const role of USER_ROLES) {
+      if (named === undefined || named === role) {
+        reply.clearCookie(SESSION_COOKIES[role], cookieOptions);
+      }
+    }
     return { ok: true };
   });
 

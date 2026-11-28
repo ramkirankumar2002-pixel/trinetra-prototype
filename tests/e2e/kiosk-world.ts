@@ -5,14 +5,19 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { expect, type APIRequestContext, type Browser, type Page } from "@playwright/test";
-import type { StoreRequestsResponse, SupervisorTicketView, TamperReason } from "@trinetra/shared";
+import type {
+  StoreRequestsResponse,
+  SupervisorTicketView,
+  TamperReason,
+  TicketView,
+} from "@trinetra/shared";
 import type { SampleInvoiceId } from "@trinetra/shared/seed";
 import { SimCamera, SimMainBoard } from "../../scripts/sim/board";
+import { LOADED_KG } from "../../scripts/sim/weight-model";
 import { expectDriverRules, KIOSK_SIZES } from "./driver-rules";
-import { WEB_URL } from "./playwright.config";
+import { BACKEND_URL as BACKEND, WEB_URL } from "./playwright.config";
 import { signIn } from "./staff-session";
 
-const BACKEND = "http://localhost:4000";
 const root = (path: string) => fileURLToPath(new URL(`../../${path}`, import.meta.url));
 
 if (existsSync(root("apps/server/.env"))) process.loadEnvFile(root("apps/server/.env"));
@@ -22,6 +27,8 @@ function setting(name: string): string {
   if (!value) throw new Error(`${name} is not set in apps/server/.env (see .env.example).`);
   return value;
 }
+
+export { EMPTY_KG, LOADED_KG } from "../../scripts/sim/weight-model";
 
 /** Set PHASE10_SHOTS=1 to save the pictures in docs/screenshots/phase10. */
 export const SHOTS = process.env.PHASE10_SHOTS === "1";
@@ -99,25 +106,31 @@ export class Weighbridge {
   }
 }
 
-/** The demo switches and the two people who decide. */
+/** Those the unloading rules send these tests' Type 1 trucks to. */
+const SUPERVISORS = ["pankaj", "suresh", "ravi"] as const;
+type Supervisor = (typeof SUPERVISORS)[number];
+
+/** The demo switches and the people who decide. */
 export class Office {
   private constructor(
     private readonly kiosk: APIRequestContext,
     private readonly store: APIRequestContext,
-    private readonly supervisor: APIRequestContext,
+    private readonly supervisors: ReadonlyMap<string, APIRequestContext>,
     private readonly close: () => Promise<void>,
   ) {}
 
   static async open(browser: Browser): Promise<Office> {
+    const names = ["wb01", "ram", ...SUPERVISORS];
     const contexts = await Promise.all(
-      ["wb01", "ram", "amit"].map(async (username) => {
+      names.map(async (username) => {
         const context = await browser.newContext();
         await signIn(context, username);
         return context;
       }),
     );
-    const [kiosk, store, supervisor] = contexts.map((context) => context.request);
-    return new Office(kiosk!, store!, supervisor!, async () => {
+    const [kiosk, store, ...others] = contexts.map((context) => context.request);
+    const supervisors = new Map(SUPERVISORS.map((name, index) => [name, others[index]!]));
+    return new Office(kiosk!, store!, supervisors, async () => {
       await Promise.all(contexts.map((context) => context.close()));
     });
   }
@@ -159,7 +172,34 @@ export class Office {
   }
 
   /**
-   * A Type 1 truck (cement, which goes to Amit Kumar) with its first weight saved, made
+   * Sends a sample bill as the driver's phone would, and waits until it is read. Leaves bill
+   * reading on "pick".
+   */
+  async sendBill(ticketId: number, invoice: SampleInvoiceId): Promise<void> {
+    await this.demo("put", "settings", { ocrMode: "pick", demoInvoice: invoice });
+    const link = await this.kiosk.post(`${WEB_URL}/api/tickets/${ticketId}/upload-link`);
+    expect(link.ok(), await link.text()).toBe(true);
+    const { code } = (await link.json()) as { code: string };
+    const sent = await this.kiosk.post(`${WEB_URL}/api/upload/${code}`, {
+      multipart: {
+        file: {
+          name: "bill.jpg",
+          mimeType: "image/jpeg",
+          buffer: await readFile(sampleInvoice(`${invoice}.jpg`)),
+        },
+      },
+    });
+    expect(sent.ok(), await sent.text()).toBe(true);
+    await expect
+      .poll(async () => {
+        const answer = await this.kiosk.get(`${WEB_URL}/api/tickets/${ticketId}`);
+        return ((await answer.json()) as TicketView).invoice.state;
+      })
+      .toBe("read");
+  }
+
+  /**
+   * A Type 1 truck (sand, which goes to Pankaj Gupta) with its first weight saved, made
    * through the kiosk's API and the simulated weighbridge. The truck then leaves.
    */
   async weighType1(bridge: Weighbridge, plate: string): Promise<number> {
@@ -168,11 +208,12 @@ export class Office {
     });
     expect(started.ok(), await started.text()).toBe(true);
     const { ticket } = (await started.json()) as { ticket: { id: number } };
+    await this.sendBill(ticket.id, "sand");
     const details = await this.kiosk.patch(`${WEB_URL}/api/tickets/${ticket.id}/details`, {
-      data: { material: "Cement Bags" },
+      data: { material: "Sand" },
     });
     expect(details.ok(), await details.text()).toBe(true);
-    bridge.driveOn(32_560);
+    bridge.driveOn(LOADED_KG);
     await expect
       .poll(
         async () =>
@@ -203,13 +244,19 @@ export class Office {
   }
 
   /** The supervisor's live photo shows `seen`; then they decide. */
-  async supervisorDecides(plate: string, seen: string, decision: object): Promise<void> {
-    const list = await this.supervisor.get(`${WEB_URL}/api/supervisor/tickets?status=pending`);
+  async supervisorDecides(
+    plate: string,
+    seen: string,
+    decision: object,
+    who: Supervisor = "pankaj",
+  ): Promise<void> {
+    const supervisor = this.supervisors.get(who)!;
+    const list = await supervisor.get(`${WEB_URL}/api/supervisor/tickets?status=pending`);
     const { tickets } = (await list.json()) as { tickets: SupervisorTicketView[] };
     const truck = tickets.find((item) => item.plate === plate);
     expect(truck, `${plate} is on the supervisor's list`).toBeDefined();
     await this.demo("put", "settings", { supervisorMode: "pick", demoPlate: seen });
-    const photo = await this.supervisor.post(
+    const photo = await supervisor.post(
       `${WEB_URL}/api/supervisor/tickets/${truck!.ticketId}/photo`,
       {
         multipart: {
@@ -222,10 +269,9 @@ export class Office {
       },
     );
     expect(photo.ok(), await photo.text()).toBe(true);
-    const answer = await this.supervisor.post(
-      `${WEB_URL}/api/approvals/${truck!.approvalId}/decide`,
-      { data: decision },
-    );
+    const answer = await supervisor.post(`${WEB_URL}/api/approvals/${truck!.approvalId}/decide`, {
+      data: decision,
+    });
     expect(answer.ok(), await answer.text()).toBe(true);
   }
 }
@@ -264,19 +310,20 @@ async function settled(page: Page) {
   );
 }
 
-async function picture(page: Page, name: string) {
-  if (!SHOTS) return;
-  await mkdir(SHOT_FOLDER, { recursive: true });
+/** Saved in `folder`, or with PHASE10_SHOTS=1 in docs/screenshots/phase10. */
+async function picture(page: Page, name: string, folder = SHOTS ? SHOT_FOLDER : null) {
+  if (!folder) return;
+  await mkdir(folder, { recursive: true });
   // The development tools are not part of the website.
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
-  await page.screenshot({ path: `${SHOT_FOLDER}${name}.png`, animations: "disabled" });
+  await page.screenshot({ path: `${folder}${name}.png`, animations: "disabled" });
 }
 
 /**
  * The driver rules at both kiosk sizes, in English and in Hindi, for the screen now shown;
  * and its picture at 1366×768 in both. Leaves the kiosk as it was: in English.
  */
-export async function look(page: Page, name: string): Promise<void> {
+export async function look(page: Page, name: string, folder?: string | null): Promise<void> {
   const shown = page.getByTestId("screen");
   const screen = (await shown.getAttribute("data-screen"))!;
   for (const language of ["en", "hi"] as const) {
@@ -291,7 +338,7 @@ export async function look(page: Page, name: string): Promise<void> {
       // The switch of language, and anything it saved, left the same screen.
       await expect(shown, name).toHaveAttribute("data-screen", screen);
     }
-    await picture(page, `${name}-${language}`);
+    await picture(page, `${name}-${language}`, folder);
   }
   await rail(page).getByRole("button", { name: "English" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -333,6 +380,21 @@ export async function leave(page: Page, bridge: Weighbridge): Promise<void> {
 export async function confirmPlate(page: Page, shown: string): Promise<void> {
   await expect(page.getByTestId("plate")).toHaveText(shown);
   await press(page, "Yes");
+}
+
+/** "Loaded or empty?" of a new visit. */
+export async function sayLoad(page: Page, load: "Loaded" | "Empty"): Promise<void> {
+  await heading(page, "Loaded or empty?");
+  await page
+    .locator("main")
+    .getByRole("button", { name: new RegExp(`^${load}`) })
+    .click();
+}
+
+/** The plate of a new visit with a load. */
+export async function confirmLoaded(page: Page, shown: string): Promise<void> {
+  await confirmPlate(page, shown);
+  await sayLoad(page, "Loaded");
 }
 
 export async function typeDigits(page: Page, digits: string): Promise<void> {

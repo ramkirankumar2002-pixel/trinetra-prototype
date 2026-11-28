@@ -62,7 +62,12 @@ export function TruckCard({ ticket }: { ticket: TicketView }) {
         facts={[
           ["column.ticket", ticket.ticketNo],
           ["column.material", ticket.material && materialText(ticket.material, t)],
-          ["store.type", ticket.type && t(`slip.type.${ticket.type}`)],
+          [
+            "store.type",
+            ticket.load === "EMPTY"
+              ? t("store.load.empty")
+              : ticket.type && t(`slip.type.${ticket.type}`),
+          ],
           ["sup.column.trip", ticket.tripNo],
           ["slip.unloadedAt", point && [...new Set([point.code, point.name])].join(" · ")],
           ["slip.supervisor", ticket.supervisor?.name],
@@ -136,6 +141,7 @@ export function BillCard({ ticket }: { ticket: TicketView }) {
   return (
     <Card>
       <CardTitle>{t("store.bill")}</CardTitle>
+      {ticket.noInvoice && <Banner tone="wait">{t("slip.noInvoice")}</Banner>}
       {!file ? (
         <p className="flex items-center gap-2 text-muted-foreground">
           <FileText aria-hidden className="size-5" />
@@ -184,19 +190,21 @@ export function BillCard({ ticket }: { ticket: TicketView }) {
 export function WeightsCard({ ticket }: { ticket: TicketView }) {
   const t = useT();
   const held = ticket.firstWeightKg === null && ticket.heldWeightKg !== null;
+  const empty = ticket.load === "EMPTY";
+  const firstLabel = empty ? "slip.emptyWeight" : "slip.firstWeight";
   return (
     <Card>
       <CardTitle>{t("store.weights")}</CardTitle>
       <Facts
         facts={[
           [
-            held ? "store.weight.held" : "slip.firstWeight",
+            held ? "store.weight.held" : firstLabel,
             kg(held ? ticket.heldWeightKg : ticket.firstWeightKg),
           ],
           ["store.weight.firstAt", at(ticket.firstWeightAt)],
           ["kiosk.weigh.second", ticket.secondWeightKg === null ? null : kg(ticket.secondWeightKg)],
           ["slip.netWeight", ticket.netKg === null ? null : kg(ticket.netKg)],
-          ["slip.invoiceWeight", kg(ticket.invoice.weightKg)],
+          ["slip.invoiceWeight", empty || ticket.noInvoice ? null : kg(ticket.invoice.weightKg)],
           ["slip.variance", ticket.variancePct === null ? null : `${ticket.variancePct}%`],
           [
             "store.weight.accepted",

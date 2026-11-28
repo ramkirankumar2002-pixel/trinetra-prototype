@@ -12,8 +12,11 @@ export const EMPTY = 18_250;
 export interface TruckOptions {
   plate?: string;
   material?: string;
-  /** What the invoice says, in kg. Null: no invoice was read. */
-  invoiceKg?: number | null;
+  /**
+   * What the invoice says, in kg. Null: the truck has no invoice. "unreadable": it has
+   * one, but no weight could be made out on it.
+   */
+  invoiceKg?: number | null | "unreadable";
 }
 
 export function flows(h: TicketHarness) {
@@ -23,7 +26,7 @@ export function flows(h: TicketHarness) {
   const post = <T = TicketView>(id: number, action: string, body?: unknown) =>
     h.call<T>("kiosk", "POST", `/api/tickets/${id}/${action}`, body);
 
-  /** A STARTED ticket with its material chosen. Cement is Type 1, Bricks Type 3. */
+  /** A STARTED ticket with its material chosen. Sand is Type 1, Bricks Type 3. */
   async function started(options: TruckOptions = {}): Promise<number> {
     const { plate = PLATE, material = "Bricks", invoiceKg = 14_310 } = options;
     const created = await h.call<CreateTicketResponse>("kiosk", "POST", "/api/tickets", {
@@ -33,7 +36,11 @@ export function flows(h: TicketHarness) {
     });
     expect(created.status).toBe(201);
     const id = created.body.ticket.id;
-    await h.db.update(tickets).set({ invoiceWeightKg: invoiceKg }).where(eq(tickets.id, id));
+    const invoice =
+      invoiceKg === "unreadable"
+        ? { invoiceNo: "NO-WEIGHT", invoiceWeightKg: null }
+        : { invoiceWeightKg: invoiceKg };
+    await h.db.update(tickets).set(invoice).where(eq(tickets.id, id));
     const details = await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material });
     expect(details.status).toBe(200);
     return id;

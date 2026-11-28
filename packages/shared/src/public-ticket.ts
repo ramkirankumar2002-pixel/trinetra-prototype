@@ -1,7 +1,7 @@
 // What anyone with a slip's QR code may see (GET /api/public/tickets/:token). It is a
 // list of named fields and named steps: nothing else of a ticket ever leaves the backend
 // without a login.
-import type { TicketStatus, TicketType } from "./domain";
+import type { TicketLoad, TicketStatus, TicketType } from "./domain";
 
 /** 32 hex digits: the random address of a ticket's public page. */
 export const PUBLIC_TOKEN_PATTERN = /^[0-9a-f]{32}$/;
@@ -14,6 +14,8 @@ export const PUBLIC_STEPS = [
   "PLATE_READ",
   "BILL_READ",
   "FIRST_WEIGHT",
+  /** The one weight of an empty truck. */
+  "EMPTY_WEIGHT",
   /** The store officer allowed a plate that had been turned away earlier. */
   "PLATE_ALLOWED",
   /** The store officer chose the material after it did not match the bill. */
@@ -51,6 +53,9 @@ export interface PublicTicketView {
   plate: string;
   status: TicketStatus;
   type: TicketType | null;
+  load: TicketLoad;
+  /** A loaded truck without an invoice: no tolerance check. */
+  noInvoice: boolean;
   material: string | null;
   invoiceNo: string | null;
   invoiceWeightKg: number | null;

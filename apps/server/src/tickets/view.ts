@@ -185,6 +185,8 @@ export async function ticketView(
     status: ticket.status,
     type: ticket.type,
     language: ticket.language,
+    load: ticket.load,
+    noInvoice: ticket.noInvoice,
     material: ticket.materialId ? (materialsById.get(ticket.materialId) ?? null) : null,
     supplier: ticket.supplier,
     transporter: ticket.transporter,
@@ -193,7 +195,8 @@ export async function ticketView(
       material: ticket.invoiceMaterial,
       date: ticket.invoiceDate,
       weightKg: ticket.invoiceWeightKg,
-      ...invoiceProgress(events),
+      // After "No invoice" an earlier upload no longer counts.
+      ...(ticket.noInvoice ? { state: "none" as const, error: null } : invoiceProgress(events)),
     },
     heldWeightKg: ticket.heldWeightKg,
     firstWeightKg: ticket.firstWeightKg,

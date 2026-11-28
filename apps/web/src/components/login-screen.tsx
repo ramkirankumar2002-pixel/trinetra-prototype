@@ -2,7 +2,7 @@
 
 // The login page of the weighbridge, the supervisor and the store officer: a username and
 // a PIN on a big number pad.
-import type { AuthResponse, AuthUser } from "@trinetra/shared";
+import type { AuthResponse, UserRole } from "@trinetra/shared";
 import { cn } from "cn";
 import { LogIn, Truck, UserRound } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
@@ -65,7 +65,7 @@ export function loginErrorKey(code: string): MessageKey {
 
 type Problem =
   | { kind: "code"; code: string }
-  | { kind: "wrongRole"; user: AuthUser }
+  | { kind: "wrongRole"; role: UserRole }
   /** This username is locked until `until`. */
   | { kind: "locked"; username: string; until: number };
 
@@ -94,7 +94,7 @@ export function LoginScreen({
   const home = () => afterLoginPath(area, window.location.search);
   const required = t(`role.${role}`);
 
-  const me = useMe({ redirectOn401: false });
+  const me = useMe(area, { redirectOn401: false });
   const [typed, setTyped] = useState<string | null>(null);
   const remembered = useSyncExternalStore(
     neverChanges,
@@ -134,28 +134,24 @@ export function LoginScreen({
     setProblem(null);
     const name = username.trim().toLowerCase();
     try {
-      const { user } = await api.post<AuthResponse>("/api/auth/login", {
+      await api.post<AuthResponse>("/api/auth/login", {
         body: { username: name, pin },
       });
-      if (user.role !== role) {
-        // A correct PIN, but for another part: do not stay logged in here.
-        await api.post("/api/auth/logout");
-        setProblem({ kind: "wrongRole", user });
-        setPin("");
-        setBusy(false);
-        return;
-      }
       rememberUsername(area, name);
       // Stays busy while the next page loads.
       goTo(home());
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "UNKNOWN";
       const details = error instanceof ApiError ? error.details : undefined;
-      const wait = (details as { secondsLeft?: number } | undefined)?.secondsLeft;
+      const known = details as { secondsLeft?: number; role?: UserRole } | undefined;
+      const wait = known?.secondsLeft;
       setProblem(
-        code === "LOCKED" && wait
-          ? { kind: "locked", username: name, until: Date.now() + wait * 1000 }
-          : { kind: "code", code },
+        // A correct PIN, but for another part: the server logged nobody in.
+        code === "WRONG_APP" && known?.role
+          ? { kind: "wrongRole", role: known.role }
+          : code === "LOCKED" && wait
+            ? { kind: "locked", username: name, until: Date.now() + wait * 1000 }
+            : { kind: "code", code },
       );
       setPin("");
       setBusy(false);
@@ -165,7 +161,7 @@ export function LoginScreen({
   let message: string | null = null;
   if (problem?.kind === "code") message = t(loginErrorKey(problem.code));
   if (problem?.kind === "wrongRole") {
-    message = t("login.wrongRole", { role: t(`role.${problem.user.role}`), required });
+    message = t("login.wrongRole", { role: t(`role.${problem.role}`), required });
   }
   if (locked) message = t("error.locked", { seconds: secondsLeft });
 
@@ -181,15 +177,6 @@ export function LoginScreen({
       <div className="flex flex-col gap-3">
         {/* On the kiosk the page header says this instead: there is no height to spare. */}
         <h1 className="text-center text-2xl font-bold kiosk:hidden">{t(`login.title.${area}`)}</h1>
-        {me.data && !problem && (
-          <p className={cn("rounded-xl border p-3 kiosk:leading-tight", TONE_SOFT.wait)}>
-            {t("login.otherAccount", {
-              name: me.data.name,
-              role: t(`role.${me.data.role}`),
-              required,
-            })}
-          </p>
-        )}
         <label className="flex flex-col gap-1 font-semibold">
           {t("login.username")}
           <span className="relative flex">

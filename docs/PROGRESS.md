@@ -291,38 +291,38 @@ Added 2026-11-26, not one of the 120 steps.
 
 **Windows firewall:** Node.js must be allowed on **private** networks. Windows usually asks the first time: tick **Private networks**. If it did not ask, or the phone cannot connect: Windows Security → Firewall & network protection → Allow an app through firewall → **Node.js JavaScript Runtime** → tick **Private**, and make sure the Wi-Fi is set as a private network.
 
-**One full Type 1 truck:** in a second terminal `pnpm office reset`, then `pnpm office pick cement`; in a third, `pnpm sim --loaded 32560`. Press `a` in the simulator, finish the first visit on the kiosk (material **Cement Bags**), then press `l`. On the phone: **Verify → Take photo → Use this photo → Approve**. Press `a` again: the kiosk offers the second weight. The supervisor's photo is read for real unless **Supervisor plate check** is on Pick on `/settings` (changed in Phase 14); on Pick it "reads" the picked plate.
+**One full Type 1 truck:** in a second terminal `pnpm office reset`, then `pnpm office pick sand`; in a third, `pnpm sim`. Press `a` in the simulator (loaded, 32,500 kg), confirm the plate, press **Loaded**, finish the first visit on the kiosk (material **Sand**), then press `l`. On the phone, logged in as `pankaj` (PIN 1007): **Verify → Take photo → Use this photo → Approve**. Press `e` (the same truck, empty, 12,500 kg): the kiosk offers the second weight. The supervisor's photo is read for real unless **Supervisor plate check** is on Pick on `/settings` (changed in Phase 14); on Pick it "reads" the picked plate.
 
 ### Supervisor logins (test only)
 
 These are public in the repository. They must be changed before deploying (Phase 16). The unloading point is the one the seed's unloading rules give that supervisor.
 
-| Username | PIN  | Name         | Unloading point                 |
-| -------- | ---- | ------------ | ------------------------------- |
-| amit     | 1001 | Amit Kumar   | Plant                           |
-| suresh   | 1002 | Suresh Yadav | CH-003+750 Bridge Approach Road |
-| ravi     | 1003 | Ravi Singh   | CH-005+250 Hill Section Area    |
-| mahesh   | 1004 | Mahesh Patel | CH-009+800 Near Quarry Area     |
-| vikram   | 1005 | Vikram Sharma | CH-010+500 Middle Section Point |
-| dinesh   | 1006 | Dinesh Verma | Plant (Steel Scrap)             |
-| pankaj   | 1007 | Pankaj Gupta | CH-012+300 Valley Crossing      |
-| ajay     | 1008 | Ajay Kumar   | none in the rules               |
-| deepak   | 1009 | Deepak Yadav | none in the rules               |
-| rohit    | 1010 | Rohit Kumar  | none in the rules               |
+| Username | PIN  | Name          | Unloading point                  |
+| -------- | ---- | ------------- | -------------------------------- |
+| amit     | 1001 | Amit Kumar    | Plant                            |
+| suresh   | 1002 | Suresh Yadav  | CH-003+750 Bridge Approach Road  |
+| ravi     | 1003 | Ravi Singh    | CH-005+250 Hill Section Area     |
+| mahesh   | 1004 | Mahesh Patel  | CH-009+800 Near Quarry Area      |
+| vikram   | 1005 | Vikram Sharma | CH-010+500 Middle Section Point  |
+| dinesh   | 1006 | Dinesh Verma  | Plant (Steel Scrap)              |
+| pankaj   | 1007 | Pankaj Gupta  | CH-012+300 Valley Crossing       |
+| ajay     | 1008 | Ajay Kumar    | none in the rules                |
+| deepak   | 1009 | Deepak Yadav  | none in the rules                |
+| rohit    | 1010 | Rohit Kumar   | none in the rules                |
 
-**Who receives trucks** (only Type 1 trucks are checked; rules added 2026-11-27, trips counted per material since the last demo reset):
+**Who receives trucks** (only Type 1 trucks are checked: sand and both aggregates since 2026-11-28; trips counted per material since the last demo reset):
 
-| Material    | Trips | Supervisor to log in as |
-| ----------- | ----- | ----------------------- |
-| Cement Bags | all   | amit                    |
-| Additive    | all   | amit (default point)    |
-| Steel Bars  | all   | vikram                  |
-| Bitumen     | 1–2   | suresh                  |
-| Bitumen     | 3 on  | pankaj                  |
+| Material        | Trips | Supervisor to log in as | `pnpm office pick` |
+| --------------- | ----- | ----------------------- | ------------------ |
+| Sand            | all   | pankaj                  | `sand`             |
+| Aggregate 20 mm | 1–4   | suresh                  | `aggregate`        |
+| Aggregate 20 mm | 5 on  | vikram                  | `aggregate`        |
+| Aggregate 10 mm | 1–3   | ravi                    | `aggregate-10`     |
+| Aggregate 10 mm | 4 on  | mahesh                  | `aggregate-10`     |
 
-The other supervisors see an empty list. After pulling this change, run `pnpm db:seed` (without `--reset`, so tickets are kept).
+The other supervisors see an empty list (Amit Kumar would get a Type 1 truck only past trip 999). After pulling this change, run `pnpm db:migrate`, then `pnpm db:seed` (without `--reset`, so tickets are kept).
 
-**To show a truck going to another supervisor:** `pnpm office reset`, `pnpm office pick steel-bars`, `pnpm sim --loaded 32560`, choose **Steel Bars** on the kiosk, and log the phone in as `vikram` (PIN 1005). Steel Bars and Bitumen both have sample invoices (Bitumen: `pnpm office pick bitumen`).
+**To show a truck going to another supervisor:** `pnpm office reset`, `pnpm office pick aggregate-10`, `pnpm sim`, choose **Aggregate 10 mm** on the kiosk, and log the phone in as `ravi` (PIN 1003).
 
 ## Phase 13 — Store officer website
 
@@ -368,20 +368,20 @@ To try it: make a truck wait (for example **No phone?** on the kiosk). In the st
 
 **Store officer login (test only; public in the repository, change before Phase 16):** username `ram`, PIN `2001` (Ram, Sr. Manager). Page: <http://localhost:3000/store>.
 
-Use two browser windows with **separate logins** (for example a normal and a private window): one for `http://localhost:3000/kiosk` (`wb01`, PIN `3001`), one for the store. Three terminals: `pnpm dev`; `pnpm sim` (the commands below say which weights); and one for `pnpm office`. After pulling this phase run `pnpm db:seed` once. Tap the store page once so it may play its sound.
+The weighbridge (`wb01`, PIN `3001`) and the store can be two tabs of **one** browser: each has its own login. Three terminals: `pnpm dev`; `pnpm sim`; and one for `pnpm office`. After pulling run `pnpm db:migrate` and `pnpm db:seed` once. Tap the store page once so it may play its sound.
 
 **A Type 2 truck, then a HOLD** (same truck):
 
-1. `pnpm office reset`, `pnpm office pick aggregate`, `pnpm sim --loaded 32560`; press `a` in the simulator.
-2. Kiosk: confirm the plate, upload `scripts/sample-invoices/aggregate.jpg` (click the QR code while developing), choose **Aggregate 20 mm**, finish the questions, take the weight. It says "move aside and wait".
-3. Store: **Approvals → Open → Approve**. The kiosk shows the slip. Press `l`.
-4. Press `a` again: confirm the plate, **Second weight**, confirm. The kiosk says the weight does not match.
-5. Store: open the **Weight HOLD**, read the calculation, **Accept INVOICE weight**, tap a reason, confirm. The kiosk shows the final slip with 14,500 kg.
+1. `pnpm office reset`, `pnpm office pick cement`, `pnpm sim --loaded 32300` (200 kg short, so that it ends on HOLD; plain `pnpm sim` passes); press `a`.
+2. Kiosk: confirm the plate, **Loaded**, upload `scripts/sample-invoices/cement.jpg` (click the QR code while developing), choose **Cement Bags**, finish the questions, take the weight. It says "Wait aside for the store officer".
+3. Store: **Approvals → Open → Approve**. The first slip is under "Ready to collect" or on the screen. Press `l`.
+4. Press `e` (the empty truck): confirm the plate, **Second weight**, confirm. The kiosk says the weight does not match. Press `l`.
+5. Store: open the **Weight HOLD**, read the calculation, **Accept INVOICE weight**, tap a reason, confirm. The final slip is under "Ready to collect", showing 20,000 kg.
 
 **A driver without a phone:**
 
-1. `pnpm office reset`, `pnpm office pick cement`, `pnpm sim --loaded 32560`; press `a`.
-2. Kiosk: confirm the plate, press **No phone?**.
+1. `pnpm office reset`, `pnpm office pick cement`, `pnpm sim`; press `a`.
+2. Kiosk: confirm the plate, **Loaded**, press **No phone?**.
 3. Store: open **Driver help** → **Choose file** → `scripts/sample-invoices/cement.jpg` (or **Take photo**) → **Send the bill**. It says "Done" and the kiosk shows what was read.
 
 `pnpm office approve` and `reject` still work. Do not use them while testing the store page by hand: they answer the same requests.
@@ -416,6 +416,39 @@ Use two browser windows with **separate logins** (for example a normal and a pri
 2. Home page: <http://localhost:3000/>.
 3. Demo settings: <http://localhost:3000/settings>, store officer `ram`, PIN `2001` (test only; change before Phase 16). One browser holds one login: open it in another browser or a private window than the weighbridge.
 4. A ticket page: scan the QR code on a slip (a phone needs `pnpm lan`), or, while developing, copy the address from the picture's `data-url`.
+
+## Changes after the simulator test (2026-11-28)
+
+Not one of the 120 steps.
+
+- [x] New material types: sand and both aggregates always Type 1; cement, steel bars, bitumen, additive and steel scrap Type 2 / Type 3 at 1,000 kg.
+- [x] "Loaded / Empty" after the plate; an empty truck is weighed once and gets its own slip.
+- [x] "No invoice": store officer approval before the first weight, no tolerance check.
+- [x] Simulator trucks of 32,500 kg and 12,500 kg; ten sample bills that match them.
+- [x] One login per app in the same browser.
+- [x] After a weight the result stays until the truck leaves; no "Busy" screen.
+- [ ] The new Hindi text needs your review: [HINDI_REVIEW.md](HINDI_REVIEW.md#fixes-after-the-simulator-test).
+
+✅ Checked on 2026-11-28 with the simulator: typecheck, lint, format, the unit and API tests, all eight `pnpm journey` scenarios, all 60 browser tests and the build passed. The browser tests and journeys ran as a separate copy (its own database and ports 3100 / 4100). Pictures of the changed screens, in English and Hindi, are in [screenshots/fixes-tested](screenshots/fixes-tested). The pictures in the older screenshot folders were not retaken and show the earlier screens.
+
+- **Not tried** on a real board, touchscreen, phone or printer.
+- The 15 s return with an empty bridge is covered by the website's unit tests, not by a browser test.
+- Nothing checks a driver who presses **Empty** with a loaded truck: that visit gets one weight and no approval.
+
+After pulling this: `pnpm db:migrate`, then `pnpm db:seed`. Everyone logs in once more.
+
+### Testing these changes with the simulator
+
+Three terminals: `pnpm dev`, `pnpm sim`, `pnpm office`. In the simulator: `a` = loaded truck (32,500 kg), `e` = empty truck (12,500 kg), `l` = the truck leaves. Run `pnpm office reset` first.
+
+| To see | Do |
+| --- | --- |
+| A Type 1 truck to its supervisor | `pnpm office pick sand`; `a`; **Loaded**; upload `sand.jpg`; **Sand**. The result says "Go to CH-012+300 – Pankaj Gupta" and stays until `l`. Approve as `pankaj`, then `e` |
+| An empty truck | `pnpm office pick bricks`; `e`; confirm the plate; **Empty**; **Next**. "Please drive off"; `l` |
+| No invoice | `pnpm office pick sand`; `a`; **Loaded**; **No invoice**; **Sand**; weigh. "Wait aside for the store officer"; `l`; approve in the store (pill "No invoice"), then as `pankaj`; `e` |
+| Second weight without questions | After any loaded truck's first weight and approvals, press `e`: the plate leads straight to **Second weight** |
+| Three logins | Open `/kiosk`, `/supervisor` and `/store` in three tabs of one browser and log in to each. Reload all three: all stay logged in |
+| Back to Ready | After any weight press `l`: "Weighbridge ready — drive on" at once. An unprinted final or empty slip is under "Ready to collect" (the 15 s return is only for a result still open with the bridge empty) |
 
 ## Phase 15 — Testing
 

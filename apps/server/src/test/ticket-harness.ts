@@ -14,7 +14,7 @@ import { buildApp } from "../app";
 import { createDb } from "../db/client";
 import { approvals, photos, settings, ticketEvents, tickets, users } from "../db/schema";
 import { seedDatabase } from "../db/seed";
-import { SESSION_COOKIE } from "../plugins/security";
+import { SESSION_COOKIES } from "../plugins/security";
 import { loadInvoiceLists } from "../services/readers";
 import { interpretInvoice, type RawInvoice } from "../services/readers/invoice";
 import { LocalStorage } from "../services/storage";
@@ -27,7 +27,7 @@ export const STABLE_MS = 150;
 const FEED_EVERY_MS = 30;
 
 /** Seeded accounts by what the tests use them for. */
-export type Who = "kiosk" | "store" | "amit" | "suresh" | "vikram";
+export type Who = "kiosk" | "store" | "amit" | "suresh" | "vikram" | "pankaj" | "ravi";
 
 export const PLATE = "MH12AB1234";
 export const OTHER_PLATE = "MH14CD5678";
@@ -70,6 +70,8 @@ export function useTicketHarness() {
       ["amit", "amit"],
       ["suresh", "suresh"],
       ["vikram", "vikram"],
+      ["pankaj", "pankaj"],
+      ["ravi", "ravi"],
     ] as const) {
       accounts.set(
         who,
@@ -223,7 +225,7 @@ export function useTicketHarness() {
 
   function cookie(who: Who) {
     const { id, role, name } = accounts.get(who)!;
-    return { [SESSION_COOKIE]: app.jwt.sign({ userId: id, role, name, use: "session" }) };
+    return { [SESSION_COOKIES[role]]: app.jwt.sign({ userId: id, role, name, use: "session" }) };
   }
 
   async function call<T = Record<string, never>>(

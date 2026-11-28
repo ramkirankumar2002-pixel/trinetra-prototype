@@ -24,11 +24,11 @@ describe.skipIf(!testDatabaseUrl)(
     it("is red while the ticket is filled in, then says where to unload", async () => {
       const shown = watch();
       const beeps = vi.spyOn(h.app.hardware.commands, "buzz");
-      const id = await started({ material: "Aggregate 10 mm", invoiceKg: 400 });
+      const id = await started({ material: "Cement Bags", invoiceKg: 400 });
       expect(shown()).toEqual(["RR", "WAIT"]);
       await h.settle(LOADED);
       await post(id, "first-weight");
-      expect(shown()).toEqual(["RG", "CH-005+250"]);
+      expect(shown()).toEqual(["RG", "Plant"]);
       // Two short beeps: the weight has been taken.
       expect(beeps).toHaveBeenLastCalledWith(120, 2);
       await secondWeight(id, LOADED - 400);
@@ -37,7 +37,7 @@ describe.skipIf(!testDatabaseUrl)(
 
     it("asks a Type 2 truck to move aside", async () => {
       const shown = watch();
-      await weighed({ material: "Sand", invoiceKg: 14_500 });
+      await weighed({ material: "Cement Bags", invoiceKg: 14_500 });
       expect(shown()).toEqual(["RG", "WAIT"]);
     });
 
@@ -51,7 +51,7 @@ describe.skipIf(!testDatabaseUrl)(
     it("sends a mismatch and a blocked plate to the store office", async () => {
       const shown = watch();
       const id = await started({ plate: OTHER_PLATE });
-      await h.db.execute(`update tickets set invoice_material = 'Sand' where id = ${id}`);
+      await h.db.execute(`update tickets set invoice_material = 'Cement Bags' where id = ${id}`);
       for (let n = 0; n < 5; n++) {
         await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Bricks" });
       }

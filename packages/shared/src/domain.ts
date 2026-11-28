@@ -28,6 +28,13 @@ export const CLOSED_TICKET_STATUSES = [
 export const TICKET_TYPES = ["TYPE_1", "TYPE_2", "TYPE_3"] as const;
 export type TicketType = (typeof TICKET_TYPES)[number];
 
+/**
+ * What the driver says is on the truck. An EMPTY ticket is weighed once, for the record:
+ * no invoice, no material, no approvals.
+ */
+export const TICKET_LOADS = ["LOADED", "EMPTY"] as const;
+export type TicketLoad = (typeof TICKET_LOADS)[number];
+
 /** A truck blocked by a supervisor is a REJECTED approval of kind SUPERVISOR. */
 export const APPROVAL_KINDS = [
   "STORE_TYPE2",

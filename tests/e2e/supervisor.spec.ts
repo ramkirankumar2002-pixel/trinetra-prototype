@@ -13,10 +13,13 @@ import { SEED_USERS } from "@trinetra/shared/seed";
 import {
   answerQuestions,
   arrive,
+  confirmLoaded,
   confirmPlate,
   confirmWeight,
+  EMPTY_KG,
   heading,
   leave,
+  LOADED_KG,
   Office,
   openKiosk,
   press,
@@ -31,7 +34,7 @@ const SHOTS = process.env.PHASE12_SHOTS === "1";
 const file = (path: string) => fileURLToPath(new URL(`../../${path}`, import.meta.url));
 const SHOT_FOLDER = file("docs/screenshots/phase12/");
 
-const PIN = SEED_USERS.find((user) => user.username === "amit")!.pin;
+const PIN = SEED_USERS.find((user) => user.username === "pankaj")!.pin;
 
 const bridge = new Weighbridge();
 let office: Office;
@@ -103,7 +106,7 @@ async function openPhone(browser: Browser): Promise<{ phone: Page; context: Brow
 
 async function signedInPhone(browser: Browser) {
   const opened = await openPhone(browser);
-  await signIn(opened.context, "amit");
+  await signIn(opened.context, "pankaj");
   return opened;
 }
 
@@ -129,14 +132,14 @@ const outcome = (phone: Page, name: string) =>
   expect(phone.getByTestId("outcome")).toHaveAttribute("data-outcome", name);
 
 test("a Type 1 truck: from the weighbridge to the phone and back", async ({ page, browser }) => {
-  await office.pick("MH12AB1234", "cement");
+  await office.pick("MP09JK7890", "sand");
 
   // The supervisor logs in on their phone.
   const { phone, context } = await openPhone(browser);
   await phone.goto("/supervisor");
   await expect(phone).toHaveURL(`${WEB_URL}/supervisor/login`);
   await look(phone, "01-login");
-  await phone.getByLabel("Username").fill("amit");
+  await phone.getByLabel("Username").fill("pankaj");
   const pad = phone.getByRole("group", { name: "Number pad" });
   for (const digit of PIN) await pad.getByRole("button", { name: digit, exact: true }).click();
   await phone.getByRole("button", { name: "Log in", exact: true }).click();
@@ -150,19 +153,19 @@ test("a Type 1 truck: from the weighbridge to the phone and back", async ({ page
 
   // The driver, at the real weighbridge screen.
   await openKiosk(page);
-  await arrive(page, bridge, 32_560);
-  await confirmPlate(page, "MH 12 AB 1234");
-  await uploadFromPhone(browser, page, "cement.jpg");
+  await arrive(page, bridge, LOADED_KG);
+  await confirmLoaded(page, "MP 09 JK 7890");
+  await uploadFromPhone(browser, page, "sand.jpg");
   await press(page, "Next");
-  await answerQuestions(page, "Cement Bags", "9000000002");
+  await answerQuestions(page, "Sand", "9000000002");
   await press(page, "Next");
-  await confirmWeight(page, "32,560 kg");
-  await heading(page, "Go to Plant");
+  await confirmWeight(page, "32,500 kg");
+  await heading(page, "Go to CH-012+300 – Pankaj Gupta");
 
   // The phone, untouched: the truck is there, with a message, a buzz and the tab's number.
   const next = phone.getByTestId("next-truck");
-  await expect(next).toContainText("MH 12 AB 1234", { timeout: 5000 });
-  await expect(phone.getByText("New truck: MH 12 AB 1234").first()).toBeVisible();
+  await expect(next).toContainText("MP 09 JK 7890", { timeout: 5000 });
+  await expect(phone.getByText("New truck: MP 09 JK 7890").first()).toBeVisible();
   await expect(phone).toHaveTitle("(1) Trinetra");
   expect(await vibrations(phone)).toBe(1);
   await expect(phone.getByTestId("kpi").filter({ hasText: "Waiting for verify" })).toContainText(
@@ -171,7 +174,7 @@ test("a Type 1 truck: from the weighbridge to the phone and back", async ({ page
   await look(phone, "02-home");
 
   await tabs(phone).getByRole("link", { name: "My trucks" }).click();
-  await expect(phone.getByRole("table")).toContainText("MH 12 AB 1234");
+  await expect(phone.getByRole("table")).toContainText("MP 09 JK 7890");
   await expect(phone.getByRole("table")).toContainText("0 min");
   // The title stays after moving to another page.
   await expect(phone).toHaveTitle("(1) Trinetra");
@@ -179,13 +182,14 @@ test("a Type 1 truck: from the weighbridge to the phone and back", async ({ page
 
   // The driver comes back before the check: the weighbridge waits.
   await leave(page, bridge);
-  await arrive(page, bridge, 18_250);
-  await confirmPlate(page, "MH 12 AB 1234");
+  await arrive(page, bridge, EMPTY_KG);
+  // A truck with a ticket waiting goes straight there: no "loaded or empty".
+  await confirmPlate(page, "MP 09 JK 7890");
   await expect(page.getByText("Waiting for supervisor approval")).toBeVisible();
 
   await phone.getByRole("link", { name: "Verify" }).click();
-  await expect(phone.getByTestId("plate").first()).toHaveText("MH 12 AB 1234");
-  await expect(phone.locator("main")).toContainText("32,560 kg");
+  await expect(phone.getByTestId("plate").first()).toHaveText("MP 09 JK 7890");
+  await expect(phone.locator("main")).toContainText("32,500 kg");
   await expect(phone.getByTestId("camera-video")).toBeVisible();
   const asked = await phone.evaluate(
     () => (window as unknown as { cameraAsked: MediaStreamConstraints[] }).cameraAsked,
@@ -221,13 +225,13 @@ test("a Type 1 truck: from the weighbridge to the phone and back", async ({ page
   await expect(phone).toHaveTitle("Trinetra");
 
   await press(page, "Second weight");
-  await confirmWeight(page, "18,250 kg");
+  await confirmWeight(page, "12,500 kg");
   await heading(page, "Thank you, drive safely");
 
   // Done today, and the two photos side by side.
   await tabs(phone).getByRole("link", { name: "Done" }).click();
   const item = phone.getByRole("list", { name: "Done today" }).getByRole("link");
-  await expect(item).toContainText("MH 12 AB 1234");
+  await expect(item).toContainText("MP 09 JK 7890");
   await expect(item).toContainText("Verified");
   await expect(item.locator("img")).toBeVisible();
   await look(phone, "10-done");
@@ -384,7 +388,7 @@ test("lost network, a decision made elsewhere, and logging in again", async ({ b
   await context.clearCookies();
   await phone.goto(`/supervisor/done/${id}`);
   await expect(phone).toHaveURL(/\/supervisor\/login\?next=/);
-  await phone.getByLabel("Username").fill("amit");
+  await phone.getByLabel("Username").fill("pankaj");
   const pad = phone.getByRole("group", { name: "Number pad" });
   for (const digit of PIN) await pad.getByRole("button", { name: digit, exact: true }).click();
   await phone.getByRole("button", { name: "Log in", exact: true }).click();
@@ -410,7 +414,7 @@ test("a camera that is refused, and a page that cannot open one", async ({ brows
   await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "DL01NP6789" });
 
   const denied = await browser.newContext({ viewport: PHONE });
-  await signIn(denied, "amit");
+  await signIn(denied, "pankaj");
   const first = await denied.newPage();
   await first.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = () =>
@@ -424,7 +428,7 @@ test("a camera that is refused, and a page that cannot open one", async ({ brows
   await denied.close();
 
   const without = await browser.newContext({ viewport: PHONE });
-  await signIn(without, "amit");
+  await signIn(without, "pankaj");
   const phone = await without.newPage();
   await phone.addInitScript(() => {
     Object.defineProperty(navigator, "mediaDevices", { value: undefined });

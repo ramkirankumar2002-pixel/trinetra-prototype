@@ -140,13 +140,10 @@ if (!args["plates-only"]) {
     aggregate: "jpg",
     "steel-bars": "pdf",
     bitumen: "jpg",
-    "model-cement": "jpg",
-    "model-steel-bars": "pdf",
-    "model-bitumen": "jpg",
-    "model-steel-scrap": "jpg",
-    "model-sand": "jpg",
-    "model-aggregate": "jpg",
-    "model-bricks": "pdf",
+    "aggregate-10": "pdf",
+    bricks: "jpg",
+    "scrap-small": "pdf",
+    "aggregate-short": "jpg",
   };
   const lists = await loadInvoiceLists(db);
   const rows: Record<string, unknown>[] = [];

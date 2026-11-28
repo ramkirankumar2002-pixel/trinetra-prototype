@@ -20,6 +20,7 @@ const BY_CODE: Record<string, MessageKey> = {
   INVOICE_WEIGHT_INVALID: "kiosk.error.invoiceNeeded",
   WAITING_FOR_SUPERVISOR: "kiosk.visit2.waiting",
   NOT_APPROVED: "kiosk.blocked.title",
+  ALREADY_LOADED: "kiosk.error.alreadyLoaded",
 };
 
 export const kioskErrorKey = (error: Pick<ApiError, "code">): MessageKey =>

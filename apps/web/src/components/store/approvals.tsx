@@ -35,7 +35,13 @@ export function RequestTable({
         {
           id: "kind",
           header: t("column.request"),
-          cell: (row) => <KindPill approval={row.approval} needsBill={row.needsBill} />,
+          cell: (row) => (
+            <KindPill
+              approval={row.approval}
+              needsBill={row.needsBill}
+              noInvoice={row.ticket?.noInvoice}
+            />
+          ),
         },
         {
           id: "vehicle",
@@ -53,6 +59,7 @@ export function RequestTable({
           header: t("slip.invoiceWeight"),
           nowrap: true,
           cell: (row) => {
+            if (row.ticket?.noInvoice) return t("store.kind.noInvoice");
             const kg = row.ticket?.invoiceWeightKg ?? null;
             return kg === null ? "—" : formatKg(kg);
           },

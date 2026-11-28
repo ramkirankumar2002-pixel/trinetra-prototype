@@ -173,19 +173,21 @@ All master data is hardcoded in one file, `packages/shared/seed/default-data.ts`
 
 Values are taken from the store manager dashboard mockups (Material Type, Chainages Details, Unloading Point). Phone numbers are the mockups' sample numbers.
 
-**Material types.** Where a threshold exists, the type is decided by the OCR invoice weight.
+**Material types** (manager's decision, 2026-11-28; replaces the mockups' list). Where a threshold exists, the type is decided by the OCR invoice weight. Each material keeps its own threshold in the seed file.
 
 | Material | Type | Rule |
 | --- | --- | --- |
-| Cement Bags | Type 1 (Supervisor) | Always |
-| Additive | Type 1 (Supervisor) | Always |
-| Bitumen | Type 1 (Supervisor) | Always |
-| Steel Bars | Type 1 (Supervisor) | Always |
-| Steel Scrap | Type 2 / Type 3 | Above 1,000 kg → Type 2 (Store); 1,000 kg or less → Type 3 |
-| Aggregate 20 mm | Type 2 / Type 3 | Above 500 kg → Type 2; 500 kg or less → Type 3 |
-| Aggregate 10 mm | Type 2 / Type 3 | Above 500 kg → Type 2; 500 kg or less → Type 3 |
-| Sand | Type 2 / Type 3 | Above 1,000 kg → Type 2; 1,000 kg or less → Type 3 |
-| Bricks | Type 3 (Normal) | Always (assumed; the mockup only lists 500 kg or less) |
+| Sand | Type 1 (Supervisor) | Always, whatever the weight |
+| Aggregate 20 mm | Type 1 (Supervisor) | Always |
+| Aggregate 10 mm | Type 1 (Supervisor) | Always |
+| Cement Bags | Type 2 / Type 3 | Above 1,000 kg → Type 2 (Store); 1,000 kg or less → Type 3 (no control) |
+| Steel Bars | Type 2 / Type 3 | Above 1,000 kg → Type 2; 1,000 kg or less → Type 3 |
+| Bitumen | Type 2 / Type 3 | Above 1,000 kg → Type 2; 1,000 kg or less → Type 3 |
+| Additive | Type 2 / Type 3 | Above 1,000 kg → Type 2; 1,000 kg or less → Type 3 |
+| Steel Scrap | Type 2 / Type 3 | Above 1,000 kg → Type 2; 1,000 kg or less → Type 3 |
+| Bricks | Type 3 (Normal) | Always |
+
+Every type gets the 0.5% tolerance check when there is an invoice.
 
 **Chainages and supervisors**
 
@@ -218,7 +220,7 @@ Values are taken from the store manager dashboard mockups (Material Type, Chaina
 | Steel Scrap | 1–999 | Plant (location) | Dinesh Verma |
 | **Default** (no rule, or trip past the range) | — | Plant (assumed) | Amit Kumar (assumed) |
 
-**Users:** the 10 supervisors above (each logs in with a PIN); store officer **Ram (Sr. Manager)**; kiosk **WB-01**. Only Type 1 trucks need a supervisor. In the demo, Cement Bags and Additive reach **Amit Kumar** (Plant; Additive through the default), Steel Bars reach **Vikram Sharma**, and Bitumen reaches **Suresh Yadav** (trips 1–2) and then **Pankaj Gupta** (changed 2026-11-27). Other supervisors are shown on the slip as the contact at their unloading point.
+**Users:** the 10 supervisors above (each logs in with a PIN); store officer **Ram (Sr. Manager)**; kiosk **WB-01**. Only Type 1 trucks (sand and both aggregates) need a supervisor. In the demo, Sand reaches **Pankaj Gupta**, Aggregate 20 mm reaches **Suresh Yadav** (trips 1–4) and then **Vikram Sharma**, and Aggregate 10 mm reaches **Ravi Singh** (trips 1–3) and then **Mahesh Patel** (changed 2026-11-28). The unloading rules of the other materials are kept: their supervisor is shown on the slip as the contact at their unloading point.
 
 **Transporters, vehicles, suppliers:** not in the mockups, so we use 3–4 sample names each and the plates printed on our truck models.
 
@@ -229,7 +231,7 @@ Values are taken from the store manager dashboard mockups (Material Type, Chaina
 - The Unloading page says "Cement", the Material Type page "Cement Bags" → treated as one material, Cement Bags.
 - The Unloading page's type labels (e.g. Steel Scrap "Type 1", Aggregate 10 mm "Type 2") differ from the Material Type page → the **Material Type page wins**.
 - Unloading-rule chainages and supervisors differ from the Chainages list (e.g. CH-005+250 is not in it) → the **unloading rule's** point and supervisor are used.
-- The 500 / 1,000 kg thresholds are small for real trucks, so almost every real load becomes Type 2. For the demo, Type 3 sample invoices must show a weight at or below the threshold.
+- The 1,000 kg thresholds are small for real trucks, so almost every real load of those materials becomes Type 2. For the demo, a Type 3 sample invoice must show a weight at or below the threshold.
 
 ### Database tables
 
@@ -240,7 +242,7 @@ Values are taken from the store manager dashboard mockups (Material Type, Chaina
 | `unloading_points` | CH-1, CH-6, On-site… | code, name, supervisor_id |
 | `unloading_rules` | Trip ranges | material_id, trip_from, trip_to, point_id, is_default |
 | `transporters`, `vehicles`, `suppliers` | Fleet and suppliers | name; vehicle plate (normalised, e.g. MH12AB1234), transporter_id |
-| `tickets` | One per truck trip | ticket_no, plate, material_id, type, supplier, transporter, invoice_no, invoice_weight_kg, held_weight_kg, first_weight_kg, second_weight_kg, net_kg, variance_pct, trip_no, unloading_point_id, supervisor_id, status, language, driver_name, driver_phone, mismatch_attempts, is_demo, timestamps |
+| `tickets` | One per truck trip | ticket_no, load (LOADED / EMPTY), no_invoice, plate, material_id, type, supplier, transporter, invoice_no, invoice_weight_kg, held_weight_kg, first_weight_kg, second_weight_kg, net_kg, variance_pct, trip_no, unloading_point_id, supervisor_id, status, language, driver_name, driver_phone, mismatch_attempts, is_demo, timestamps |
 | `approvals` | Every request for a human decision | ticket_id, kind (STORE_TYPE2 / SUPERVISOR / HOLD / MISMATCH), status (PENDING / APPROVED / REJECTED), decided_by, reason, chosen_weight (HOLD), chosen_material (MISMATCH), photo_id, plate_read, plate_match, gps, decided_at |
 | `photos` | Every image | ticket_id, kind (FRONT_PLATE / BACK_PLATE / INVOICE / SUPERVISOR / STORE), storage_path, sha256, taken_at |
 | `ticket_events` | Timeline, never edited or deleted | ticket_id, type, actor (user, device or system), data (JSON), created_at |
@@ -262,9 +264,9 @@ Every truck trip is one ticket that moves through fixed statuses. Only the backe
 
 | Status | Meaning | Next status |
 | --- | --- | --- |
-| `STARTED` | Plate confirmed, driver answering questions and scanning invoice | `MISMATCH_PENDING`, `STORE_PENDING`, `READY_FOR_UNLOAD`, `ABANDONED` |
+| `STARTED` | Plate confirmed, driver answering questions and scanning invoice | `MISMATCH_PENDING`, `STORE_PENDING`, `READY_FOR_UNLOAD`, `COMPLETED` (empty truck), `ABANDONED` |
 | `MISMATCH_PENDING` | Driver's material ≠ invoice material 5 times; store officer must decide | `STARTED` (store sets material) or `REJECTED` |
-| `STORE_PENDING` | Type 2: first weight captured but **held**; truck waits aside | `READY_FOR_UNLOAD` (approved, weight saved) or `REJECTED` |
+| `STORE_PENDING` | Type 2, or any loaded truck without an invoice: first weight captured but **held**; truck waits aside | `READY_FOR_UNLOAD` (approved, weight saved) or `REJECTED` |
 | `READY_FOR_UNLOAD` | First weight saved, slip printed, truck goes to unloading point. Type 1 also opens a supervisor request | `SUPERVISOR_PENDING` (Type 1) or `READY_FOR_SECOND` (Type 2, 3) |
 | `SUPERVISOR_PENDING` | Type 1: waiting for supervisor plate-photo check | `READY_FOR_SECOND` or `BLOCKED` |
 | `READY_FOR_SECOND` | Allowed to take the second weight | `HOLD_PENDING` or `COMPLETED` |
@@ -278,8 +280,8 @@ Every truck trip is one ticket that moves through fixed statuses. Only the backe
 
 1. **Wake-up:** a truck is "on the bridge" when the ESP32 weight rises above the wake threshold **and** the position sensor says fully on platform.
 2. **Position check:** if weight is present but position is not OK, the kiosk shows red, the ESP32 buzzer sounds and weighing is blocked until fixed.
-3. **First or second visit:** after ANPR, if the plate has an open ticket (`READY_FOR_SECOND`, `SUPERVISOR_PENDING`, `BLOCKED`) the kiosk goes to the second-visit flow; otherwise a new ticket starts. Only **one open ticket per plate**. The front and back plates must read the same; if they still differ after 2 retries, the driver confirms the plate and the ticket is flagged "plate mismatch" for the store officer (a warning, not a block).
-4. **Type:** from the material; if the material has a weight rule, use the **OCR invoice weight** (e.g. Steel Scrap above 1,000 kg → Type 2, else Type 3).
+3. **First or second visit:** after ANPR, if the plate has an open ticket (`READY_FOR_SECOND`, `SUPERVISOR_PENDING`, `BLOCKED`) the kiosk goes to the second-visit flow with no questions; otherwise a new ticket starts and the driver is asked **Loaded or Empty** (rule 15). Only **one open ticket per plate**. The front and back plates must read the same; if they still differ after 2 retries, the driver confirms the plate and the ticket is flagged "plate mismatch" for the store officer (a warning, not a block).
+4. **Type:** from the material; if the material has a weight rule, use the **OCR invoice weight** (e.g. Cement Bags above 1,000 kg → Type 2, else Type 3).
 5. **Mismatch:** compare the driver's material with the invoice material (after alias matching). If different, ask again; on the 5th mismatch create a `MISMATCH` request for the store officer.
 6. **Stable weight:** the weight is stable when it stays within ±10 kg for 3 seconds and the ESP32 stable flag is on. Only a stable weight can be captured.
 7. **The backend captures the weight**, from the latest ESP32 reading it received. The browser never sends a weight number.
@@ -290,6 +292,8 @@ Every truck trip is one ticket that moves through fixed statuses. Only the backe
 12. **Store decision on HOLD:** approve with **measured net weight** or **invoice weight**, or reject. The chosen weight is printed on the final slip.
 13. **Duplicate invoice:** if the same invoice number from the same supplier was used before, the timeline and store officer get a warning (not a block, for the prototype).
 14. **Every step writes a `ticket_events` row**: who (device, user or system), what, when, and data.
+15. **Empty truck:** its ticket (`load` = EMPTY) takes **one** weight and is `COMPLETED` at once: no invoice, material, type, trip number or approval. Its slip is "Empty vehicle weight", and it is in the store officer's history and on the ticket page. The blocked-plate rule applies to it too. A visit that already has a material, a bill or "No invoice" cannot be called empty.
+16. **No invoice:** a loaded truck without an invoice (the driver presses **No invoice**, or no bill was ever read) is **always** held for the store officer before the first weight is saved, whatever its type. The store officer sees it with a "No invoice" pill. If the material is Type 1, the supervisor check follows too. Its type is the material's own where it has no weight rule, otherwise Type 2. There is **no tolerance check** (the slip and ticket page say so); weights that are not valid still go on HOLD.
 
 ## 7. API list
 
@@ -302,7 +306,7 @@ All bodies and answers are JSON (photos are `multipart/form-data`). Errors alway
 | Method + path | Who | Does |
 | --- | --- | --- |
 | `GET /api/health` | Anyone | Server and database are up |
-| `POST /api/auth/login` | All | Username + PIN → sets login cookie |
+| `POST /api/auth/login` | All | Username + PIN → sets that app's login cookie |
 | `POST /api/auth/logout` | All | Clears the cookie |
 | `GET /api/auth/me` | All | Who is logged in, role |
 | `GET /api/master` | Kiosk | Materials (with aliases), suppliers, transporters for screens and voice matching |
@@ -390,7 +394,8 @@ The kiosk is designed so a driver who has never used a computer can finish alone
 2. **Language.** Wakes when the ESP32 reports a truck. Two giant buttons: **English** and **हिंदी**. Spoken in both: "Choose your language / अपनी भाषा चुनें". Everything after is in that language.
 3. **Position check** (only appears if needed). Red screen with a truck outline: "Move fully onto the bridge." Buzzer on the model. Continues by itself when the position is OK.
 4. **Number plate.** "Reading your number plate…" — the front and back photos appear on screen as they arrive. The front and back cameras each take a photo automatically and both plates are read. Then: big plate **MH 12 AB 1234** — "Is this your truck?" ✓ / ✕. On ✕ it retries (up to 3), then the driver speaks or types the plate on a big keypad (marked "manual" on the timeline). If the plate has an open ticket → second visit (screen 12).
-5. **Invoice upload.** "Scan this QR with your phone and upload your invoice." A big QR code and 3 picture steps: scan → take a photo or choose the PDF → send. The phone page opens in the driver's language with two big buttons: **Take photo** (opens the phone camera) and **Choose file** (photo or PDF, e.g. from WhatsApp). The moment it arrives, the kiosk shows "Reading invoice…" and then the filled values to confirm or correct by tapping. If reading fails, the driver uploads again or continues and the missing values are asked one by one. No phone? **Help** sends the store officer a request and he uploads it from his phone.
+4b. **Loaded or empty?** Only when no ticket is waiting for the plate: two big buttons with truck pictures, **Loaded** and **Empty**. Empty goes straight to its one weighing, then the "Empty vehicle weight" slip and "Please drive off".
+5. **Invoice upload.** Under the QR code are **No invoice** and **No phone?**. No invoice: go on to the material (rule 16). "Scan this QR with your phone and upload your invoice." A big QR code and 3 picture steps: scan → take a photo or choose the PDF → send. The phone page opens in the driver's language with two big buttons: **Take photo** (opens the phone camera) and **Choose file** (photo or PDF, e.g. from WhatsApp). The moment it arrives, the kiosk shows "Reading invoice…" and then the filled values to confirm or correct by tapping. If reading fails, the driver uploads again or continues and the missing values are asked one by one. No phone? **Help** sends the store officer a request and he uploads it from his phone.
 6. **Material.** "Which material are you carrying?" Big tiles of materials (name + picture) and, once voice is added, a big 🎤 button. The answer is compared with the invoice. If different: "This does not match your invoice. Please check and tell again." On the 5th mismatch: "Please go to the store office" and the store officer is alerted.
 7. **Supplier.** Pre-filled from the invoice: "Supplier: Shree Ram Crushers — correct?" ✓ / ✕. ✕ → choose from tiles or speak.
 8. **Transporter.** Pre-filled from the vehicle list → confirm the same way.
@@ -418,6 +423,7 @@ The kiosk is designed so a driver who has never used a computer can finish alone
 - If the truck leaves the bridge before the first weight is saved, the ticket stays `STARTED` for 10 minutes so the driver can come back and continue.
 - Front and back cameras read the plates; invoices come from the driver's phone through the QR upload. Which camera is front and which is back is set once in demo settings.
 - The kiosk is logged in once in the morning with the kiosk PIN; the driver never logs in.
+- **After a weight** (first, empty or second) the screen shows the weight and where to go next ("Go to CH-012+300 – Pankaj Gupta", "Wait aside for the store officer", "Please drive off"). It stays while the truck is on the bridge, returns to Ready as soon as the truck leaves, or 15 s after the bridge is empty. A final or empty slip that was not printed stays in "Ready to collect" for 12 hours.
 
 ## 9. Voice module (English + Hindi)
 
@@ -573,6 +579,7 @@ These are the things that usually break a demo if forgotten.
 
 ### Login cookies across two hosts
 
+- Each app (weighbridge, supervisor, store officer with demo settings) has **its own session cookie**, so one browser can be logged in to all three. A page names its app in the `x-trinetra-app` header; the server reads that cookie and checks the role on every request.
 - The frontend (Vercel) calls `/api/...` on its own address, and Next.js **forwards** it to the backend (a "rewrite"). The browser sees one site, so the login cookie just works.
 - Socket.IO connects to the backend directly; it proves who you are with a short-lived token from `GET /api/auth/socket-token`.
 - We use the free Vercel and Railway addresses (no custom domain). A custom domain could be added later, e.g. `trinetra.<domain>` for the site and `api.trinetra.<domain>` for the backend.

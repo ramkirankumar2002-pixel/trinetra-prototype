@@ -15,6 +15,7 @@ import { useOnReconnect, useSocketEvent, useSocketStatus } from "@/lib/socket-ho
 import { FrameProvider } from "./frame";
 import { CheckScreen } from "./screens/check";
 import { InvoiceScreen } from "./screens/invoice";
+import { LoadScreen } from "./screens/load";
 import { LoadingScreen, MessageScreen } from "./screens/message";
 import { PlateScreen } from "./screens/plate";
 import { MaterialScreen, NameScreen, PartyScreen, PhoneScreen } from "./screens/questions";
@@ -127,6 +128,8 @@ function screenFor(screen: Screen, ticket: TicketView | undefined): ReactNode {
   }
   if (!ticket) return <LoadingScreen />;
   switch (screen) {
+    case "load":
+      return <LoadScreen ticket={ticket} />;
     case "invoice":
       return <InvoiceScreen ticket={ticket} />;
     case "material":
@@ -143,11 +146,14 @@ function screenFor(screen: Screen, ticket: TicketView | undefined): ReactNode {
       return <CheckScreen ticket={ticket} />;
     case "weigh1":
       return <WeighScreen key="first" which="first" ticket={ticket} />;
+    case "weighEmpty":
+      return <WeighScreen key="empty" which="empty" ticket={ticket} />;
     case "weigh2":
       return <WeighScreen key="second" which="second" ticket={ticket} />;
     case "result1":
       return <ResultScreen key="first" ticket={ticket} slip="FIRST" />;
     case "finalSlip":
+    case "emptySlip":
       return <ResultScreen key="final" ticket={ticket} slip="FINAL" />;
     case "visit2":
       return <WelcomeBackScreen ticket={ticket} />;

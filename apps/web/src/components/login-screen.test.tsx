@@ -118,16 +118,16 @@ describe("login page", () => {
   });
 
   it("does not keep a login for another role", async () => {
-    loginAnswers = [
-      reply(200, { user: { id: 2, username: "amit", name: "Amit", role: "SUPERVISOR" } }),
-    ];
+    // The server logs nobody in for another page's role.
+    loginAnswers = [refusal(403, "WRONG_APP", { role: "SUPERVISOR" })];
     open();
     type("amit", "1001");
     await submit();
     expect(screen.getByRole("alert").textContent).toBe(
       "That is a supervisor login. This page needs a store officer login.",
     );
-    expect(calls).toContain("/api/auth/logout");
+    // Nothing to undo, so no logout: the supervisor's own page keeps its login.
+    expect(calls).not.toContain("/api/auth/logout");
     expect(goTo).not.toHaveBeenCalled();
   });
 });

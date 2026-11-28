@@ -42,15 +42,15 @@ describe.skipIf(!testDatabaseUrl)("abandoned tickets", { timeout: 30_000 }, () =
     }
     /** A plate rejected a moment ago is back: the new visit waits for the store officer. */
     async function blockedPlate() {
-      const first = await weighed({ material: "Sand", invoiceKg: 14_310 });
+      const first = await weighed({ material: "Cement Bags", invoiceKg: 14_310 });
       await decide(await pending(first, "STORE_TYPE2"), { decision: "REJECT", reason: "Load" });
       return started();
     }
     async function mismatched() {
-      const id = await started({ material: "Cement Bags" });
-      await h.db.execute(`update tickets set invoice_material = 'Cement Bags' where id = ${id}`);
+      const id = await started({ material: "Sand" });
+      await h.db.execute(`update tickets set invoice_material = 'Sand' where id = ${id}`);
       for (let n = 0; n < 5; n++) {
-        await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Sand" });
+        await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Cement Bags" });
       }
       return id;
     }
@@ -67,9 +67,9 @@ describe.skipIf(!testDatabaseUrl)("abandoned tickets", { timeout: 30_000 }, () =
       [
         "a Type 2 decision",
         "STORE_PENDING",
-        () => weighed({ material: "Sand", invoiceKg: 14_500 }),
+        () => weighed({ material: "Cement Bags", invoiceKg: 14_500 }),
       ],
-      ["a supervisor's check", "SUPERVISOR_PENDING", () => weighed({ material: "Cement Bags" })],
+      ["a supervisor's check", "SUPERVISOR_PENDING", () => weighed({ material: "Sand" })],
       ["a HOLD", "HOLD_PENDING", onHold],
     ] as const)("is never abandoned while %s is open, however long", async (_what, at, make) => {
       const id = await make();
@@ -138,7 +138,7 @@ describe.skipIf(!testDatabaseUrl)("abandoned tickets", { timeout: 30_000 }, () =
 
   it("never abandons a ticket that has its first weight, or waits for the store", async () => {
     const saved = await weighed();
-    const held = await weighed({ plate: OTHER_PLATE, material: "Sand", invoiceKg: 14_500 });
+    const held = await weighed({ plate: OTHER_PLATE, material: "Cement Bags", invoiceKg: 14_500 });
     await idleFor(saved, "2 days");
     await idleFor(held, "2 days");
     expect(await sweepAbandoned(h.app)).toBe(0);

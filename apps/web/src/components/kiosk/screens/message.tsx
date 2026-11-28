@@ -1,7 +1,7 @@
 "use client";
 
 // One big message with its icon: "wait here", "go to the store office".
-import type { TicketView } from "@trinetra/shared";
+import { formatKg, type TicketView } from "@trinetra/shared";
 import { cn } from "cn";
 import {
   Ban,
@@ -15,11 +15,14 @@ import {
 } from "lucide-react";
 import type { MessageKey } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
-import type { Screen } from "@/lib/kiosk/flow";
+import { useBridge } from "@/lib/kiosk/bridge";
+import { useKiosk, type Screen } from "@/lib/kiosk/flow";
+import { useReturnAfter } from "@/lib/kiosk/idle";
 import { SURFACE } from "../../ui/card";
 import { Spinner } from "../../ui/spinner";
 import { TONE_GLOW, TONE_SOLID, type Tone } from "../../ui/tone";
 import { KioskFrame } from "../frame";
+import { BACK_TO_READY_MS } from "./results";
 
 export type MessageScreenName = Extract<
   Screen,
@@ -47,7 +50,7 @@ const MESSAGES: Record<
   waitStore: {
     tone: "wait",
     icon: Hourglass,
-    heading: "kiosk.heading.wait",
+    heading: "kiosk.heading.weighed",
     title: "kiosk.waitStore.title",
     text: "kiosk.waitStore.text",
   },
@@ -95,6 +98,9 @@ const MESSAGES: Record<
   },
 };
 
+/** What follows a weighing: like the slips, gone 15 s after the bridge is empty. */
+const AFTER_A_WEIGHT: ReadonlySet<MessageScreenName> = new Set(["waitStore", "hold"]);
+
 export function MessageScreen({
   name,
   ticket,
@@ -104,6 +110,11 @@ export function MessageScreen({
 }) {
   const t = useT();
   const { tone, icon: Icon, heading, title, text } = MESSAGES[name];
+  const finish = useKiosk((state) => state.finish);
+  const bridgeEmpty = useBridge((state) => !state.truckPresent);
+  useReturnAfter(BACK_TO_READY_MS, finish, bridgeEmpty && AFTER_A_WEIGHT.has(name));
+  // The weight the store officer is deciding about.
+  const held = name === "waitStore" ? (ticket?.heldWeightKg ?? null) : null;
   return (
     <KioskFrame
       header={{
@@ -131,6 +142,11 @@ export function MessageScreen({
         >
           <Icon className="size-24" strokeWidth={2} />
         </span>
+        {held !== null && (
+          <p data-testid="held-weight" className="text-[2.5rem] leading-tight font-bold text-live">
+            {t("kiosk.result.firstWeight", { kg: formatKg(held) })}
+          </p>
+        )}
         <p className="text-[3rem] leading-tight font-extrabold text-balance">{t(title)}</p>
         <p className="leading-tight text-muted-foreground">{t(text)}</p>
       </div>

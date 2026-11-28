@@ -1,6 +1,6 @@
 "use client";
 
-// Screens 11 and 14, the two weighings. The weight on screen is only shown. When the
+// Screens 11 and 14, the two weighings, and the one weighing of an empty truck. The weight on screen is only shown. When the
 // driver confirms it, the kiosk sends no number: the backend takes the weight it has from
 // the weighbridge at that moment.
 import type { TicketView } from "@trinetra/shared";
@@ -24,7 +24,13 @@ import { uploadsOf } from "./invoice";
 
 const INVOICE_NEEDED = new Set(["INVOICE_WEIGHT_REQUIRED", "INVOICE_WEIGHT_INVALID"]);
 
-export function WeighScreen({ which, ticket }: { which: "first" | "second"; ticket: TicketView }) {
+const TITLES = {
+  first: "kiosk.weigh.first",
+  second: "kiosk.weigh.second",
+  empty: "kiosk.weigh.empty",
+} as const;
+
+export function WeighScreen({ which, ticket }: { which: keyof typeof TITLES; ticket: TicketView }) {
   const t = useT();
   const connected = useSocketStatus() === "connected";
   const reading = useBridge((state) => state.reading);
@@ -58,7 +64,11 @@ export function WeighScreen({ which, ticket }: { which: "first" | "second"; tick
     setProblem(null);
     const stillHere = sameDriver();
     const answer = await run(`weigh:${ticket.id}:${which}:${attempt}`, (key) =>
-      api.post<TicketView>(`/api/tickets/${ticket.id}/${which}-weight`, { idempotencyKey: key }),
+      // An empty truck's one weight is its first. The backend knows it is empty.
+      api.post<TicketView>(
+        `/api/tickets/${ticket.id}/${which === "second" ? "second" : "first"}-weight`,
+        { idempotencyKey: key },
+      ),
     );
     if (!answer || !stillHere()) return;
     if (answer.ok) {
@@ -96,7 +106,7 @@ export function WeighScreen({ which, ticket }: { which: "first" | "second"; tick
     <KioskFrame
       header={{
         icon: Scale,
-        title: t(which === "first" ? "kiosk.weigh.first" : "kiosk.weigh.second"),
+        title: t(TITLES[which]),
         subtitle: t(settled ? "kiosk.weigh.isCorrect" : "kiosk.weigh.stayStill"),
       }}
       actions={
@@ -116,8 +126,13 @@ export function WeighScreen({ which, ticket }: { which: "first" | "second"; tick
               <TriangleAlert aria-hidden />
               {t("kiosk.weigh.wrong")}
             </Button>
-            {which === "first" && (
-              <Button variant="dark" disabled={busy} onClick={() => goTo("check")}>
+            {which !== "second" && (
+              // Back to the answers; for an empty truck, to "loaded or empty".
+              <Button
+                variant="dark"
+                disabled={busy}
+                onClick={() => goTo(which === "empty" ? "load" : "check")}
+              >
                 <Pencil aria-hidden />
                 {t("kiosk.edit")}
               </Button>

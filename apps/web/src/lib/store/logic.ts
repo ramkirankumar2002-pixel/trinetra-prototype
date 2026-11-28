@@ -49,7 +49,10 @@ interface RequestKind {
 export function kindPill(
   { kind, plateWarningReason }: RequestKind,
   needsBill = false,
+  noInvoice = false,
 ): { tone: Tone; key: MessageKey } {
+  // A held weight of a truck without an invoice, whatever its type.
+  if (kind === "STORE_TYPE2" && noInvoice) return { tone: "wait", key: "store.kind.noInvoice" };
   // A help call that is waiting for a bill says so, not just "Driver help".
   if (kind === "DRIVER_HELP" && needsBill) return { tone: "wait", key: "store.kind.noPhone" };
   if (kind === "STORE_TYPE2") return { tone: "info", key: "store.kind.type2" };
@@ -239,7 +242,11 @@ export function decisionWords({
   kind,
   plateWarningReason,
   status,
-}: RequestKind & { status: ApprovalStatus }): { about: MessageKey | null; result: MessageKey } {
+  noInvoice = false,
+}: RequestKind & { status: ApprovalStatus; noInvoice?: boolean }): {
+  about: MessageKey | null;
+  result: MessageKey;
+} {
   if (kind === "SUPERVISOR") {
     return {
       about: null,
@@ -249,7 +256,7 @@ export function decisionWords({
           : "store.decided.supervisorRejected",
     };
   }
-  const about = kindPill({ kind, plateWarningReason }).key;
+  const about = kindPill({ kind, plateWarningReason }, false, noInvoice).key;
   // Warnings and help calls are only marked as seen: nothing was approved.
   if (kind === "DRIVER_HELP" || plateWarningReason === "FRONT_BACK_MISMATCH") {
     return { about, result: "store.decided.seen" };
@@ -273,6 +280,8 @@ export interface SavedAnswer {
 /** What a "driver's answers saved" line saved. */
 export function savedAnswers(data: Record<string, unknown>): SavedAnswer[] {
   const answers: SavedAnswer[] = [];
+  if (data.load === "EMPTY") answers.push({ label: "store.load.empty", value: null });
+  if (data.load === "LOADED") answers.push({ label: "store.load.loaded", value: null });
   const material = textOf(data.material);
   if (material) answers.push({ label: "slip.material", value: material, material: true });
   const supplier = textOf(data.supplier);

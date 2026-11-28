@@ -4,12 +4,18 @@ import helmet from "@fastify/helmet";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
+import type { UserRole } from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { webOrigins, type Env } from "../config/env";
 import { GENERAL_RATE_LIMIT, LOCAL_RATE_LIMIT, MAX_UPLOAD_BYTES } from "../config/limits";
 import { AppError } from "../errors/app-error";
 
-export const SESSION_COOKIE = "trinetra_session";
+/** One login cookie for each app (auth/guard.ts reads them). */
+export const SESSION_COOKIES: Record<UserRole, string> = {
+  KIOSK: "trinetra_kiosk_session",
+  SUPERVISOR: "trinetra_supervisor_session",
+  STORE: "trinetra_store_session",
+};
 
 /** Must run before any route is added, so the rate limit applies to all of them. */
 export async function registerSecurityPlugins(app: FastifyInstance, env: Env): Promise<void> {
@@ -23,10 +29,7 @@ export async function registerSecurityPlugins(app: FastifyInstance, env: Env): P
   });
 
   await app.register(cookie);
-  await app.register(jwt, {
-    secret: env.JWT_SECRET,
-    cookie: { cookieName: SESSION_COOKIE, signed: false },
-  });
+  await app.register(jwt, { secret: env.JWT_SECRET });
 
   // File types are checked by readUpload() in http/upload.ts.
   await app.register(multipart, {

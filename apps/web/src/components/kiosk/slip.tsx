@@ -43,14 +43,23 @@ const useTicketQr = (token: string) => {
   return { url, image: useQrImage(url) };
 };
 
+const slipTitle = (ticket: TicketView, slip: SlipName): MessageKey => {
+  if (ticket.load === "EMPTY") return "slip.empty";
+  return slip === "FIRST" ? "slip.first" : "slip.final";
+};
+
 const slipTime = (ticket: TicketView, slip: SlipName) => {
-  const at = slip === "FIRST" ? ticket.firstWeightAt : ticket.secondWeightAt;
+  // An empty truck's one weight is its first.
+  const at =
+    slip === "FIRST" || ticket.load === "EMPTY" ? ticket.firstWeightAt : ticket.secondWeightAt;
   return formatIST(new Date(at ?? ticket.createdAt));
 };
 
-/** "PASS", or who allowed a weight that did not match. */
-const resultKey = (ticket: TicketView): MessageKey =>
-  holdApproval(ticket) ? "slip.storeApproved" : "slip.pass";
+/** "PASS", "No invoice", or who allowed a weight that did not match. */
+const resultKey = (ticket: TicketView): MessageKey => {
+  if (holdApproval(ticket)) return "slip.storeApproved";
+  return ticket.noInvoice ? "slip.noInvoicePill" : "slip.pass";
+};
 
 export function SlipView({
   ticket,
@@ -65,7 +74,7 @@ export function SlipView({
   const t = useT();
   const { url, image: qr } = useTicketQr(ticket.publicToken);
   const fields = slipFields(ticket, slip, t).filter((field) => !field.printOnly);
-  const name = t(slip === "FIRST" ? "slip.first" : "slip.final");
+  const name = t(slipTitle(ticket, slip));
   return (
     <section data-testid="slip" aria-label={name} className="flex min-h-0 flex-col gap-3">
       <div className={cn(SURFACE, "flex shrink-0 items-center gap-5 px-3 py-1")}>
@@ -89,7 +98,11 @@ export function SlipView({
           <p>{slipTime(ticket, slip)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {slip === "FINAL" && <StatusPill tone="go">{t(resultKey(ticket))}</StatusPill>}
+          {slip === "FINAL" && ticket.load === "LOADED" && (
+            <StatusPill tone={ticket.noInvoice && !holdApproval(ticket) ? "info" : "go"}>
+              {t(resultKey(ticket))}
+            </StatusPill>
+          )}
           {reprint && <StatusPill tone="info">{t("slip.reprint")}</StatusPill>}
         </div>
       </div>
@@ -152,7 +165,7 @@ export function PrintSlip({
   return createPortal(
     <div className="print-slip" data-testid="print-slip">
       <h1>Trinetra Systems</h1>
-      <h2>{words(slip === "FIRST" ? "slip.first" : "slip.final")}</h2>
+      <h2>{words(slipTitle(ticket, slip))}</h2>
       {reprint && <p className="print-slip-mark">{words("slip.reprint")}</p>}
       {ticket.isDemo && <p className="print-slip-mark">{words("slip.demo")}</p>}
       {qr && (

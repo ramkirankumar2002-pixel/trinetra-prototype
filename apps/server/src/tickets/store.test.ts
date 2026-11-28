@@ -10,7 +10,7 @@ describe.skipIf(!testDatabaseUrl)("store requests and help", { timeout: 30_000 }
 
   const list = (query = "") =>
     h.call<StoreRequestsResponse>("store", "GET", `/api/store/requests${query}`);
-  const decide = (id: number, body: unknown, who: "store" | "amit" = "store") =>
+  const decide = (id: number, body: unknown, who: "store" | "pankaj" = "store") =>
     h.call(who, "POST", `/api/approvals/${id}/decide`, body);
   const help = (body?: unknown) =>
     h.call<{ approvalId: number; alreadyAsked: boolean }>("kiosk", "POST", "/api/help", body);
@@ -22,8 +22,8 @@ describe.skipIf(!testDatabaseUrl)("store requests and help", { timeout: 30_000 }
 
   describe("GET /api/store/requests", () => {
     it("lists pending requests newest first, without the supervisor's", async () => {
-      const held = await weighed({ material: "Sand", invoiceKg: 14_500 });
-      await weighed({ plate: OTHER_PLATE, material: "Cement Bags" });
+      const held = await weighed({ material: "Cement Bags", invoiceKg: 14_500 });
+      await weighed({ plate: OTHER_PLATE, material: "Sand" });
       await help({ ticketId: held });
 
       const { status, body } = await list();
@@ -37,11 +37,11 @@ describe.skipIf(!testDatabaseUrl)("store requests and help", { timeout: 30_000 }
     });
 
     it("lists done requests and the trucks a supervisor blocked", async () => {
-      const blocked = await weighed({ material: "Cement Bags" });
+      const blocked = await weighed({ material: "Sand" });
       await decide(
         await pending(blocked, "SUPERVISOR"),
         { decision: "REJECT", reason: "Wrong vehicle" },
-        "amit",
+        "pankaj",
       );
       const held = await weighed({ plate: OTHER_PLATE, invoiceKg: 14_500 });
       await secondWeight(held);
@@ -60,7 +60,7 @@ describe.skipIf(!testDatabaseUrl)("store requests and help", { timeout: 30_000 }
     });
 
     it("leaves out a blocking request whose ticket has ended", async () => {
-      const id = await weighed({ material: "Sand", invoiceKg: 14_500 });
+      const id = await weighed({ material: "Cement Bags", invoiceKg: 14_500 });
       await h.db.execute(`update tickets set status = 'ABANDONED' where id = ${id}`);
       expect((await list()).body.requests).toEqual([]);
     });

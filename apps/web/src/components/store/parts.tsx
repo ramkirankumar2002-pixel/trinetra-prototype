@@ -18,12 +18,14 @@ import type { TicketStatus } from "@trinetra/shared";
 export function KindPill({
   approval,
   needsBill = false,
+  noInvoice = false,
 }: {
   approval: ApprovalView;
   needsBill?: boolean;
+  noInvoice?: boolean;
 }) {
   const t = useT();
-  const { tone, key } = kindPill(approval, needsBill);
+  const { tone, key } = kindPill(approval, needsBill, noInvoice);
   return <StatusPill tone={tone}>{t(key)}</StatusPill>;
 }
 

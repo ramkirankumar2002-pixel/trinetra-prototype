@@ -20,6 +20,7 @@ const ALLOWED: [TicketStatus, TicketEvent, TicketStatus][] = [
   ["STARTED", "MISMATCH_LIMIT_REACHED", "MISMATCH_PENDING"],
   ["STARTED", "FIRST_WEIGHT_SAVED", "READY_FOR_UNLOAD"],
   ["STARTED", "FIRST_WEIGHT_HELD", "STORE_PENDING"],
+  ["STARTED", "EMPTY_WEIGHT_SAVED", "COMPLETED"],
   ["STARTED", "PLATE_WARNING_APPROVED", "STARTED"],
   ["STARTED", "PLATE_WARNING_REJECTED", "REJECTED"],
   ["STARTED", "ABANDON", "ABANDONED"],
@@ -116,7 +117,9 @@ describe("transition", () => {
             from !== to &&
             !event.startsWith("PLATE_WARNING") &&
             // Added later, like the plate warning.
-            event !== "STORE_CANCELLED"
+            event !== "STORE_CANCELLED" &&
+            // An empty truck's one weighing is a path of its own.
+            event !== "EMPTY_WEIGHT_SAVED"
           );
         }).map(([, , to]) => to),
       );
@@ -139,7 +142,7 @@ describe("transition", () => {
 });
 
 describe("blocked-plate check at the first weight", () => {
-  const firstWeight = ["FIRST_WEIGHT_SAVED", "FIRST_WEIGHT_HELD"] as const;
+  const firstWeight = ["FIRST_WEIGHT_SAVED", "FIRST_WEIGHT_HELD", "EMPTY_WEIGHT_SAVED"] as const;
 
   describe.each(firstWeight)("%s", (event) => {
     it.each(["PENDING", "REJECTED"] as PlateCheck[])("is refused while %s", (plateCheck) => {
@@ -195,6 +198,20 @@ describe("whole journeys", () => {
         secondWeightEvent(true),
       ]),
     ).toBe("COMPLETED");
+  });
+
+  it.each(["TYPE_1", "TYPE_2", "TYPE_3"] as const)(
+    "a %s truck without an invoice waits for the store officer first",
+    (type) => {
+      expect(run([firstWeightEvent(type, true)])).toBe("STORE_PENDING");
+      expect(
+        run([firstWeightEvent(type, true), "STORE_APPROVED", afterFirstWeightEvent(type)]),
+      ).toBe(type === "TYPE_1" ? "SUPERVISOR_PENDING" : "READY_FOR_SECOND");
+    },
+  );
+
+  it("an empty truck is weighed once", () => {
+    expect(run(["EMPTY_WEIGHT_SAVED"])).toBe("COMPLETED");
   });
 
   it("Type 3 needs no person", () => {

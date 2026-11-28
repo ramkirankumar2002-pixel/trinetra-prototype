@@ -1,6 +1,7 @@
-// The kiosk's Ready screen (build plan section 8, screen 1): trucks the store officer has
-// approved whose slip is waiting, and trucks just turned away.
-import type { KioskCollectResponse, SlipKind } from "@trinetra/shared";
+// The kiosk's Ready screen (build plan section 8, screen 1): trucks whose slip is waiting
+// (approved by the store officer, or finished and not printed), and trucks just turned
+// away.
+import type { KioskCollectResponse } from "@trinetra/shared";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { approvals, ticketEvents, tickets } from "../db/schema";
@@ -30,8 +31,29 @@ export async function kioskCollect(
     )
     .orderBy(desc(approvals.decidedAt), desc(approvals.id));
 
+  const finished = await app.db
+    .select()
+    .from(tickets)
+    .where(
+      and(
+        eq(tickets.status, "COMPLETED"),
+        gte(tickets.closedAt, new Date(now.getTime() - COLLECT_FOR_MS)),
+      ),
+    )
+    .orderBy(desc(tickets.closedAt), desc(tickets.id));
+
+  // Both lists as one, newest first, by when the slip became ready.
+  const waitingSlips = [
+    ...decided.map(({ approval, ticket }) => ({
+      ticket,
+      slip: approval.kind === "HOLD" ? ("FINAL" as const) : ("FIRST" as const),
+      since: approval.decidedAt!,
+    })),
+    ...finished.map((ticket) => ({ ticket, slip: "FINAL" as const, since: ticket.closedAt! })),
+  ].sort((a, b) => b.since.getTime() - a.since.getTime() || b.ticket.id - a.ticket.id);
+
   const printed = new Set<string>();
-  if (decided.length > 0) {
+  if (waitingSlips.length > 0) {
     const rows = await app.db
       .select({ ticketId: ticketEvents.ticketId, data: ticketEvents.data })
       .from(ticketEvents)
@@ -40,7 +62,7 @@ export async function kioskCollect(
           eq(ticketEvents.type, "SLIP_PRINTED"),
           inArray(
             ticketEvents.ticketId,
-            decided.map((row) => row.ticket.id),
+            waitingSlips.map((row) => row.ticket.id),
           ),
         ),
       );
@@ -49,8 +71,7 @@ export async function kioskCollect(
 
   const ready: KioskCollectResponse["ready"] = [];
   const listed = new Set<number>();
-  for (const { approval, ticket } of decided) {
-    const slip: Exclude<SlipKind, "REPRINT"> = approval.kind === "HOLD" ? "FINAL" : "FIRST";
+  for (const { ticket, slip } of waitingSlips) {
     const waiting =
       slip === "FINAL" ? ticket.status === "COMPLETED" : AWAITING_SECOND.has(ticket.status);
     if (!waiting || listed.has(ticket.id) || printed.has(`${ticket.id}:${slip}`)) continue;

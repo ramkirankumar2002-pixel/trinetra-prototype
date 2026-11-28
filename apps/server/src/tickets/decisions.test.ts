@@ -19,36 +19,42 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
   const reject = { decision: "REJECT", reason: "Wrong vehicle" };
 
   async function type1(plate = PLATE) {
-    const id = await weighed({ plate, material: "Cement Bags" });
+    const id = await weighed({ plate, material: "Sand" });
     return { id, request: await pending(id, "SUPERVISOR") };
   }
   async function type2(plate = PLATE) {
-    const id = await weighed({ plate, material: "Sand", invoiceKg: 14_310 });
+    const id = await weighed({ plate, material: "Cement Bags", invoiceKg: 14_310 });
     return { id, request: await pending(id, "STORE_TYPE2") };
   }
-  async function onHold(invoiceKg: number | null = 14_500, second = EMPTY) {
+  async function onHold(invoiceKg: number | "unreadable" = 14_500, second = EMPTY) {
     const id = await weighed({ invoiceKg });
     await secondWeight(id, second);
     return { id, request: await pending(id, "HOLD") };
   }
   async function mismatched() {
-    const id = await started({ material: "Cement Bags" });
-    await h.db.execute(`update tickets set invoice_material = 'Cement Bags' where id = ${id}`);
+    const id = await started({ material: "Sand" });
+    await h.db.execute(`update tickets set invoice_material = 'Sand' where id = ${id}`);
     for (let n = 0; n < 5; n++) {
-      await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Sand" });
+      await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Cement Bags" });
     }
     return { id, request: await pending(id, "MISMATCH") };
   }
   async function blockedPlate() {
     const { id, request } = await type1();
-    await decide("amit", request, reject);
+    await decide("pankaj", request, reject);
     const next = await started();
     return { old: id, id: next, request: await pending(next, "PLATE_WARNING") };
   }
   async function photoOf(id: number, seen: string | null) {
     h.supervisorSees(seen);
     const body = h.form({ data: await h.jpeg(), type: "image/jpeg" });
-    await h.call("amit", "POST", `/api/supervisor/tickets/${id}/photo`, body.payload, body.headers);
+    await h.call(
+      "pankaj",
+      "POST",
+      `/api/supervisor/tickets/${id}/photo`,
+      body.payload,
+      body.headers,
+    );
   }
 
   describe("who may decide", () => {
@@ -61,12 +67,12 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       const { request } = await type1();
       expect((await decide("store", request, reject)).status).toBe(403);
       expect((await decide("suresh", request, reject)).body.error?.code).toBe("NOT_YOUR_REQUEST");
-      expect((await decide("amit", request, reject)).status).toBe(200);
+      expect((await decide("pankaj", request, reject)).status).toBe(200);
     });
 
     it("leaves every other request to the store officer", async () => {
       const { request } = await type2();
-      expect((await decide("amit", request, approve)).status).toBe(403);
+      expect((await decide("pankaj", request, approve)).status).toBe(403);
     });
   });
 
@@ -108,14 +114,14 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
     it("approves after a matching photo", async () => {
       const { id, request } = await type1();
       await photoOf(id, PLATE);
-      const { status, body } = await decide("amit", request, approve);
+      const { status, body } = await decide("pankaj", request, approve);
 
       expect(status).toBe(200);
-      expect(body.approval).toMatchObject({ status: "APPROVED", decidedBy: "Amit Kumar" });
+      expect(body.approval).toMatchObject({ status: "APPROVED", decidedBy: "Pankaj Gupta" });
       expect(body.ticket?.status).toBe("READY_FOR_SECOND");
       expect((await secondWeight(id)).body.status).toBe("COMPLETED");
       const done = await h.call<{ tickets: SupervisorTicketView[] }>(
-        "amit",
+        "pankaj",
         "GET",
         "/api/supervisor/tickets?status=done",
       );
@@ -126,7 +132,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
     const CLOSE_PLATE = "MH12AB1235";
     const override = { ...approve, manualCheck: true, note: "Plate is muddy" };
     const refusal = async (request: number, body: Record<string, unknown>) =>
-      (await decide("amit", request, body)).body.error?.code;
+      (await decide("pankaj", request, body)).body.error?.code;
 
     it("cannot approve without a photo, not even as a manual check", async () => {
       const { id, request } = await type1();
@@ -146,7 +152,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       const { id, request } = await type1();
       await photoOf(id, CLOSE_PLATE);
       expect(await refusal(request, approve)).toBe("PLATE_NOT_CHECKED");
-      const { body } = await decide("amit", request, { ...approve, manualCheck: true });
+      const { body } = await decide("pankaj", request, { ...approve, manualCheck: true });
       expect(body.approval).toMatchObject({ status: "APPROVED", matchResult: "CLOSE" });
       expect((await view(id)).status).toBe("READY_FOR_SECOND");
     });
@@ -165,13 +171,13 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
     it("approves a mismatch with a reason, marked on the timeline", async () => {
       const { id, request } = await type1();
       await photoOf(id, OTHER_PLATE);
-      const response = await decide("amit", request, override);
+      const response = await decide("pankaj", request, override);
       expect(response.status).toBe(200);
       expect(response.body.approval).toMatchObject({
         matchResult: "NO_MATCH",
         reason: "Plate is muddy",
         manualPlate: null,
-        decidedBy: "Amit Kumar",
+        decidedBy: "Pankaj Gupta",
         decidedAt: expect.any(String),
       });
       const event = (await view(id)).timeline.find((e) => e.type === "SUPERVISOR_APPROVED");
@@ -188,9 +194,11 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       await photoOf(id, null);
       expect(await refusal(request, override)).toBe("SEEN_PLATE_REQUIRED");
       expect(await refusal(request, { ...override, seenPlate: OTHER_PLATE })).toBe("PLATE_DIFFERS");
-      expect((await decide("amit", request, { ...override, seenPlate: "hello" })).status).toBe(400);
+      expect((await decide("pankaj", request, { ...override, seenPlate: "hello" })).status).toBe(
+        400,
+      );
 
-      const { body } = await decide("amit", request, { ...override, seenPlate: "mh 12 ab-1234" });
+      const { body } = await decide("pankaj", request, { ...override, seenPlate: "mh 12 ab-1234" });
       expect(body.approval).toMatchObject({
         status: "APPROVED",
         matchResult: "MANUAL",
@@ -207,7 +215,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       await photoOf(id, PLATE);
       const tap = () =>
         h.call<{ approval: ApprovalView }>(
-          "amit",
+          "pankaj",
           "POST",
           `/api/approvals/${request}/decide`,
           approve,
@@ -224,7 +232,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
 
     it("rejects: the truck is blocked, with no second weight and no final slip", async () => {
       const { id, request } = await type1();
-      const { body } = await decide("amit", request, reject);
+      const { body } = await decide("pankaj", request, reject);
       expect(body.ticket).toMatchObject({ status: "BLOCKED", finalWeightKg: null });
       expect(body.approval).toMatchObject({ status: "REJECTED", reason: "Wrong vehicle" });
 
@@ -248,7 +256,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
         firstWeightKg: LOADED,
         heldWeightKg: LOADED,
         tripNo: 1,
-        unloadingPoint: { code: "CH-012+300" },
+        unloadingPoint: { code: "Plant" },
       });
       // The time of the weighing, not of the approval.
       expect(body.ticket?.firstWeightAt).toBe(held.firstWeightAt!.toISOString());
@@ -314,7 +322,7 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
     });
 
     it("offers no invoice weight when there is none", async () => {
-      const { request } = await onHold(null);
+      const { request } = await onHold("unreadable");
       const response = await decide("store", request, {
         ...approve,
         chosenWeight: "INVOICE",
@@ -329,13 +337,13 @@ describe.skipIf(!testDatabaseUrl)("deciding requests", { timeout: 30_000 }, () =
       const { id, request } = await mismatched();
       const { body } = await decide("store", request, {
         ...approve,
-        chosenMaterial: "Cement Bags",
+        chosenMaterial: "Sand",
       });
-      expect(body.approval.chosenMaterial).toBe("Cement Bags");
-      expect(body.ticket).toMatchObject({ status: "STARTED", material: "Cement Bags" });
+      expect(body.approval.chosenMaterial).toBe("Sand");
+      expect(body.ticket).toMatchObject({ status: "STARTED", material: "Sand" });
 
       const changed = await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, {
-        material: "Sand",
+        material: "Cement Bags",
       });
       expect(changed.body.error?.code).toBe("MATERIAL_SET_BY_STORE");
       await h.settle(LOADED);

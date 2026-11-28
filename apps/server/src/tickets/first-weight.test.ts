@@ -54,7 +54,7 @@ describe.skipIf(!testDatabaseUrl)("first weight", { timeout: 30_000 }, () => {
   });
 
   it("needs the invoice weight where the type depends on it", async () => {
-    const id = await started({ material: "Sand", invoiceKg: null });
+    const id = await started({ material: "Cement Bags", invoiceKg: "unreadable" });
     await h.settle(LOADED);
     const response = await post(id, "first-weight");
     expect(response.status).toBe(409);
@@ -62,15 +62,15 @@ describe.skipIf(!testDatabaseUrl)("first weight", { timeout: 30_000 }, () => {
   });
 
   it("saves a Type 3 weight and goes straight to ready for the second", async () => {
-    const id = await weighed({ material: "Sand", invoiceKg: 1000 });
+    const id = await weighed({ material: "Cement Bags", invoiceKg: 1000 });
     expect(await view(id)).toMatchObject({
       type: "TYPE_3",
       status: "READY_FOR_SECOND",
       firstWeightKg: LOADED,
       heldWeightKg: null,
       tripNo: 1,
-      unloadingPoint: { code: "CH-012+300" },
-      supervisor: { name: "Pankaj Gupta" },
+      unloadingPoint: { code: "Plant" },
+      supervisor: { name: "Amit Kumar" },
       approvals: [],
       isDemo: false,
     });
@@ -83,19 +83,19 @@ describe.skipIf(!testDatabaseUrl)("first weight", { timeout: 30_000 }, () => {
   });
 
   it("sends a Type 1 truck to its supervisor", async () => {
-    const id = await weighed({ material: "Cement Bags" });
+    const id = await weighed({ material: "Sand" });
     expect(await view(id)).toMatchObject({
       type: "TYPE_1",
       status: "SUPERVISOR_PENDING",
       firstWeightKg: LOADED,
-      unloadingPoint: { code: "Plant" },
-      supervisor: { id: h.userId("amit") },
+      unloadingPoint: { code: "CH-012+300" },
+      supervisor: { id: h.userId("pankaj") },
       approvals: [{ kind: "SUPERVISOR", status: "PENDING" }],
     });
   });
 
   it("writes one timeline row for the supervisor request", async () => {
-    const id = await weighed({ material: "Cement Bags" });
+    const id = await weighed({ material: "Sand" });
     const { timeline, approvals } = await view(id);
     expect(timeline.slice(-2).map((entry) => entry.type)).toEqual([
       "FIRST_WEIGHT_SAVED",
@@ -108,13 +108,13 @@ describe.skipIf(!testDatabaseUrl)("first weight", { timeout: 30_000 }, () => {
     expect(timeline.map((entry) => entry.type)).not.toContain("APPROVAL_REQUESTED");
   });
 
-  it("weighs a Type 1 truck without an invoice weight", async () => {
-    const id = await weighed({ material: "Cement Bags", invoiceKg: null });
+  it("weighs a Type 1 truck whose bill shows no weight, without the store officer", async () => {
+    const id = await weighed({ material: "Sand", invoiceKg: "unreadable" });
     expect((await h.ticketRow(id)).status).toBe("SUPERVISOR_PENDING");
   });
 
   it("holds a Type 2 weight for the store officer", async () => {
-    const id = await weighed({ material: "Sand", invoiceKg: 1001 });
+    const id = await weighed({ material: "Cement Bags", invoiceKg: 1001 });
     expect(await view(id)).toMatchObject({
       type: "TYPE_2",
       status: "STORE_PENDING",
@@ -156,7 +156,7 @@ describe.skipIf(!testDatabaseUrl)("first weight", { timeout: 30_000 }, () => {
       expect(trips[3]![1]).toBe("CH-009+800");
       // Another material starts at 1.
       const sand = await view(
-        await weighed({ plate: "DL01NP6789", material: "Sand", invoiceKg: 900 }),
+        await weighed({ plate: "DL01NP6789", material: "Cement Bags", invoiceKg: 900 }),
       );
       expect(sand.tripNo).toBe(1);
     });

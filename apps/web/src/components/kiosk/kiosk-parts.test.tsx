@@ -231,6 +231,8 @@ const ticket: TicketView = {
   status: "COMPLETED",
   type: "TYPE_1",
   language: "en",
+  load: "LOADED",
+  noInvoice: false,
   material: "Cement Bags",
   supplier: "Sample Cement Depot",
   transporter: "Sri Balaji Transport",

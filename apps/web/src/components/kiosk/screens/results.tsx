@@ -1,6 +1,8 @@
 "use client";
 
-// Screens 12 to 15: the two slips, and the second visit's "Welcome back".
+// Screens 12 to 15: the slips (also an empty truck's), and the second visit's "Welcome
+// back". A result stays while the truck is on the bridge; when it leaves, the kiosk is
+// Ready at once (flow.ts).
 import { formatKg, formatPlate, type TicketView } from "@trinetra/shared";
 import {
   ArrowLeft,
@@ -19,6 +21,7 @@ import {
 import { useState } from "react";
 import { useT } from "@/i18n/use-t";
 import { api } from "@/lib/api";
+import { useBridge } from "@/lib/kiosk/bridge";
 import { useKiosk } from "@/lib/kiosk/flow";
 import { useReturnAfter } from "@/lib/kiosk/idle";
 import { useTicket, usePutTicket } from "@/lib/kiosk/queries";
@@ -32,7 +35,7 @@ import { materialLabel } from "../material-look";
 import { PrintSlip, SlipView } from "../slip";
 import { timeIST, wasPrinted, type SlipName } from "../slip-fields";
 
-/** A finished screen goes back to Ready by itself after this long. */
+/** With the bridge empty, a result goes back to Ready by itself after this long. */
 export const BACK_TO_READY_MS = 15_000;
 /** A slip opened from the Ready list stays a little longer. */
 const COLLECTED_SLIP_MS = 60_000;
@@ -65,15 +68,32 @@ function usePrint(ticket: TicketView, slip: SlipName) {
   return { print, busy, reprint, failed };
 }
 
+/** The weight taken, and where the truck goes next. */
 function slipHeader(ticket: TicketView, slip: SlipName, t: ReturnType<typeof useT>) {
+  const kg = (value: number | null) => (value === null ? "———" : formatKg(value));
+  if (ticket.load === "EMPTY") {
+    return {
+      icon: Check,
+      hero: true,
+      title: t("kiosk.result.driveOff"),
+      subtitle: t("kiosk.result.emptyWeight", { kg: kg(ticket.firstWeightKg) }),
+    };
+  }
   const point = ticket.unloadingPoint?.code ?? "———";
-  const supervisor = [ticket.supervisor?.name, ticket.supervisor?.phone].filter(Boolean);
+  const name = ticket.supervisor?.name;
   return slip === "FIRST"
     ? {
         icon: MapPin,
         hero: true,
-        title: t("kiosk.result.goTo", { point }),
-        subtitle: supervisor.join(" · "),
+        title: name
+          ? t("kiosk.result.goToWith", { point, name })
+          : t("kiosk.result.goTo", { point }),
+        subtitle: [
+          t("kiosk.result.firstWeight", { kg: kg(ticket.firstWeightKg) }),
+          ticket.supervisor?.phone,
+        ]
+          .filter(Boolean)
+          .join(" · "),
       }
     : {
         icon: Check,
@@ -92,21 +112,23 @@ function SlipScreen({
 }: {
   ticket: TicketView;
   slip: SlipName;
-  back: { label: string; onClick: () => void; icon: typeof Check };
+  /** Left out while the truck is still on the bridge: it only has to drive off. */
+  back: { label: string; onClick: () => void; icon: typeof Check } | null;
 }) {
   const t = useT();
   const { print, busy, reprint, failed } = usePrint(ticket, slip);
-  const BackIcon = back.icon;
   return (
     <KioskFrame
       status={false}
       header={slipHeader(ticket, slip, t)}
       actions={
         <>
-          <Button variant="dark" onClick={back.onClick}>
-            <BackIcon aria-hidden />
-            {back.label}
-          </Button>
+          {back && (
+            <Button variant="dark" onClick={back.onClick}>
+              <back.icon aria-hidden />
+              {back.label}
+            </Button>
+          )}
           <Button disabled={busy} onClick={() => void print()}>
             <Printer aria-hidden />
             {t("kiosk.result.print")}
@@ -125,16 +147,20 @@ function SlipScreen({
   );
 }
 
-/** Screen 12 (first slip) and screen 15 (final slip): then back to Ready. */
+/**
+ * Screen 12 (first slip) and screen 15 (final or empty-truck slip). It stays until the
+ * truck leaves; with the bridge already empty, until Done or 15 s.
+ */
 export function ResultScreen({ ticket, slip }: { ticket: TicketView; slip: SlipName }) {
   const t = useT();
   const finish = useKiosk((state) => state.finish);
-  useReturnAfter(BACK_TO_READY_MS, finish);
+  const bridgeEmpty = useBridge((state) => !state.truckPresent);
+  useReturnAfter(BACK_TO_READY_MS, finish, bridgeEmpty);
   return (
     <SlipScreen
       ticket={ticket}
       slip={slip}
-      back={{ label: t("kiosk.done"), onClick: finish, icon: Check }}
+      back={bridgeEmpty ? { label: t("kiosk.done"), onClick: finish, icon: Check } : null}
     />
   );
 }

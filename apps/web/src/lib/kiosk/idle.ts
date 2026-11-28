@@ -49,13 +49,17 @@ export function useInactivity(on: boolean, resetKey: string) {
   return { stage, stay };
 }
 
-/** Runs `done` after `ms` without a touch. For slips that go away by themselves. */
-export function useReturnAfter(ms: number, done: () => void) {
+/**
+ * Runs `done` after `ms` without a touch. For slips that go away by themselves. While `on`
+ * is false nothing runs; the time starts afresh when it turns true.
+ */
+export function useReturnAfter(ms: number, done: () => void, on = true) {
   const latest = useRef(done);
   useEffect(() => {
     latest.current = done;
   });
   useEffect(() => {
+    if (!on) return;
     let timer = setTimeout(() => latest.current(), ms);
     const stop = onActivity(() => {
       clearTimeout(timer);
@@ -65,5 +69,5 @@ export function useReturnAfter(ms: number, done: () => void) {
       clearTimeout(timer);
       stop();
     };
-  }, [ms]);
+  }, [ms, on]);
 }

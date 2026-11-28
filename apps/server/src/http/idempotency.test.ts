@@ -60,7 +60,7 @@ describe.skipIf(!testDatabaseUrl)("Idempotency-Key", { timeout: 30_000 }, () => 
   });
 
   it("repeats an approval instead of refusing it as already decided", async () => {
-    const id = await weighed({ material: "Sand", invoiceKg: 14_500 });
+    const id = await weighed({ material: "Cement Bags", invoiceKg: 14_500 });
     const request = await pending(id, "STORE_TYPE2");
     const decide = (headers: Record<string, string> = {}) =>
       h.call("store", "POST", `/api/approvals/${request}/decide`, { decision: "APPROVE" }, headers);
@@ -74,7 +74,7 @@ describe.skipIf(!testDatabaseUrl)("Idempotency-Key", { timeout: 30_000 }, () => 
 
   it("counts a repeated wrong material once", async () => {
     const id = await started();
-    await h.db.execute(`update tickets set invoice_material = 'Sand' where id = ${id}`);
+    await h.db.execute(`update tickets set invoice_material = 'Cement Bags' where id = ${id}`);
     const send = () =>
       h.call(
         "kiosk",
@@ -115,12 +115,12 @@ describe.skipIf(!testDatabaseUrl)("Idempotency-Key", { timeout: 30_000 }, () => 
   });
 
   it("counts a repeated supervisor photo once", async () => {
-    const id = await weighed({ material: "Cement Bags" });
+    const id = await weighed({ material: "Sand" });
     h.supervisorSees(PLATE);
     const body = h.form({ data: await h.jpeg(), type: "image/jpeg" });
     const send = () =>
       h.call<{ photosUsed: number }>(
-        "amit",
+        "pankaj",
         "POST",
         `/api/supervisor/tickets/${id}/photo`,
         body.payload,

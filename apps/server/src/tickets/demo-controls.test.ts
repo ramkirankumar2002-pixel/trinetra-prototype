@@ -168,7 +168,7 @@ describe.skipIf(!testDatabaseUrl)("demo controls", { timeout: 30_000 }, () => {
       const { body } = await h.call<DemoMasterData>("store", "GET", "/api/demo/master-data");
       expect(body.tolerancePct).toBe(0.5);
       expect(body.materials).toContainEqual({
-        name: "Sand",
+        name: "Cement Bags",
         type: "TYPE_3",
         type2AboveKg: 1000,
       });
@@ -187,11 +187,12 @@ describe.skipIf(!testDatabaseUrl)("demo controls", { timeout: 30_000 }, () => {
         id: "cement",
         material: "Cement Bags",
         plate: PLATE,
-        weightKg: 14_310,
+        weightKg: 20_000,
       });
       expect(body.invoices).toContainEqual(
-        expect.objectContaining({ id: "model-cement", weightKg: 20_000 }),
+        expect.objectContaining({ id: "aggregate-10", weightKg: 20_000 }),
       );
+      expect(body.materials).toContainEqual({ name: "Sand", type: "TYPE_1", type2AboveKg: null });
       expect(JSON.stringify(body)).not.toMatch(/98765432\d\d|pin|hash|phone/i);
     });
   });
@@ -304,9 +305,9 @@ describe.skipIf(!testDatabaseUrl)("demo controls", { timeout: 30_000 }, () => {
 
   describe("reset", () => {
     it("deletes demo tickets only and starts the trips again", async () => {
-      const real = await weighed({ plate: OTHER_PLATE, material: "Sand", invoiceKg: 900 });
+      const real = await weighed({ plate: OTHER_PLATE, material: "Cement Bags", invoiceKg: 900 });
       await demo("PUT", "settings", { anprMode: "pick" });
-      const fake = await weighed({ material: "Sand", invoiceKg: 900 });
+      const fake = await weighed({ material: "Cement Bags", invoiceKg: 900 });
       expect((await view(fake)).tripNo).toBe(2);
       await secondWeight(fake, EMPTY);
       await h.call("kiosk", "POST", "/api/help", { ticketId: fake });
@@ -324,7 +325,7 @@ describe.skipIf(!testDatabaseUrl)("demo controls", { timeout: 30_000 }, () => {
       expect(await h.eventTypes(fake)).toEqual([]);
       expect(await h.approvalRows()).toEqual([]);
 
-      const next = await weighed({ material: "Sand", invoiceKg: 900 });
+      const next = await weighed({ material: "Cement Bags", invoiceKg: 900 });
       const after = (await h.call<TicketView>("kiosk", "GET", `/api/tickets/${next}`)).body;
       expect(after.tripNo).toBe(1);
       // A ticket number is never used twice, even after a reset.

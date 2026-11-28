@@ -1,7 +1,8 @@
 // For trying the weighbridge by hand before the supervisor and store screens exist
 // (Phases 12 and 13). It sets the demo "pick" modes and makes the people's decisions.
-//   pnpm office pick cement          also: sand, steel-scrap, aggregate, steel-bars, bitumen
-//                                    and model-cement ... model-bricks (200 g model cargo)
+//   pnpm office pick sand            also: aggregate, aggregate-10 (Type 1); cement,
+//                                    steel-bars, bitumen, steel-scrap (Type 2); bricks,
+//                                    scrap-small (Type 3); aggregate-short (will not pass)
 //   pnpm office list                 what is waiting for a person
 //   pnpm office approve              the oldest waiting request
 //   pnpm office reject               the same, refused
@@ -19,33 +20,29 @@ import {
   type SupervisorTicketView,
   type TicketView,
 } from "@trinetra/shared";
-import { SAMPLE_INVOICES, SEED_USERS } from "@trinetra/shared/seed";
+import {
+  SAMPLE_INVOICE_IDS,
+  SAMPLE_INVOICES,
+  SEED_USERS,
+  type SampleInvoiceId,
+} from "@trinetra/shared/seed";
+import { EMPTY_KG } from "./sim/weight-model";
 
 const envFile = fileURLToPath(new URL("../apps/server/.env", import.meta.url));
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 const BASE = process.env.OFFICE_SERVER_URL ?? "http://localhost:4000";
 
-/** The simulator's empty truck is 18,250 kg: loaded, it carries what each invoice says. */
-const LOADED_KG: Record<string, number> = {
-  cement: 32_560,
-  sand: 19_150,
-  "steel-scrap": 19_750,
-  // 14,310 kg against 14,500 kg on the invoice: this one fails the tolerance.
-  aggregate: 32_560,
-  "steel-bars": 32_560,
-  bitumen: 32_560,
-  // The model bills: the simulator's empty truck plus the 200 g (20,000 kg) cargo.
-  "model-cement": 38_250,
-  "model-steel-bars": 38_250,
-  "model-bitumen": 38_250,
-  "model-steel-scrap": 38_250,
-  "model-sand": 38_250,
-  "model-aggregate": 38_250,
-  "model-bricks": 38_250,
+/**
+ * What the simulator's loaded truck ("a") must weigh for each bill. Most bills are for the
+ * 20,000 kg between its loaded and empty trucks, so they need no --loaded.
+ */
+const LOADED_FOR: Partial<Record<SampleInvoiceId, number>> = {
+  // 900 kg of cargo.
+  "scrap-small": EMPTY_KG + 900,
 };
 
 /** Those the unloading rules can send a Type 1 truck to. */
-const SUPERVISORS = ["amit", "suresh", "vikram", "pankaj"] as const;
+const SUPERVISORS = ["pankaj", "suresh", "vikram", "ravi", "mahesh"] as const;
 
 const cookies = new Map<string, string>();
 
@@ -80,7 +77,7 @@ const demo = (method: string, path: string, body?: unknown) =>
 
 async function pick(id: string): Promise<void> {
   const invoice = SAMPLE_INVOICES.find((item) => item.id === id);
-  if (!invoice) throw new Error(`Pick one of: ${Object.keys(LOADED_KG).join(", ")}.`);
+  if (!invoice) throw new Error(`Pick one of: ${SAMPLE_INVOICE_IDS.join(", ")}.`);
   const plate = invoice.printed.vehicle_number.replaceAll(" ", "");
   await demo("PUT", "settings", {
     anprMode: "pick",
@@ -89,7 +86,12 @@ async function pick(id: string): Promise<void> {
     demoInvoice: id,
   });
   console.log(`Demo modes on: plate ${formatPlate(plate)}, invoice "${id}".`);
-  console.log(`In the simulator's terminal run:  pnpm sim --loaded ${LOADED_KG[id]}`);
+  const loaded = LOADED_FOR[invoice.id];
+  console.log(
+    loaded === undefined
+      ? `In the simulator's terminal run:  pnpm sim`
+      : `In the simulator's terminal run:  pnpm sim --loaded ${loaded}`,
+  );
   console.log(`At the weighbridge screen choose the material: ${invoice.expected.material}`);
 }
 
@@ -188,7 +190,7 @@ async function decide(approve: boolean): Promise<void> {
     const onInvoice = SAMPLE_INVOICES.find(
       (sample) => sample.printed.invoice_number === ticket.invoice.number,
     );
-    extra.chosenMaterial = onInvoice?.expected.material ?? "Cement Bags";
+    extra.chosenMaterial = onInvoice?.expected.material ?? "Sand";
   }
   await call(item.who, "POST", `/api/approvals/${item.approvalId}/decide`, {
     decision: approve ? "APPROVE" : "REJECT",

@@ -135,7 +135,7 @@ async function supervisorDecision(effect: Effect, changes: ApprovalChanges): Pro
   await move(effect, "SUPERVISOR_APPROVED");
 }
 
-async function type2Decision(effect: Effect): Promise<void> {
+async function heldWeightDecision(effect: Effect): Promise<void> {
   const { tx, ticket, approve, actor, data } = effect;
   if (!approve) {
     await move(effect, "STORE_REJECTED");
@@ -144,7 +144,9 @@ async function type2Decision(effect: Effect): Promise<void> {
   // The held weight is saved as it was captured; nothing is weighed or typed again.
   const saved = await sendToUnload(tx, ticket, {
     kg: ticket.heldWeightKg!,
-    type: "TYPE_2",
+    // TYPE_2, or whatever a truck without an invoice is: a Type 1 one goes on to its
+    // supervisor.
+    type: ticket.type!,
     takenAt: ticket.firstWeightAt!,
     event: "STORE_APPROVED",
     actor,
@@ -217,7 +219,7 @@ function needsReason({ kind, plateWarningReason }: ApprovalRow, decision: Decisi
 async function applyEffect(effect: Effect, changes: ApprovalChanges): Promise<void> {
   const { request, approve } = effect;
   if (request.kind === "SUPERVISOR") return supervisorDecision(effect, changes);
-  if (request.kind === "STORE_TYPE2") return type2Decision(effect);
+  if (request.kind === "STORE_TYPE2") return heldWeightDecision(effect);
   if (request.kind === "HOLD") return holdDecision(effect, changes);
   if (request.kind === "MISMATCH") return mismatchDecision(effect, changes);
   // The blocked-plate check.

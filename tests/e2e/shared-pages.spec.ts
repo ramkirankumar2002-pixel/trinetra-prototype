@@ -10,10 +10,13 @@ import type { DemoSettings, TicketView } from "@trinetra/shared";
 import {
   answerQuestions,
   arrive,
+  confirmLoaded,
   confirmPlate,
   confirmWeight,
+  EMPTY_KG,
   heading,
   leave,
+  LOADED_KG,
   Office,
   openKiosk,
   press,
@@ -26,7 +29,7 @@ import { signIn } from "./staff-session";
 
 const SHOTS = process.env.PHASE14_SHOTS === "1";
 const FOLDER = fileURLToPath(new URL("../../docs/screenshots/phase14/", import.meta.url));
-const PLATE = "MH12AB1234";
+const PLATE = "MP09JK7890";
 const DRIVER_PHONE = "9000000014";
 
 const bridge = new Weighbridge();
@@ -160,17 +163,17 @@ test("the slip's QR code opens the ticket page, which follows the truck", async 
   page,
   browser,
 }) => {
-  await office.pick(PLATE, "cement");
+  await office.pick(PLATE, "sand");
   await openKiosk(page);
   await expect(page.getByTestId("demo-badge")).toHaveText("DEMO");
-  await arrive(page, bridge, 32_560);
-  await confirmPlate(page, "MH 12 AB 1234");
-  await uploadFromPhone(browser, page, "cement.jpg");
+  await arrive(page, bridge, LOADED_KG);
+  await confirmLoaded(page, "MP 09 JK 7890");
+  await uploadFromPhone(browser, page, "sand.jpg");
   await press(page, "Next");
-  await answerQuestions(page, "Cement Bags", DRIVER_PHONE);
+  await answerQuestions(page, "Sand", DRIVER_PHONE);
   await press(page, "Next");
-  await confirmWeight(page, "32,560 kg");
-  await heading(page, "Go to Plant");
+  await confirmWeight(page, "32,500 kg");
+  await heading(page, "Go to CH-012+300");
 
   const qr = page.getByTestId("slip-qr");
   await expect(qr).toHaveAttribute("data-url", /\/t\/[0-9a-f]{32}$/);
@@ -183,9 +186,9 @@ test("the slip's QR code opens the ticket page, which follows the truck", async 
   const status = phone.getByTestId("ticket-status");
   const timeline = phone.getByTestId("public-timeline");
   await expect(status).toHaveText("Waiting for the supervisor");
-  await expect(phone.getByTestId("plate")).toHaveText("MH 12 AB 1234");
-  await expect(phone.locator("main")).toContainText("32,560 kg");
-  await expect(phone.locator("main")).toContainText("14,310 kg");
+  await expect(phone.getByTestId("plate")).toHaveText("MP 09 JK 7890");
+  await expect(phone.locator("main")).toContainText("32,500 kg");
+  await expect(phone.locator("main")).toContainText("20,000 kg");
   for (const step of ["Truck arrived", "Number plate read", "Bill read", "First weight"]) {
     await expect(timeline).toContainText(step);
   }
@@ -200,19 +203,19 @@ test("the slip's QR code opens the ticket page, which follows the truck", async 
   // The supervisor approves: the open page changes without being reloaded.
   await office.supervisorDecides(PLATE, PLATE, { decision: "APPROVE" });
   await expect(timeline).toContainText("Verified by the supervisor", { timeout: 15_000 });
-  await expect(timeline).toContainText("Amit Kumar · Supervisor");
+  await expect(timeline).toContainText("Pankaj Gupta · Supervisor");
   await expect(status).toHaveText("Second weight due");
 
   // The truck comes back for its second weighing.
-  await arrive(page, bridge, 18_250);
-  await confirmPlate(page, "MH 12 AB 1234");
+  await arrive(page, bridge, EMPTY_KG);
+  await confirmPlate(page, "MP 09 JK 7890");
   await press(page, "Second weight");
-  await confirmWeight(page, "18,250 kg");
+  await confirmWeight(page, "12,500 kg");
   await heading(page, "Thank you, drive safely");
 
   await expect(status).toHaveText("Completed", { timeout: 15_000 });
-  await expect(timeline).toContainText("Second weight · 18,250 kg");
-  await expect(phone.locator("main")).toContainText("14,310 kg");
+  await expect(timeline).toContainText("Second weight · 12,500 kg");
+  await expect(phone.locator("main")).toContainText("20,000 kg");
   await expect(phone.getByText("This visit is still going on.")).toHaveCount(0);
 
   await phone.evaluate(() => {
@@ -308,8 +311,8 @@ test("demo settings: the store officer's login, and the DEMO badge everywhere", 
     }
   }
 
-  await page.getByLabel("Picked sample bill").selectOption("sand");
-  await expect.poll(async () => (await settingsOf(page.context())).demoInvoice).toBe("sand");
+  await page.getByLabel("Picked sample bill").selectOption("bricks");
+  await expect.poll(async () => (await settingsOf(page.context())).demoInvoice).toBe("bricks");
 
   // Pictures with a switch on, so the badge is in them. The messages are gone first.
   await group("Bill reading").getByRole("button", { name: "Pick" }).click();

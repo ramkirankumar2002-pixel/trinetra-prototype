@@ -52,7 +52,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
 
   /** A plate that was rejected today and is back: the new visit waits for the officer. */
   async function blockedAgain() {
-    const first = await weighed({ material: "Sand", invoiceKg: 14_310 });
+    const first = await weighed({ material: "Cement Bags", invoiceKg: 14_310 });
     await decide(await pending(first, "STORE_TYPE2"), {
       decision: "REJECT",
       reason: "Wrong load",
@@ -71,7 +71,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
 
   describe("a Type 2 truck", () => {
     it("approved: the held weight is saved, and the decision is on record", async () => {
-      const id = await weighed({ material: "Sand", invoiceKg: 14_310 });
+      const id = await weighed({ material: "Cement Bags", invoiceKg: 14_310 });
       const request = await pending(id, "STORE_TYPE2");
       expect(await view(id)).toMatchObject({ heldWeightKg: LOADED, firstWeightKg: null });
 
@@ -92,7 +92,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
 
     it("rejected: only with a reason, and the truck must leave", async () => {
-      const id = await weighed({ material: "Sand", invoiceKg: 14_310 });
+      const id = await weighed({ material: "Cement Bags", invoiceKg: 14_310 });
       const request = await pending(id, "STORE_TYPE2");
       expect((await decide(request, { decision: "REJECT" })).status).toBe(400);
 
@@ -193,10 +193,10 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
 
   describe("a material mismatch", () => {
     async function mismatched() {
-      const id = await started({ material: "Cement Bags" });
-      await h.db.execute(`update tickets set invoice_material = 'Cement Bags' where id = ${id}`);
+      const id = await started({ material: "Sand" });
+      await h.db.execute(`update tickets set invoice_material = 'Sand' where id = ${id}`);
       for (let n = 0; n < 5; n++) {
-        await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Sand" });
+        await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Cement Bags" });
       }
       return { id, request: await pending(id, "MISMATCH") };
     }
@@ -249,7 +249,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
 
     it("says WRONG_STAGE when the ticket has moved on", async () => {
-      const id = await weighed({ material: "Sand", invoiceKg: 14_310 });
+      const id = await weighed({ material: "Cement Bags", invoiceKg: 14_310 });
       const request = await pending(id, "STORE_TYPE2");
       await h.db.execute(`update tickets set status = 'ABANDONED' where id = ${id}`);
       const answer = await decide(request, { decision: "APPROVE" });
@@ -271,7 +271,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
 
     it("is not a supervisor's waiting check, and 404 if there is none", async () => {
-      const id = await weighed({ material: "Cement Bags" });
+      const id = await weighed({ material: "Sand" });
       const request = await pending(id, "SUPERVISOR");
       expect((await get(`/api/store/requests/${request}`)).status).toBe(404);
       expect((await get("/api/store/requests/999")).status).toBe(404);
@@ -297,7 +297,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
       const held = await onHold();
       const waitingTruck = await weighed({
         plate: OTHER_PLATE,
-        material: "Sand",
+        material: "Cement Bags",
         invoiceKg: 14_310,
       });
       expect(await summary()).toMatchObject({ waiting: 2, onHold: 1, onSite: 2, completed: 0 });
@@ -330,8 +330,8 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
 
     it("does not count 'handled' as approved, or a supervisor's decision", async () => {
-      const id = await weighed({ material: "Cement Bags" });
-      await h.call("amit", "POST", `/api/approvals/${await pending(id, "SUPERVISOR")}/decide`, {
+      const id = await weighed({ material: "Sand" });
+      await h.call("pankaj", "POST", `/api/approvals/${await pending(id, "SUPERVISOR")}/decide`, {
         decision: "REJECT",
         reason: "Wrong truck",
       });
@@ -348,11 +348,16 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
         chosenWeight: "INVOICE",
         reason: "Moisture loss",
       });
-      const second = await weighed({ plate: OTHER_PLATE, material: "Cement Bags" });
-      await h.call("amit", "POST", `/api/approvals/${await pending(second, "SUPERVISOR")}/decide`, {
-        decision: "REJECT",
-        reason: "Wrong truck",
-      });
+      const second = await weighed({ plate: OTHER_PLATE, material: "Sand" });
+      await h.call(
+        "pankaj",
+        "POST",
+        `/api/approvals/${await pending(second, "SUPERVISOR")}/decide`,
+        {
+          decision: "REJECT",
+          reason: "Wrong truck",
+        },
+      );
 
       const rows = await history();
       expect(rows.map((row) => [row.ticketId, row.status])).toEqual([
@@ -374,7 +379,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
           },
         ],
       });
-      expect(rows[0]!.decisions).toMatchObject([{ kind: "SUPERVISOR", decidedBy: "Amit Kumar" }]);
+      expect(rows[0]!.decisions).toMatchObject([{ kind: "SUPERVISOR", decidedBy: "Pankaj Gupta" }]);
     });
 
     it("searches by plate, written any way, or by ticket number", async () => {
@@ -500,7 +505,11 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
       await h.db.execute(`update tickets set status = 'ABANDONED' where id = ${id}`);
       expect((await upload(again)).body.error?.code).toBe("WRONG_STAGE");
 
-      const other = await weighed({ plate: OTHER_PLATE, material: "Sand", invoiceKg: 14_310 });
+      const other = await weighed({
+        plate: OTHER_PLATE,
+        material: "Cement Bags",
+        invoiceKg: 14_310,
+      });
       expect((await upload(await pending(other, "STORE_TYPE2"))).body.error?.code).toBe(
         "WRONG_STAGE",
       );
@@ -575,7 +584,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     const helpOn = async (ticketId: number) =>
       (await h.call<{ approvalId: number }>("kiosk", "POST", "/api/help", { ticketId })).body
         .approvalId;
-    const type2 = () => weighed({ material: "Sand", invoiceKg: 14_500 });
+    const type2 = () => weighed({ material: "Cement Bags", invoiceKg: 14_500 });
 
     it("is only for the store officer", async () => {
       await h.expectRoles("POST", "/api/store/tickets/1/cancel", ["store"], { reason: "x" });
@@ -615,23 +624,23 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
 
     it("takes a supervisor's waiting truck off their list; nobody can decide it", async () => {
-      const id = await weighed({ material: "Cement Bags" });
+      const id = await weighed({ material: "Sand" });
       const request = await pending(id, "SUPERVISOR");
       const rooms = vi.spyOn(h.app.realtime.io, "to");
       expect((await cancel(id)).status).toBe(200);
       // The supervisor's phone is told at once.
       expect(rooms.mock.calls.flatMap(([to]) => String(to)).join()).toContain(
-        `supervisor:${h.userId("amit")}`,
+        `supervisor:${h.userId("pankaj")}`,
       );
       rooms.mockRestore();
 
       const mine = await h.call<{ tickets: unknown[] }>(
-        "amit",
+        "pankaj",
         "GET",
         "/api/supervisor/tickets?status=pending",
       );
       expect(mine.body.tickets).toEqual([]);
-      const late = await h.call("amit", "POST", `/api/approvals/${request}/decide`, {
+      const late = await h.call("pankaj", "POST", `/api/approvals/${request}/decide`, {
         decision: "REJECT",
         reason: "Wrong truck",
       });
@@ -666,14 +675,14 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     });
 
     it("lets the plate come again: cancelled is not rejected", async () => {
-      await cancel(await weighed({ material: "Cement Bags" }));
+      await cancel(await weighed({ material: "Sand" }));
       const next = await started();
       expect((await view(next)).plateCheck).toBe("NOT_NEEDED");
     });
 
     it("shows how long a truck on site has waited, and nothing for a driver's turn", async () => {
       const driving = await started();
-      const waiting = await weighed({ plate: OTHER_PLATE, material: "Cement Bags" });
+      const waiting = await weighed({ plate: OTHER_PLATE, material: "Sand" });
       const rows = await trucks();
       expect(rows.find((row) => row.ticketId === driving)!.waitingSince).toBeNull();
       expect(rows.find((row) => row.ticketId === waiting)!.waitingSince).not.toBeNull();
@@ -684,7 +693,7 @@ describe.skipIf(!testDatabaseUrl)("the store officer's pages", { timeout: 30_000
     it("go to Suresh Yadav for trips 1 and 2, and to Pankaj Gupta after", async () => {
       const seen: (string | undefined)[] = [];
       for (const plate of [PLATE, OTHER_PLATE, "UP32EF9012"]) {
-        const id = await weighed({ plate, material: "Bitumen" });
+        const id = await weighed({ plate, material: "Bitumen", invoiceKg: 900 });
         seen.push((await view(id)).supervisor?.name);
         h.leave();
       }

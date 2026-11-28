@@ -92,7 +92,7 @@ describe.skipIf(!testDatabaseUrl)("second weight", { timeout: 30_000 }, () => {
   });
 
   it("holds a truck that has no invoice weight to compare with", async () => {
-    const id = await started({ invoiceKg: null });
+    const id = await started({ invoiceKg: "unreadable" });
     await h.settle(LOADED);
     await post(id, "first-weight");
     // Bricks are Type 3, so the truck goes straight to the second weight.

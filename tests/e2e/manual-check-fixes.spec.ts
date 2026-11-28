@@ -7,8 +7,11 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   arrive,
+  confirmLoaded,
   confirmPlate,
+  EMPTY_KG,
   heading,
+  LOADED_KG,
   leave,
   Office,
   openKiosk,
@@ -68,7 +71,7 @@ const kioskLanguage = (page: Page, name: "हिंदी" | "English") =>
   page.locator("aside").getByRole("button", { name }).click();
 
 test("the issues of the manual-style check stay fixed", async ({ page, browser }) => {
-  await office.pick("RJ14LM2345", "steel-bars");
+  await office.pick("UP70GH3456", "aggregate-10");
 
   const storeContext = await browser.newContext({ viewport: LAPTOP });
   await signIn(storeContext, "ram");
@@ -77,12 +80,12 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await expect(store.getByTestId("connection")).toHaveText("Online");
 
   await openKiosk(page);
-  await arrive(page, bridge, 32_560);
-  await confirmPlate(page, "RJ 14 LM 2345");
+  await arrive(page, bridge, LOADED_KG);
+  await confirmLoaded(page, "UP 70 GH 3456");
 
   // Issue 7: the store officer's list says that a bill is needed.
   await press(page, "No phone?");
-  const row = store.getByRole("table").getByRole("row").filter({ hasText: "RJ 14 LM 2345" });
+  const row = store.getByRole("table").getByRole("row").filter({ hasText: "UP 70 GH 3456" });
   await expect(row).toContainText("No phone: send bill");
   await row.getByRole("link", { name: /^Open/ }).click();
 
@@ -96,7 +99,7 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   const mine = home
     .getByRole("table")
     .getByRole("row")
-    .filter({ hasText: "RJ 14 LM 2345" })
+    .filter({ hasText: "UP 70 GH 3456" })
     .getByRole("link", { name: /^Open/ });
   const address = (await mine.getAttribute("href"))!;
   expect(address).toMatch(/^\/store\/approvals\/\d+$/);
@@ -111,7 +114,7 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
 
   // Issues 9 and 10: at 1366×768 the bill can be sent without scrolling, on one line each.
   await onOneLine(button(store, "Take photo"), store.locator("label", { hasText: "Choose file" }));
-  await store.getByTestId("bill-file").setInputFiles(sampleInvoice("steel-bars.pdf"));
+  await store.getByTestId("bill-file").setInputFiles(sampleInvoice("aggregate-10.pdf"));
   const send = button(store, "Send the bill");
   await store.getByTestId("bill-file").waitFor({ state: "detached" });
   await onOneLine(send, button(store, "Choose another"));
@@ -119,7 +122,7 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await expect(send).toBeInViewport({ ratio: 1 });
   // And with a photo, whose preview is the tall one.
   await button(store, "Choose another").click();
-  await store.getByTestId("bill-file").setInputFiles(sampleInvoice("steel-bars.jpg"));
+  await store.getByTestId("bill-file").setInputFiles(sampleInvoice("aggregate-10.jpg"));
   await expect(store.getByTestId("bill-preview")).toBeVisible();
   await expect
     .poll(() => store.getByTestId("bill-preview").evaluate((e: HTMLImageElement) => e.complete))
@@ -141,7 +144,7 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await kioskLanguage(page, "English");
   await press(page, "Next");
   await heading(page, "Material");
-  await press(page, "Steel Bars");
+  await press(page, "Aggregate 10 mm");
   await heading(page, "Supplier");
   await press(page, "Yes");
   await heading(page, "Transporter");
@@ -169,12 +172,12 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await expect(page.getByTestId("ring")).toHaveAttribute("data-state", "full");
   await expect(said("Is this weight right?")).toHaveCount(1);
   await press(page, "Next");
-  await heading(page, "Go to CH-010+500");
+  await heading(page, "Go to CH-005+250");
   await leave(page, bridge);
 
   // While the supervisor has not answered, the store can cancel: with the same words.
   await store.goto("/store/trucks");
-  const truck = store.getByRole("table").getByRole("row").filter({ hasText: "RJ 14 LM 2345" });
+  const truck = store.getByRole("table").getByRole("row").filter({ hasText: "UP 70 GH 3456" });
   await truck.getByRole("link", { name: /^View/ }).click();
   await expect(store.getByTestId("cancel-hint")).toBeVisible();
 
@@ -183,7 +186,7 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await phoneContext.addInitScript(() => {
     Object.defineProperty(navigator, "mediaDevices", { value: undefined });
   });
-  await signIn(phoneContext, "vikram");
+  await signIn(phoneContext, "ravi");
   const phone = await phoneContext.newPage();
   await phone.goto("/supervisor");
   await expect(phone.getByTestId("connection")).toHaveText("Online");
@@ -211,8 +214,8 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await expect(phone.getByRole("list", { name: "Done today" })).toContainText("demo reading");
   await phoneContext.close();
 
-  await arrive(page, bridge, 18_250);
-  await confirmPlate(page, "RJ 14 LM 2345");
+  await arrive(page, bridge, EMPTY_KG);
+  await confirmPlate(page, "UP 70 GH 3456");
   await press(page, "Second weight");
   await expect(page.getByTestId("ring")).toHaveAttribute("data-state", "full");
   await press(page, "Next");
@@ -220,30 +223,31 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
 
   // Issue 1: History says what the supervisor really answered.
   await store.goto("/store/history");
-  const ended = store.getByRole("table").getByRole("row").filter({ hasText: "RJ 14 LM 2345" });
-  await expect(ended).toContainText("Approved by supervisor: Vikram Sharma");
+  const ended = store.getByRole("table").getByRole("row").filter({ hasText: "UP 70 GH 3456" });
+  await expect(ended).toContainText("Approved by supervisor: Ravi Singh");
   await expect(ended).not.toContainText("Blocked");
   await store.getByRole("button", { name: "हिंदी" }).click();
   await expect(ended).toContainText("सुपरवाइज़र ने मंज़ूर किया");
   await expect(ended).not.toContainText("रोका");
   await store.getByRole("button", { name: "English" }).click();
   await ended.getByRole("link", { name: /^View/ }).click();
-  await expect(store.getByTestId("who")).toContainText("Approved by supervisor: Vikram Sharma");
+  await expect(store.getByTestId("who")).toContainText("Approved by supervisor: Ravi Singh");
   await expect(store.getByTestId("who")).not.toContainText("Blocked");
   await expect(store.getByTestId("who")).toContainText("Driver help · Seen by store");
 
   // Issues 3 and 4: the timeline.
   const timeline = store.getByTestId("timeline");
-  await expect(timeline).toContainText("Demo reading (photo not read): RJ 14 LM 2345");
+  await expect(timeline).toContainText("Demo reading (photo not read): UP 70 GH 3456");
   await expect(timeline).not.toContainText("your photo");
   await expect(timeline).toContainText("Driver has no phone: bill needed");
   const answers = timeline.locator('[data-event="DETAILS_SAVED"]');
-  // Material, supplier, transporter and phone: no line for the two language switches.
-  await expect(answers).toHaveCount(4);
-  await expect(answers.nth(0)).toContainText("Material: Steel Bars");
-  await expect(answers.nth(1)).toContainText("Supplier: Ganga Steel Traders");
-  await expect(answers.nth(2)).toContainText("Transporter: Highway Carriers");
-  await expect(answers.nth(3)).toContainText("Phone");
+  // Loaded, material, supplier, transporter and phone: no line for the language switches.
+  await expect(answers).toHaveCount(5);
+  await expect(answers.nth(0)).toContainText("Loaded truck");
+  await expect(answers.nth(1)).toContainText("Material: Aggregate 10 mm");
+  await expect(answers.nth(2)).toContainText("Supplier: Shree Ram Crushers");
+  await expect(answers.nth(3)).toContainText("Transporter: Maa Durga Logistics");
+  await expect(answers.nth(4)).toContainText("Phone");
   await expect(timeline).not.toContainText("9000000007");
 
   // And the bill's date on the store's pages too (issue 12).

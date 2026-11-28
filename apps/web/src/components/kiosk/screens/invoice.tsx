@@ -1,7 +1,8 @@
 "use client";
 
 // Screen 5: the driver uploads the invoice from their own phone by scanning the QR code.
-// The kiosk sees it arrive, waits while it is read, and shows what was read.
+// The kiosk sees it arrive, waits while it is read, and shows what was read. A driver
+// without an invoice says "No invoice": the store officer then has to approve the truck.
 import { useQuery } from "@tanstack/react-query";
 import { formatDate, formatKg, type TicketView, type UploadLinkResponse } from "@trinetra/shared";
 import {
@@ -11,6 +12,7 @@ import {
   CalendarDays,
   Camera,
   FileText,
+  FileX,
   PhoneOff,
   RotateCcw,
   ScanLine,
@@ -32,6 +34,7 @@ import { SURFACE } from "../../ui/card";
 import { Spinner } from "../../ui/spinner";
 import { DetailGrid } from "../detail-grid";
 import { callStoreOfficer, KioskFrame } from "../frame";
+import { useSaveDetails } from "./questions";
 import { materialLabel } from "../material-look";
 import { useQrImage } from "../slip";
 
@@ -152,6 +155,7 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
   const setNoPhone = useKiosk((state) => state.setNoPhone);
   const [calling, setCalling] = useState(false);
   const [callFailed, setCallFailed] = useState(false);
+  const { save, busy, problem } = useSaveDetails(ticket);
   const uploads = uploadsOf(ticket);
   const { state } = ticket.invoice;
   // The QR code: before any upload, and after "send another" until one arrives.
@@ -161,6 +165,22 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
     title: t("kiosk.invoice.heading"),
     subtitle: t(subtitle),
   });
+
+  async function withoutInvoice() {
+    // "answered" does nothing if the kiosk has left this question meanwhile.
+    if (await save({ noInvoice: true })) answered("invoice");
+  }
+  const noInvoiceButton = (
+    <Button variant="dark" disabled={busy} onClick={() => void withoutInvoice()}>
+      <FileX aria-hidden />
+      {t("kiosk.invoice.none")}
+    </Button>
+  );
+  const problemBanner = problem && (
+    <Banner tone="stop">
+      <span role="alert">{t(problem)}</span>
+    </Banner>
+  );
 
   async function callForUpload() {
     setCalling(true);
@@ -188,12 +208,16 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
       <KioskFrame
         header={header("kiosk.invoice.scan")}
         actions={
-          <Button variant="outline" disabled={calling} onClick={() => void callForUpload()}>
-            <PhoneOff aria-hidden />
-            {t("kiosk.invoice.noPhone")}
-          </Button>
+          <>
+            {noInvoiceButton}
+            <Button variant="outline" disabled={calling} onClick={() => void callForUpload()}>
+              <PhoneOff aria-hidden />
+              {t("kiosk.invoice.noPhone")}
+            </Button>
+          </>
         }
       >
+        {problemBanner}
         {callFailed && (
           <Banner tone="stop">
             <span role="alert">{t("kiosk.helpFailed")}</span>
@@ -223,10 +247,7 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
         header={header("kiosk.invoice.failed")}
         actions={
           <>
-            <Button variant="dark" onClick={() => answered("invoice")}>
-              {t("kiosk.invoice.without")}
-              <ArrowRight aria-hidden />
-            </Button>
+            {noInvoiceButton}
             <Button onClick={() => uploadAgain(uploads)}>
               <Upload aria-hidden />
               {t("kiosk.invoice.again")}
@@ -234,6 +255,7 @@ export function InvoiceScreen({ ticket }: { ticket: TicketView }) {
           </>
         }
       >
+        {problemBanner}
         <div
           className={`${SURFACE} flex flex-1 flex-col items-center justify-center gap-5 p-6 text-center`}
         >

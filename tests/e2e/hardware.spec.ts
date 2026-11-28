@@ -10,7 +10,8 @@ import { expect, test, type Browser } from "@playwright/test";
 import type { DemoSettings } from "@trinetra/shared";
 import {
   arrive,
-  confirmPlate,
+  confirmLoaded,
+  LOADED_KG,
   heading,
   look,
   Office,
@@ -36,7 +37,7 @@ test.describe.configure({ mode: "serial", timeout: 300_000 });
 test.beforeAll(async ({ browser }) => {
   office = await Office.open(browser);
   await office.reset();
-  await office.pick(PLATE, "model-bricks");
+  await office.pick(PLATE, "bricks");
   // The seeded model settings, also after a run that stopped half-way.
   await office.demo("put", "settings", { modelScaleKgPerG: 100, stableBandG: 15 });
   bridge.start();
@@ -69,10 +70,10 @@ test("tampering: the weighbridge waits, the store officer is told, and both reco
   await store.page.goto("/store");
 
   // A truck is at the bill step when the wiring is tampered with.
-  await arrive(page, bridge, 38_250);
-  await confirmPlate(page, "MH 14 CD 5678");
+  await arrive(page, bridge, LOADED_KG);
+  await confirmLoaded(page, "MH 14 CD 5678");
   await expect(page.getByTestId("upload-qr")).toBeVisible();
-  await uploadFromPhone(browser, page, "model-bricks.jpg");
+  await uploadFromPhone(browser, page, "bricks.jpg");
   await press(page, "Next");
   await heading(page, "Material");
 

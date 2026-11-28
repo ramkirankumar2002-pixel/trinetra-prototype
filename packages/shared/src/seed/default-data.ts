@@ -50,32 +50,37 @@ export interface SeedMaterial {
   aliasesHi: string[];
 }
 
+// The manager's decision (2026-11-28):
+//   Sand and both aggregates are always TYPE_1 (supervisor), whatever they weigh.
+//   Materials with type2AboveKg go by the invoice weight: above it TYPE_2 (store officer),
+//   at or below it TYPE_3 (no control). Each has its own number, to be changed here.
+//   Bricks are always TYPE_3.
 export const SEED_MATERIALS = [
   {
     name: "Cement Bags",
-    type: "TYPE_1",
-    type2AboveKg: null,
+    type: "TYPE_3",
+    type2AboveKg: 1000,
     aliasesEn: ["cement", "cement bag", "cement bags"],
     aliasesHi: ["सीमेंट", "सीमेंट की बोरी"],
   },
   {
     name: "Additive",
-    type: "TYPE_1",
-    type2AboveKg: null,
+    type: "TYPE_3",
+    type2AboveKg: 1000,
     aliasesEn: ["additive", "additives", "admixture"],
     aliasesHi: ["एडिटिव"],
   },
   {
     name: "Bitumen",
-    type: "TYPE_1",
-    type2AboveKg: null,
+    type: "TYPE_3",
+    type2AboveKg: 1000,
     aliasesEn: ["bitumen", "asphalt", "tar"],
     aliasesHi: ["बिटुमेन", "डामर"],
   },
   {
     name: "Steel Bars",
-    type: "TYPE_1",
-    type2AboveKg: null,
+    type: "TYPE_3",
+    type2AboveKg: 1000,
     aliasesEn: ["steel bars", "steel bar", "rebar", "sariya"],
     aliasesHi: ["सरिया", "स्टील बार"],
   },
@@ -88,22 +93,22 @@ export const SEED_MATERIALS = [
   },
   {
     name: "Aggregate 20 mm",
-    type: "TYPE_3",
-    type2AboveKg: 500,
+    type: "TYPE_1",
+    type2AboveKg: null,
     aliasesEn: ["aggregate 20 mm", "20 mm aggregate", "20 mm", "20 mm gitti", "bees mm"],
     aliasesHi: ["20 एमएम गिट्टी", "बीस एमएम गिट्टी", "बीस एमएम"],
   },
   {
     name: "Aggregate 10 mm",
-    type: "TYPE_3",
-    type2AboveKg: 500,
+    type: "TYPE_1",
+    type2AboveKg: null,
     aliasesEn: ["aggregate 10 mm", "10 mm aggregate", "10 mm", "10 mm gitti", "das mm"],
     aliasesHi: ["10 एमएम गिट्टी", "दस एमएम गिट्टी", "दस एमएम"],
   },
   {
     name: "Sand",
-    type: "TYPE_3",
-    type2AboveKg: 1000,
+    type: "TYPE_1",
+    type2AboveKg: null,
     aliasesEn: ["sand", "ret", "balu"],
     aliasesHi: ["रेत", "बालू"],
   },
@@ -168,8 +173,9 @@ export interface SeedUnloadingRule {
 
 export const SEED_UNLOADING_RULES: SeedUnloadingRule[] = [
   { material: "Cement Bags", tripFrom: 1, tripTo: 999, point: "PLANT" },
-  // Added for the demo (not in the mockups), so Type 1 trucks reach different supervisors.
-  // Additive has no rule: it goes to the default point.
+  // Added for the demo (not in the mockups). Additive has no rule: it goes to the default
+  // point. Type 1 trucks (sand and both aggregates) reach Pankaj, Suresh or Vikram, and
+  // Ravi or Mahesh, through the rules below.
   { material: "Steel Bars", tripFrom: 1, tripTo: 999, point: "CH-010+500" },
   { material: "Bitumen", tripFrom: 1, tripTo: 2, point: "CH-003+750" },
   { material: "Bitumen", tripFrom: 3, tripTo: 999, point: "CH-012+300" },

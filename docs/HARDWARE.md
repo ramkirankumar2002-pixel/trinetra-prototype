@@ -177,7 +177,7 @@ pnpm fake-hardware
 
 ## First power-on checklist
 
-Do the steps in order. Go on only when you see what is written. On the laptop keep open: <http://localhost:3000/kiosk> (`wb01`, PIN `3001`) and, **in another browser or a private window**, <http://localhost:3000/settings> (`ram`, PIN `2001`). With `pnpm lan` use `https://`.
+Do the steps in order. Go on only when you see what is written. On the laptop keep open: <http://localhost:3000/kiosk> (`wb01`, PIN `3001`) and, in another tab (each part has its own login), <http://localhost:3000/settings> (`ram`, PIN `2001`). With `pnpm lan` use `https://`.
 
 The main board prints one line a second: `weight 0.4 g  raw …  zero …  steady  entry clear  exit clear  online`.
 
@@ -222,15 +222,18 @@ Each bill below says 20,000 kg. Print it, or send its file to the driver's phone
 
 | Bill file | Material to choose | Plate on the truck | Type: who checks |
 | --- | --- | --- | --- |
-| `model-bricks` | Bricks | MH 14 CD 5678 | Type 3: nobody. **The simplest first run** |
-| `model-cement` | Cement Bags | MH 12 AB 1234 | Type 1: supervisor `amit` |
-| `model-steel-bars` | Steel Bars | RJ 14 LM 2345 | Type 1: supervisor `vikram` |
-| `model-bitumen` | Bitumen | BR 06 QR 4321 | Type 1: `suresh` (trips 1–2), then `pankaj` |
-| `model-steel-scrap` | Steel Scrap | UP 32 EF 9012 | Type 2: store officer |
-| `model-sand` | Sand | MP 09 JK 7890 | Type 2: store officer |
-| `model-aggregate` | Aggregate 20 mm | DL 01 NP 6789 | Type 2: store officer |
+| `bricks` | Bricks | MH 14 CD 5678 | Type 3: nobody. **The simplest first run** |
+| `sand` | Sand | MP 09 JK 7890 | Type 1: supervisor `pankaj` |
+| `aggregate` | Aggregate 20 mm | DL 01 NP 6789 | Type 1: `suresh` (trips 1–4), then `vikram` |
+| `aggregate-10` | Aggregate 10 mm | UP 70 GH 3456 | Type 1: `ravi` (trips 1–3), then `mahesh` |
+| `cement` | Cement Bags | MH 12 AB 1234 | Type 2: store officer |
+| `steel-bars` | Steel Bars | RJ 14 LM 2345 | Type 2: store officer |
+| `bitumen` | Bitumen | BR 06 QR 4321 | Type 2: store officer |
+| `steel-scrap` | Steel Scrap | UP 32 EF 9012 | Type 2: store officer |
 
-With "Bill reading" on **Pick**, choose the same bill on `/settings` (they are listed with "20,000 kg").
+Two more bills are not for this cargo: `scrap-small` (900 kg of steel scrap, Type 3 by weight: a 9 g cargo is too small to weigh reliably, so use it with the simulator) and `aggregate-short` (20,200 kg, which a 200 g cargo does not pass).
+
+With "Bill reading" on **Pick**, choose the same bill on `/settings`.
 
 ### PASS and HOLD
 
@@ -257,7 +260,7 @@ With "Bill reading" on **Pick**, choose the same bill on `/settings` (they are l
 1. `pnpm lan` (the driver's phone needs it to open the bill upload page), boards powered, `pnpm sim` **not** running.
 2. Kiosk: `https://localhost:3000/kiosk`. Store: `https://<laptop address>:3000/store`, or another browser on the laptop.
 3. `/settings`: all three reading switches on **Real** (they need `PLATE_RECOGNIZER_TOKEN` and `GEMINI_API_KEY`). If one fails on stage, switch only that one to **Pick**.
-4. Start with `model-bricks`: put the loaded truck on, choose the language, confirm the plate, send the bill from the phone, answer the questions, weigh. Drive off, take the cargo out, drive on again, weigh.
+4. Start with `bricks`: put the loaded truck on, choose the language, confirm the plate, press **Loaded**, send the bill from the phone, answer the questions, weigh. Drive off, take the cargo out, drive on again, weigh.
 
 | Problem | Try |
 | --- | --- |

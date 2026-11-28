@@ -27,7 +27,7 @@ export function RequireRole({ area, children }: { area: AreaName; children: Reac
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
-  const { data: user, error, refetch } = useMe();
+  const { data: user, error, refetch } = useMe(area);
   const { role } = AREAS[area];
   const wrongRole = user !== undefined && user.role !== role;
 

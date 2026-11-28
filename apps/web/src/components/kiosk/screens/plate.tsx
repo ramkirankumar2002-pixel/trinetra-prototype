@@ -14,7 +14,7 @@ import type { MessageKey } from "@/i18n/translate";
 import { useLanguage, useT } from "@/i18n/use-t";
 import { api, ApiError } from "@/lib/api";
 import { kioskErrorKey } from "@/lib/kiosk/error-text";
-import { afterNo, afterRead, sameDriver, useKiosk } from "@/lib/kiosk/flow";
+import { afterNo, afterRead, needsLoadQuestion, sameDriver, useKiosk } from "@/lib/kiosk/flow";
 import { usePutTicket } from "@/lib/kiosk/queries";
 import { useAction } from "@/lib/kiosk/use-action";
 import { useSocketEvent } from "@/lib/socket-hooks";
@@ -119,7 +119,8 @@ export function PlateScreen() {
     if (!answer || !stillHere()) return;
     if (answer.ok) {
       await putTicket(answer.data.ticket);
-      startTicket(answer.data.ticket.id, 1);
+      const { ticket } = answer.data;
+      startTicket(ticket.id, 1, needsLoadQuestion(ticket) ? "load" : "invoice");
       return;
     }
     const { code, details } = answer.error;

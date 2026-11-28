@@ -81,7 +81,12 @@ export function TrucksOnSite() {
               {
                 id: "status",
                 header: t("column.status"),
-                cell: (truck) => <TicketStatusPill status={truck.status} />,
+                cell: (truck) => (
+                  <span className="flex flex-col items-end gap-1 @2xl:items-start">
+                    <TicketStatusPill status={truck.status} />
+                    <LoadPill truck={truck} />
+                  </span>
+                ),
               },
               {
                 id: "where",
@@ -130,9 +135,15 @@ export function TrucksOnSite() {
 }
 
 /** "Approved by supervisor: Vikram Sharma, 00:00", with the choice and the reason. */
-function DecisionLine({ decision }: { decision: StoreTicketDecision }) {
+function DecisionLine({
+  decision,
+  noInvoice,
+}: {
+  decision: StoreTicketDecision;
+  noInvoice: boolean;
+}) {
   const t = useT();
-  const { about, result } = decisionWords(decision);
+  const { about, result } = decisionWords({ ...decision, noInvoice });
   const details = [
     decision.chosenWeight &&
       t(decision.chosenWeight === "MEASURED_NET" ? "slip.acceptedNet" : "slip.acceptedInvoice"),
@@ -150,6 +161,13 @@ function DecisionLine({ decision }: { decision: StoreTicketDecision }) {
       )}
     </span>
   );
+}
+
+/** What sets a ticket apart: an empty vehicle, or a load without an invoice. */
+function LoadPill({ truck }: { truck: Pick<StoreTicketView, "load" | "noInvoice"> }) {
+  const t = useT();
+  if (truck.load === "EMPTY") return <StatusPill tone="info">{t("store.load.empty")}</StatusPill>;
+  return truck.noInvoice ? <StatusPill tone="wait">{t("store.kind.noInvoice")}</StatusPill> : null;
 }
 
 /** "Cancelled by Ram, 14:05", with the reason. */
@@ -170,7 +188,7 @@ function Decisions({ truck }: { truck: StoreTicketView }) {
   return (
     <span data-testid="decisions" className="flex flex-col gap-1 text-left text-sm">
       {decisions.map((decision) => (
-        <DecisionLine key={decision.approvalId} decision={decision} />
+        <DecisionLine key={decision.approvalId} decision={decision} noInvoice={truck.noInvoice} />
       ))}
       {cancelled && <CancelLine cancelled={cancelled} />}
     </span>
@@ -237,6 +255,7 @@ export function History() {
                 cell: (truck) => (
                   <span className="flex flex-col items-end gap-1 @2xl:items-start">
                     <TicketStatusPill status={truck.status} cancelled={!!truck.cancelled} />
+                    <LoadPill truck={truck} />
                     <span className="text-xs text-muted-foreground">
                       {truck.closedAt && timeOf(truck.closedAt)}
                     </span>
@@ -247,7 +266,11 @@ export function History() {
                 id: "net",
                 header: t("slip.netWeight"),
                 nowrap: true,
-                cell: (truck) => kg(truck.netKg),
+                cell: (truck) =>
+                  // An empty vehicle has one weight and no net.
+                  truck.load === "EMPTY"
+                    ? `${t("slip.emptyWeight")}: ${kg(truck.firstWeightKg)}`
+                    : kg(truck.netKg),
               },
               {
                 id: "invoice",
@@ -306,6 +329,7 @@ function TicketDecisions({ ticketId }: { ticketId: number }) {
           {decided.map((row) => (
             <DecisionLine
               key={row.id}
+              noInvoice={ticket.noInvoice}
               decision={{
                 approvalId: row.id,
                 kind: row.kind,

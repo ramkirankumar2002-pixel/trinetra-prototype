@@ -139,7 +139,7 @@ function Type2Actions({ request, busy, decide, ask }: ActionProps) {
   return (
     <>
       <p>
-        {t("store.type2.text", {
+        {t(ticket.noInvoice ? "store.noInvoice.text" : "store.type2.text", {
           kg: ticket.heldWeightKg === null ? "—" : formatKg(ticket.heldWeightKg),
         })}
       </p>
@@ -572,7 +572,11 @@ export function RequestDetail({ approvalId }: { approvalId: number }) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <KindPill approval={approval} needsBill={request.needsBill} />
+        <KindPill
+          approval={approval}
+          needsBill={request.needsBill}
+          noInvoice={request.ticket?.noInvoice}
+        />
         {pending && <WaitPill since={approval.createdAt} />}
         {!ticket && <p>{t("store.help.noTicket")}</p>}
       </div>

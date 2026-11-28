@@ -129,7 +129,7 @@ for (const role of ROLES) {
 
       // The login cookie belongs to the website, and scripts cannot read it.
       const cookie = (await context.cookies(WEB_URL)).find(
-        (item) => item.name === "trinetra_session",
+        (item) => item.name === `trinetra_${role.path}_session`,
       );
       expect(cookie).toMatchObject({ domain: "localhost", httpOnly: true, sameSite: "Lax" });
       // Every API call went to the website's own address.
@@ -157,13 +157,23 @@ for (const role of ROLES) {
       link.restore();
       await expect(page.getByTestId("connection")).toHaveText("Online");
 
-      // The other parts refuse this role, each at its own login.
+      // The other parts do not open with this login: each asks for its own.
       for (const other of ROLES.filter((item) => item.path !== role.path)) {
         await page.goto(`/${other.path}`);
         await expect(page).toHaveURL(pageAt(`/${other.path}/login`));
-        await expect(page.getByText(`You are logged in as ${user.name}`)).toBeVisible();
+        await expect(page.getByLabel("Username")).toBeEnabled();
         await expect(page.getByText(other.english)).toHaveCount(0);
       }
+
+      // This role's PIN on another part's login logs nobody in there, and says why.
+      // (A staff login: the weighbridge's is not made for this phone-sized window.)
+      const elsewhere = ROLES.find((item) => item.path !== role.path && item.path !== "kiosk")!;
+      await page.goto(`/${elsewhere.path}/login`);
+      await logIn(page, user.username, user.pin);
+      await expect(page.getByRole("alert").filter({ hasText: "This page needs a" })).toBeVisible();
+      expect((await context.cookies(WEB_URL)).map((item) => item.name)).toEqual([
+        `trinetra_${role.path}_session`,
+      ]);
 
       // Log out asks first.
       await page.goto(`/${role.path}`);
@@ -195,3 +205,37 @@ for (const role of ROLES) {
     });
   });
 }
+
+test("one browser stays logged in to the kiosk, the supervisor and the store at once", async ({
+  context,
+}) => {
+  const tabs = [];
+  // One browser, one cookie jar: each login is made on its own page, one after another.
+  for (const role of ROLES) {
+    const tab = await context.newPage();
+    await tab.setViewportSize(role.size);
+    await tab.goto(`/${role.path}/login`);
+    const user = seedUser(role.username);
+    await logIn(tab, user.username, user.pin);
+    await expect(tab).toHaveURL(pageAt(`/${role.path}`));
+    await expect(tab.getByTestId("connection")).toHaveText("Online");
+    tabs.push({ role, tab });
+  }
+  expect((await context.cookies(WEB_URL)).map((item) => item.name).sort()).toEqual(
+    ROLES.map((role) => `trinetra_${role.path}_session`).sort(),
+  );
+
+  // Logging in to the others logged nobody out: every page, loaded afresh, is still in.
+  for (const { role, tab } of tabs) {
+    await tab.reload();
+    await expect(tab).toHaveURL(pageAt(`/${role.path}`));
+    await expect(tab.getByTestId("connection")).toHaveText("Online");
+    await expect(tab.getByText(role.english)).toBeVisible();
+  }
+
+  // The demo settings are the store officer's page, in the same browser.
+  const settings = await context.newPage();
+  await settings.goto("/settings");
+  await expect(settings.getByRole("heading", { level: 1, name: "Demo settings" })).toBeVisible();
+  await expect(settings).toHaveURL(pageAt("/settings"));
+});

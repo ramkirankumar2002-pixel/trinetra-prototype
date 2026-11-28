@@ -2,7 +2,7 @@
 // forwarded by Next), so the login cookie goes along. Every failure is an ApiError with a
 // code, which the screens turn into words in the user's language.
 import type { ErrorResponse } from "@trinetra/shared";
-import { AREAS, areaOf, loginPath } from "./areas";
+import { appHeaders, AREAS, areaOf, loginPath } from "./areas";
 
 export class ApiError extends Error {
   override name = "ApiError";
@@ -71,7 +71,10 @@ export function createApiClient(options: ApiClientOptions = {}) {
 
   async function request<T>(method: Method, path: string, init: RequestOptions = {}): Promise<T> {
     const { body, signal, redirectOn401 = true } = init;
-    const headers: Record<string, string> = { accept: "application/json" };
+    const headers: Record<string, string> = {
+      accept: "application/json",
+      ...appHeaders(currentPath()),
+    };
     const isForm = typeof FormData !== "undefined" && body instanceof FormData;
     if (body !== undefined && !isForm) headers["content-type"] = "application/json";
     if (KEYED.has(method)) headers["idempotency-key"] = init.idempotencyKey ?? newIdempotencyKey();

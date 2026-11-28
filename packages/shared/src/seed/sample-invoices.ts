@@ -1,6 +1,9 @@
-// The made-up SAMPLE invoices, one per demo scenario. The files in
-// scripts/sample-invoices/ are drawn from this data (pnpm sim:invoices), and
-// "pick" demo mode returns it without reading any file.
+// The made-up SAMPLE invoices. The files in scripts/sample-invoices/ are drawn from this
+// data (pnpm sim:invoices), and "pick" demo mode returns it without reading any file.
+//
+// Every ordinary bill is for 20,000 kg: the net weight of the simulator's loaded and empty
+// trucks, and of a 200 g cargo on the model weighbridge. Two bills differ on purpose:
+// "scrap-small" (at or below the threshold: Type 3) and "aggregate-short" (will not pass).
 import type { TicketType } from "../domain";
 import { DEFAULT_MODEL_SCALE } from "../hardware";
 
@@ -9,20 +12,16 @@ export const SAMPLE_INVOICE_IDS = [
   "steel-scrap",
   "sand",
   "aggregate",
+  "aggregate-10",
   "steel-bars",
   "bitumen",
-  // For the real model weighbridge (docs/HARDWARE.md).
-  "model-cement",
-  "model-steel-bars",
-  "model-bitumen",
-  "model-steel-scrap",
-  "model-sand",
-  "model-aggregate",
-  "model-bricks",
+  "bricks",
+  "scrap-small",
+  "aggregate-short",
 ] as const;
 export type SampleInvoiceId = (typeof SAMPLE_INVOICE_IDS)[number];
 
-/** The cargo the "model-" bills are written for, in grams on the model weighbridge. */
+/** The cargo most bills are written for, in grams on the model weighbridge. */
 export const MODEL_CARGO_G = 200;
 /** What those bills say: the model cargo at the default model scale. */
 export const MODEL_CARGO_KG = MODEL_CARGO_G * DEFAULT_MODEL_SCALE;
@@ -46,10 +45,10 @@ export interface SampleInvoice {
   expected: { material: string; weightKg: number; type: TicketType };
 }
 
-const SCENARIO_INVOICES: readonly SampleInvoice[] = [
+export const SAMPLE_INVOICES: readonly SampleInvoice[] = [
   {
     id: "cement",
-    scenario: "Type 1: a supervisor checks the truck",
+    scenario: "Type 2: the store officer approves",
     printed: {
       invoice_number: "SMPL-CEM-001",
       invoice_date: "2026-11-26",
@@ -57,11 +56,11 @@ const SCENARIO_INVOICES: readonly SampleInvoice[] = [
       transporter: "Sri Balaji Transport",
       vehicle_number: "MH 12 AB 1234",
       material: "OPC 53 Grade Cement",
-      quantity: 14.31,
+      quantity: 20,
       quantity_unit: "MT",
     },
-    quantityText: "14.310",
-    expected: { material: "Cement Bags", weightKg: 14_310, type: "TYPE_1" },
+    quantityText: "20.000",
+    expected: { material: "Cement Bags", weightKg: 20_000, type: "TYPE_2" },
   },
   {
     id: "steel-scrap",
@@ -73,15 +72,15 @@ const SCENARIO_INVOICES: readonly SampleInvoice[] = [
       transporter: "Maa Durga Logistics",
       vehicle_number: "UP 32 EF 9012",
       material: "MS Steel Scrap",
-      quantity: 1500,
+      quantity: 20000,
       quantity_unit: "kg",
     },
-    quantityText: "1,500",
-    expected: { material: "Steel Scrap", weightKg: 1500, type: "TYPE_2" },
+    quantityText: "20,000",
+    expected: { material: "Steel Scrap", weightKg: 20_000, type: "TYPE_2" },
   },
   {
     id: "sand",
-    scenario: "Type 3: no person needed",
+    scenario: "Type 1: Pankaj Gupta checks the truck",
     printed: {
       invoice_number: "SMPL-SND-003",
       invoice_date: "2026-11-26",
@@ -89,16 +88,15 @@ const SCENARIO_INVOICES: readonly SampleInvoice[] = [
       transporter: "Highway Carriers",
       vehicle_number: "MP 09 JK 7890",
       material: "River Sand",
-      quantity: 9,
+      quantity: 200,
       quantity_unit: "Quintal",
     },
-    quantityText: "9",
-    expected: { material: "Sand", weightKg: 900, type: "TYPE_3" },
+    quantityText: "200",
+    expected: { material: "Sand", weightKg: 20_000, type: "TYPE_1" },
   },
   {
     id: "aggregate",
-    // The simulator's loaded and empty trucks differ by 14,310 kg: 1.31 % less than this.
-    scenario: "Tolerance fail: the weight will not match",
+    scenario: "Type 1: Suresh Yadav (trips 1 to 4), then Vikram Sharma",
     printed: {
       invoice_number: "SMPL-AGG-004",
       invoice_date: "2026-11-26",
@@ -106,15 +104,31 @@ const SCENARIO_INVOICES: readonly SampleInvoice[] = [
       transporter: "Kisan Roadlines",
       vehicle_number: "DL 01 NP 6789",
       material: "Crushed Stone Aggregate 20 mm",
-      quantity: 14.5,
+      quantity: 20,
       quantity_unit: "MT",
     },
-    quantityText: "14.500",
-    expected: { material: "Aggregate 20 mm", weightKg: 14_500, type: "TYPE_2" },
+    quantityText: "20.000",
+    expected: { material: "Aggregate 20 mm", weightKg: 20_000, type: "TYPE_1" },
+  },
+  {
+    id: "aggregate-10",
+    scenario: "Type 1: Ravi Singh (trips 1 to 3), then Mahesh Patel",
+    printed: {
+      invoice_number: "SMPL-AGG-007",
+      invoice_date: "2026-11-26",
+      supplier: "Shree Ram Crushers",
+      transporter: "Maa Durga Logistics",
+      vehicle_number: "UP 70 GH 3456",
+      material: "Crushed Stone Aggregate 10 mm",
+      quantity: 20,
+      quantity_unit: "MT",
+    },
+    quantityText: "20.000",
+    expected: { material: "Aggregate 10 mm", weightKg: 20_000, type: "TYPE_1" },
   },
   {
     id: "steel-bars",
-    scenario: "Type 1 at another unloading point: its own supervisor checks",
+    scenario: "Type 2: the store officer approves",
     printed: {
       invoice_number: "SMPL-BAR-005",
       invoice_date: "2026-11-26",
@@ -122,15 +136,15 @@ const SCENARIO_INVOICES: readonly SampleInvoice[] = [
       transporter: "Highway Carriers",
       vehicle_number: "RJ 14 LM 2345",
       material: "TMT Steel Bars Fe500",
-      quantity: 14.31,
+      quantity: 20,
       quantity_unit: "MT",
     },
-    quantityText: "14.310",
-    expected: { material: "Steel Bars", weightKg: 14_310, type: "TYPE_1" },
+    quantityText: "20.000",
+    expected: { material: "Steel Bars", weightKg: 20_000, type: "TYPE_2" },
   },
   {
     id: "bitumen",
-    scenario: "Type 1: the supervisor depends on the trip number",
+    scenario: "Type 2: the store officer approves",
     printed: {
       invoice_number: "SMPL-BIT-006",
       invoice_date: "2026-11-26",
@@ -138,75 +152,58 @@ const SCENARIO_INVOICES: readonly SampleInvoice[] = [
       transporter: "Kisan Roadlines",
       vehicle_number: "BR 06 QR 4321",
       material: "VG-30 Bitumen",
-      quantity: 14.31,
+      quantity: 20,
       quantity_unit: "MT",
     },
-    quantityText: "14.310",
-    expected: { material: "Bitumen", weightKg: 14_310, type: "TYPE_1" },
+    quantityText: "20.000",
+    expected: { material: "Bitumen", weightKg: 20_000, type: "TYPE_2" },
   },
-];
-
-/**
- * A bill for the model weighbridge: the same truck (plate, supplier, transporter) as the
- * material's other sample, carrying the model cargo.
- */
-function modelBill(
-  id: SampleInvoiceId,
-  number: number,
-  truck: Pick<SampleInvoice["printed"], "supplier" | "transporter" | "vehicle_number">,
-  printedMaterial: string,
-  material: string,
-  type: TicketType,
-): SampleInvoice {
-  return {
-    id,
-    scenario: `Model weighbridge, ${MODEL_CARGO_G} g cargo: ${material}`,
+  {
+    id: "bricks",
+    scenario: "Type 3: no person needed",
     printed: {
-      invoice_number: `SMPL-MOD-${String(number).padStart(3, "0")}`,
+      invoice_number: "SMPL-BRK-008",
       invoice_date: "2026-11-26",
-      supplier: truck.supplier,
-      transporter: truck.transporter,
-      vehicle_number: truck.vehicle_number,
-      material: printedMaterial,
-      quantity: MODEL_CARGO_KG / 1000,
-      quantity_unit: "MT",
-    },
-    quantityText: (MODEL_CARGO_KG / 1000).toFixed(3),
-    expected: { material, weightKg: MODEL_CARGO_KG, type },
-  };
-}
-
-/** The model bill for the material of another sample, with that sample's truck. */
-function modelBillLike(
-  id: SampleInvoiceId,
-  number: number,
-  like: SampleInvoiceId,
-  type: TicketType,
-): SampleInvoice {
-  const { printed, expected } = SCENARIO_INVOICES.find((invoice) => invoice.id === like)!;
-  return modelBill(id, number, printed, printed.material, expected.material, type);
-}
-
-export const SAMPLE_INVOICES: readonly SampleInvoice[] = [
-  ...SCENARIO_INVOICES,
-  modelBillLike("model-cement", 1, "cement", "TYPE_1"),
-  modelBillLike("model-steel-bars", 2, "steel-bars", "TYPE_1"),
-  modelBillLike("model-bitumen", 3, "bitumen", "TYPE_1"),
-  // 20,000 kg is above these materials' thresholds, so the store officer checks them.
-  modelBillLike("model-steel-scrap", 4, "steel-scrap", "TYPE_2"),
-  modelBillLike("model-sand", 5, "sand", "TYPE_2"),
-  modelBillLike("model-aggregate", 6, "aggregate", "TYPE_2"),
-  // Bricks are always Type 3: the run that needs no person.
-  modelBill(
-    "model-bricks",
-    7,
-    {
       supplier: "Shree Ram Crushers",
       transporter: "Sri Balaji Transport",
       vehicle_number: "MH 14 CD 5678",
+      material: "Red Clay Bricks",
+      quantity: 20,
+      quantity_unit: "MT",
     },
-    "Red Clay Bricks",
-    "Bricks",
-    "TYPE_3",
-  ),
+    quantityText: "20.000",
+    expected: { material: "Bricks", weightKg: 20_000, type: "TYPE_3" },
+  },
+  {
+    id: "scrap-small",
+    scenario: "Type 3 by weight: 900 kg, at or below the 1,000 kg threshold",
+    printed: {
+      invoice_number: "SMPL-SCR-009",
+      invoice_date: "2026-11-26",
+      supplier: "Ganga Steel Traders",
+      transporter: "Maa Durga Logistics",
+      vehicle_number: "UP 32 EF 9012",
+      material: "MS Steel Scrap",
+      quantity: 9,
+      quantity_unit: "Quintal",
+    },
+    quantityText: "9",
+    expected: { material: "Steel Scrap", weightKg: 900, type: "TYPE_3" },
+  },
+  {
+    id: "aggregate-short",
+    scenario: "Tolerance fail: 20,000 kg arrives, 20,200 kg is invoiced",
+    printed: {
+      invoice_number: "SMPL-AGG-010",
+      invoice_date: "2026-11-26",
+      supplier: "Shree Ram Crushers",
+      transporter: "Kisan Roadlines",
+      vehicle_number: "DL 01 NP 6789",
+      material: "Crushed Stone Aggregate 20 mm",
+      quantity: 20.2,
+      quantity_unit: "MT",
+    },
+    quantityText: "20.200",
+    expected: { material: "Aggregate 20 mm", weightKg: 20_200, type: "TYPE_1" },
+  },
 ];

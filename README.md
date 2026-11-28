@@ -184,7 +184,7 @@ A job abandons STARTED tickets with no activity for 10 minutes. The lights, buzz
 
 ## Journeys
 
-`pnpm journey` runs six full truck journeys through the HTTP API: Type 3 automatic, Type 1 approved by the supervisor, fraud blocked, Type 2 approved by the store, a tolerance fail resolved by the store, and a Steel Bars truck that goes to Vikram Sharma, which Amit Kumar cannot see. Weights come from the simulator, and plates and invoices from the demo "pick" modes, so no camera or outside service is used. It needs `DEVICE_TOKEN` and `ADMIN_PIN`, and a migrated and seeded database. **It runs "Reset demo data" first.** It uses a backend already running on port 4000, or starts its own.
+`pnpm journey` runs eight full truck journeys through the HTTP API: Type 3 automatic (900 kg of steel scrap), Type 1 approved by the supervisor (sand), fraud blocked, Type 2 approved by the store (cement), a tolerance fail resolved by the store, a 10 mm aggregate truck that goes to Ravi Singh and which Pankaj Gupta cannot see, an empty truck, and a loaded truck without an invoice. Weights come from the simulator, and plates and invoices from the demo "pick" modes, so no camera or outside service is used. It needs `DEVICE_TOKEN` and `ADMIN_PIN`, and a migrated and seeded database. **It runs "Reset demo data" first.** It uses a backend already running on port 4000, or starts its own.
 
 ```powershell
 pnpm journey
@@ -214,22 +214,30 @@ To try the role guard, start the server with `NODE_ENV=test`. That adds `/api/te
 
 You need `DEVICE_TOKEN`, `CAM_FRONT_TOKEN`, `CAM_BACK_TOKEN` and `ADMIN_PIN` in `apps/server/.env`, and a seeded database. Use three terminals: `pnpm dev`, the simulator, and one for `pnpm office`.
 
-1. `pnpm office reset`, then `pnpm office pick cement` (or `sand`, `steel-scrap`, `aggregate`, `steel-bars`, `bitumen`). It prints the simulator command and the material to choose.
-2. In the simulator terminal: `pnpm sim --loaded 32560` (the number it printed).
+1. `pnpm office reset`, then `pnpm office pick sand` (or another bill from the table). It prints the simulator command and the material to choose.
+2. In the simulator terminal: `pnpm sim`.
 3. In Chrome open <http://localhost:3000/kiosk> and log in as `wb01`, PIN `3001`.
-4. Press `a` in the simulator: a loaded truck drives on. Answer on screen. At the QR code, click it (development only) and upload `scripts/sample-invoices/<name>.pdf` in the new tab.
-5. After the first weight press `l`. If someone must decide, run `pnpm office approve` (or `reject`; `pnpm office list` shows what waits).
-6. Press `e` for the second visit, and `l` when it is done.
+4. Press `a` in the simulator: a loaded truck (32,500 kg) drives on. Confirm the plate, press **Loaded** and answer on screen. At the QR code, click it (development only) and upload `scripts/sample-invoices/<name>.pdf` in the new tab.
+5. The result stays on the screen until the truck leaves: press `l`. If someone must decide, run `pnpm office approve` (or `reject`; `pnpm office list` shows what waits).
+6. Press `e` for the second visit (the same truck, empty: 12,500 kg), and `l` when it is done. The net weight, 20,000 kg, is what the bill says.
 7. `pnpm office real` switches the demo modes off.
 
-| Pick          | What you will see                                                          | `pnpm office approve`        |
-| ------------- | -------------------------------------------------------------------------- | ---------------------------- |
-| `sand`        | Type 3: nobody needed                                                      | never                        |
-| `cement`      | Type 1: the second visit waits for the supervisor                          | once, after the first weight |
-| `steel-scrap` | Type 2: wait for the store officer, then the slip under "Ready to collect" | once, after the first weight |
-| `aggregate`   | Type 2, then "weight does not match": hold                                 | after each weighing          |
+| Pick              | Material        | What you will see                                    | `pnpm office approve`        |
+| ----------------- | --------------- | ---------------------------------------------------- | ---------------------------- |
+| `bricks`          | Bricks          | Type 3: nobody needed                                | never                        |
+| `sand`            | Sand            | Type 1: Pankaj Gupta checks the truck                | once, after the first weight |
+| `aggregate`       | Aggregate 20 mm | Type 1: Suresh Yadav (trips 1–4), then Vikram Sharma | once, after the first weight |
+| `aggregate-10`    | Aggregate 10 mm | Type 1: Ravi Singh (trips 1–3), then Mahesh Patel    | once, after the first weight |
+| `cement`          | Cement Bags     | Type 2: wait aside for the store officer             | once, after the first weight |
+| `steel-scrap`     | Steel Scrap     | Type 2 (also `steel-bars`, `bitumen`)                | once, after the first weight |
+| `scrap-small`     | Steel Scrap     | Type 3 by weight, 900 kg: `pnpm sim --loaded 13400`  | never                        |
+| `aggregate-short` | Aggregate 20 mm | Type 1, then "weight does not match": hold           | after each weighing          |
 
-`steel-bars` is Type 1 for Vikram Sharma (`vikram`, PIN 1005). In "pick" mode the weighbridge shows a drawn "DEMO PHOTO" with the picked plate.
+**An empty truck:** with no ticket waiting for the plate, press `e` first, then **Empty** on the screen. One weight is taken and the visit is over.
+
+**No invoice:** press **No invoice** under the QR code and choose any material. The store officer must approve before the weight is saved (a Type 1 material then goes to its supervisor too), and there is no tolerance check.
+
+In "pick" mode the weighbridge shows a drawn "DEMO PHOTO" with the picked plate.
 
 ## Simulator
 
@@ -241,21 +249,21 @@ Start the backend (or `pnpm dev`), then in a second terminal:
 pnpm sim
 ```
 
-| Key | What happens                                                           |
-| --- | ---------------------------------------------------------------------- |
-| `a` | A truck arrives: the weight climbs, wobbles, then settles at 32,560 kg |
-| `e` | An empty truck arrives and settles at 18,250 kg                        |
-| `l` | The truck leaves: back to 0                                            |
-| `p` | Position: OK, then "move forward", then "move back"                    |
-| `u` | Switches an unstable wobble on or off                                  |
-| `t` | Starts or ends a tamper alarm                                          |
-| `c` | Switches both cameras off or on (offline 15 s after switching off)     |
-| `o` | All three boards go offline for 5 seconds                              |
-| `m` | Switches between the matching and the mismatched plate photos          |
-| `h` | Shows the keys                                                         |
-| `q` | Quits                                                                  |
+| Key | What happens                                                                      |
+| --- | --------------------------------------------------------------------------------- |
+| `a` | A **loaded** truck arrives: the weight climbs, wobbles, then settles at 32,500 kg |
+| `e` | An **empty** truck arrives and settles at 12,500 kg (also the second weighing)    |
+| `l` | The truck leaves: back to 0                                                       |
+| `p` | Position: OK, then "move forward", then "move back"                               |
+| `u` | Switches an unstable wobble on or off                                             |
+| `t` | Starts or ends a tamper alarm                                                     |
+| `c` | Switches both cameras off or on (offline 15 s after switching off)                |
+| `o` | All three boards go offline for 5 seconds                                         |
+| `m` | Switches between the matching and the mismatched plate photos                     |
+| `h` | Shows the keys                                                                    |
+| `q` | Quits                                                                             |
 
-It sends grams, like the real board (`--scale` must match "1 g = X kg" on `/settings`; the default is 100), and prints every command it receives (lights, buzzer, display, tare). Each camera sends a sample photo from [scripts/sample-plates](scripts/sample-plates) every 1.5 s: `match-*.jpg` show MH 12 AB 1234 front and back; `mismatch-back.jpg` shows MH 14 CD 5678. `pnpm sim:plates` draws them again. These are drawings for testing the connection, not for judging plate reading.
+It sends grams, like the real board, converted with the backend's current "1 g = X kg" (it asks with the weighbridge's demo login and `ADMIN_PIN`; `--scale` sets it by hand), and prints every command it receives (lights, buzzer, display, tare). Each camera sends a sample photo from [scripts/sample-plates](scripts/sample-plates) every 1.5 s: `match-*.jpg` show MH 12 AB 1234 front and back; `mismatch-back.jpg` shows MH 14 CD 5678. `pnpm sim:plates` draws them again. These are drawings for testing the connection, not for judging plate reading.
 
 To start with the mismatched pair, or to use a backend on another address:
 
@@ -356,7 +364,7 @@ With `pnpm dev` running (and the database seeded):
 | `/t/<token>`                       | No login: a ticket's page, from the QR code on its slip                                                             |
 | <http://localhost:3000/dev/ui>     | No login: the design system; `?kiosk=details` and others show sample weighbridge screens (not in production builds) |
 
-Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/default-data.ts), and `pnpm db:seed` prints them. One browser holds one login: logging in to another part replaces it. To be logged in to two at once, use two browser profiles or a private window.
+Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/default-data.ts), and `pnpm db:seed` prints them. The weighbridge, the supervisor and the store officer (with `/settings`) each have their own login cookie, so one browser can be logged in to all three at once. Two supervisors at once still need two browser profiles.
 
 - **API calls** go to `/api/*` on the website itself, and Next forwards them to `BACKEND_URL` (default `http://localhost:4000`), so the login cookie belongs to the website. Restart `pnpm dev` after changing it. **Live events** connect straight to `NEXT_PUBLIC_SOCKET_URL`.
 - **Website code** calls the backend only through `api` in `apps/web/src/lib/api.ts`. Errors are `ApiError` with a `code`; an ended login opens the right login page; every POST, PATCH and PUT carries an `Idempotency-Key`.
@@ -366,6 +374,8 @@ Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/defaul
 ### Browser tests
 
 Playwright logs in as each role with its demo PIN, checks the page, the language switch and the connection status, tries the other roles' pages and logs out. It drives the five truck journeys and the fallback screens through the real weighbridge screens (with the simulator's code, a second browser as the driver's phone, and the demo pick modes; **it runs "Reset demo data" first**), measures the kiosk's driver rules, and checks the dashboards at phone, tablet and desktop width. The whole run takes about 5 minutes and needs the device tokens and `ADMIN_PIN`; stop `pnpm sim` first, because only one simulator may be connected. It uses the installed **Google Chrome** and the development database, and uses a running `pnpm dev` or starts one. If another program holds port 3000, set `E2E_WEB_PORT` (for example `3100`) and stop `pnpm dev` first.
+
+To run them **beside** a running `pnpm dev` or `pnpm lan` without touching it, give the tests their own database, ports and Next build folder: set `DATABASE_URL` to another database (create, migrate and seed it first), `E2E_WEB_PORT=3100`, `E2E_BACKEND_PORT=4100` and `NEXT_DIST_DIR=.next-isolated`. For `pnpm journey` set `JOURNEY_SERVER_URL=http://localhost:4100` with the same `DATABASE_URL`. Next may add the extra folder to `apps/web/tsconfig.json`: do not commit that.
 
 ```powershell
 pnpm test:e2e
@@ -443,15 +453,15 @@ With `pnpm dev` running, open <http://localhost:3000/dev/readers> and log in as 
 
 If a service fails on stage, these settings replace it. They are in [default-data.ts](packages/shared/src/seed/default-data.ts); edit them and run `pnpm db:seed` (or change them while it runs on the `/settings` page). Running `pnpm db:seed` also puts them back to whatever the file says.
 
-| Setting                | Values         | Effect of `pick`                                                                                                                          |
-| ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `anpr_mode`            | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                                                          |
-| `supervisor_anpr_mode` | `real`, `pick` | The supervisor's photo "shows" `demo_plate` and is not read                                                                               |
-| `ocr_mode`             | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand`, `aggregate`, `steel-bars`, `bitumen`, or a `model-` one |
+| Setting                | Values         | Effect of `pick`                                                                  |
+| ---------------------- | -------------- | --------------------------------------------------------------------------------- |
+| `anpr_mode`            | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                  |
+| `supervisor_anpr_mode` | `real`, `pick` | The supervisor's photo "shows" `demo_plate` and is not read                       |
+| `ocr_mode`             | `real`, `pick` | Uses the sample invoice named by `demo_invoice` (the ids in `sample-invoices.ts`) |
 
 ### Sample invoices and the real check
 
-[scripts/sample-invoices](scripts/sample-invoices) holds made-up **SAMPLE** invoices as PDF and JPEG (`pnpm sim:invoices` draws them): six for the demo scenarios, and seven `model-*` bills of 20,000 kg for the real model weighbridge ([docs/HARDWARE.md](docs/HARDWARE.md#demo-cargo-and-bills)). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
+[scripts/sample-invoices](scripts/sample-invoices) holds ten made-up **SAMPLE** invoices as PDF and JPEG (`pnpm sim:invoices` draws them). Eight are for 20,000 kg, one for each material but Additive; `scrap-small` (900 kg) and `aggregate-short` (20,200 kg) differ on purpose. They fit the simulator and the real model weighbridge ([docs/HARDWARE.md](docs/HARDWARE.md#demo-cargo-and-bills)). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
 
 This reads them all with the **real services** (about 10 plate lookups and 4 Gemini requests):
 

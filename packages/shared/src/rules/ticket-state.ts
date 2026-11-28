@@ -16,8 +16,10 @@ export const TICKET_EVENTS = [
   "MISMATCH_REJECTED",
   /** Type 1 and 3: the first weight is saved. */
   "FIRST_WEIGHT_SAVED",
-  /** Type 2: the first weight is held for the store officer. */
+  /** Type 2, and any truck without an invoice: the first weight is held for the store officer. */
   "FIRST_WEIGHT_HELD",
+  /** An empty truck: its one weight is saved and the visit is over. */
+  "EMPTY_WEIGHT_SAVED",
   "STORE_APPROVED",
   "STORE_REJECTED",
   /** Type 1, after the first weight: a supervisor must check the truck. */
@@ -49,6 +51,7 @@ export const TICKET_TRANSITIONS: Readonly<
     MISMATCH_LIMIT_REACHED: "MISMATCH_PENDING",
     FIRST_WEIGHT_SAVED: "READY_FOR_UNLOAD",
     FIRST_WEIGHT_HELD: "STORE_PENDING",
+    EMPTY_WEIGHT_SAVED: "COMPLETED",
     PLATE_WARNING_APPROVED: "STARTED",
     PLATE_WARNING_REJECTED: "REJECTED",
     ABANDON: "ABANDONED",
@@ -105,6 +108,7 @@ export interface TransitionContext {
 const FIRST_WEIGHT_EVENTS: ReadonlySet<TicketEvent> = new Set([
   "FIRST_WEIGHT_SAVED",
   "FIRST_WEIGHT_HELD",
+  "EMPTY_WEIGHT_SAVED",
 ]);
 
 export class WrongStageError extends Error {
@@ -166,8 +170,9 @@ export function isClosedStatus(status: TicketStatus): boolean {
   return (CLOSED_TICKET_STATUSES as readonly TicketStatus[]).includes(status);
 }
 
-export const firstWeightEvent = (type: TicketType): TicketEvent =>
-  type === "TYPE_2" ? "FIRST_WEIGHT_HELD" : "FIRST_WEIGHT_SAVED";
+/** A Type 2 weight waits for the store officer, and so does every truck without an invoice. */
+export const firstWeightEvent = (type: TicketType, noInvoice = false): TicketEvent =>
+  type === "TYPE_2" || noInvoice ? "FIRST_WEIGHT_HELD" : "FIRST_WEIGHT_SAVED";
 
 /** The move out of READY_FOR_UNLOAD. */
 export const afterFirstWeightEvent = (type: TicketType): TicketEvent =>

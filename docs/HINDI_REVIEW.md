@@ -36,8 +36,6 @@ The material words in the seed file (`aliasesHi`) are separate and also unchecke
 | `kiosk.heading.notApproved` | Not approved | मंज़ूरी नहीं |
 | `kiosk.heading.ended` | Visit ended | विज़िट समाप्त |
 | `kiosk.goStore` | Please go to the store office. | कृपया स्टोर ऑफ़िस जाएँ। |
-| `kiosk.waitStore.title` | Please move aside and wait. | कृपया गाड़ी एक तरफ़ करके रुकें। |
-| `kiosk.waitStore.text` | The store officer is coming. | स्टोर अधिकारी आ रहे हैं। |
 | `kiosk.mismatch.text` | The material did not match your invoice. | बताया गया सामान आपके बिल से नहीं मिला। |
 | `kiosk.notApprovedEarlier.title` | Not approved earlier. | पहले मंज़ूरी नहीं मिली थी। |
 | `kiosk.rejected.title` | Not approved. Please leave. | मंज़ूरी नहीं मिली। कृपया जाएँ। |
@@ -91,7 +89,6 @@ The material words in the seed file (`aliasesHi`) are separate and also unchecke
 | `kiosk.invoice.failed` | Not read | पढ़ा नहीं गया |
 | `kiosk.invoice.couldNotRead` | The invoice could not be read. | बिल पढ़ा नहीं जा सका। |
 | `kiosk.invoice.again` | Upload again | फिर भेजें |
-| `kiosk.invoice.without` | Go on without it | बिना बिल आगे बढ़ें |
 | `kiosk.invoice.upload` | Upload invoice | बिल भेजें |
 | `kiosk.invoice.check` | Check what was read | पढ़ी गई जानकारी जाँचें |
 | `kiosk.invoice.wasRead` | Your invoice has been read. | आपका बिल पढ़ लिया गया है। |
@@ -740,3 +737,38 @@ New texts for the issues in [MANUAL_CHECK.md](MANUAL_CHECK.md). Not checked by a
 | `settings.scaleInUse` | A truck has been weighed and is not finished. Finish it first, or reset demo data. | एक गाड़ी का वज़न लिया जा चुका है और काम पूरा नहीं हुआ। पहले उसे पूरा करें, या डेमो डेटा रीसेट करें। |
 | `settings.bridgeNotEmpty` | Take the truck off the weighbridge first. | पहले गाड़ी को धर्म कांटे से हटाएँ। |
 | `weighbridge.fault` | Weighbridge fault | धर्म कांटे में खराबी |
+
+## Fixes after the simulator test
+
+2026-11-28. 26 new texts and 2 changed ones (listed first; their older rows above were removed): “Loaded or empty”, “No invoice”, the empty vehicle's weight and slip, and what the weighbridge shows after a weight. **Check the driver's screens first:** `kiosk.load.*`, `kiosk.invoice.none`, `kiosk.result.*`, `kiosk.waitStore.*` and `slip.*`.
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `kiosk.waitStore.title` | Wait aside for the store officer | किनारे रुककर स्टोर अधिकारी का इंतज़ार करें |
+| `kiosk.waitStore.text` | Please move your truck off the bridge. | कृपया ट्रक को वेब्रिज से हटाएँ। |
+| `kiosk.load.heading` | Loaded or empty? | भरा या खाली? |
+| `kiosk.load.ask` | Choose one | एक चुनें |
+| `kiosk.load.loaded` | Loaded | भरा हुआ |
+| `kiosk.load.loadedText` | My truck carries material | ट्रक में सामान है |
+| `kiosk.load.empty` | Empty | खाली |
+| `kiosk.load.emptyText` | Nothing on my truck | ट्रक में कुछ नहीं है |
+| `kiosk.invoice.none` | No invoice | बिल नहीं है |
+| `kiosk.weigh.empty` | Empty vehicle weight | खाली गाड़ी का वज़न |
+| `kiosk.result.driveOff` | Please drive off | अब गाड़ी ले जाएँ |
+| `kiosk.result.emptyWeight` | Empty vehicle weight: {kg} | खाली गाड़ी का वज़न: {kg} |
+| `kiosk.result.goToWith` | Go to {point} – {name} | {point} पर जाएँ – {name} |
+| `kiosk.result.firstWeight` | First weight: {kg} | पहला वज़न: {kg} |
+| `kiosk.heading.weighed` | Weight taken | वज़न हो गया |
+| `kiosk.error.alreadyLoaded` | This visit already has a load. Choose Loaded. | इस ट्रिप में सामान दर्ज है। “भरा हुआ” चुनें। |
+| `slip.empty` | Empty vehicle weight | खाली गाड़ी का वज़न |
+| `slip.emptyWeight` | Empty weight | खाली वज़न |
+| `slip.invoice` | Invoice | बिल |
+| `slip.noInvoice` | No invoice – no tolerance check | बिल नहीं – वज़न की सीमा जाँच नहीं |
+| `slip.noInvoicePill` | No invoice | बिल नहीं |
+| `store.kind.noInvoice` | No invoice | बिल नहीं |
+| `store.noInvoice.text` | This truck has no invoice and is waiting aside. First weight held: {kg}. Approve to save it. There will be no tolerance check. | इस ट्रक का बिल नहीं है और यह किनारे रुका है। रोका गया पहला वज़न: {kg}। सेव करने के लिए मंज़ूरी दें। वज़न की सीमा जाँच नहीं होगी। |
+| `store.load.loaded` | Loaded truck | भरा ट्रक |
+| `store.load.empty` | Empty vehicle | खाली गाड़ी |
+| `store.event.NO_INVOICE` | Driver has no invoice | ड्राइवर के पास बिल नहीं है |
+| `store.event.EMPTY_WEIGHT_SAVED` | Empty vehicle weight saved | खाली गाड़ी का वज़न सेव हुआ |
+| `public.step.EMPTY_WEIGHT` | Empty vehicle weight | खाली गाड़ी का वज़न |

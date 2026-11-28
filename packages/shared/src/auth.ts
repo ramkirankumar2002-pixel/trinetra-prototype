@@ -26,6 +26,18 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+/**
+ * The website's three apps. Each has its own login cookie, so one browser can be logged in
+ * to all three. A page names its app in this header, and the server then reads that app's
+ * cookie alone. The header only chooses a cookie: the role in it is still checked.
+ */
+export const APP_HEADER = "x-trinetra-app";
+export const APP_ROLES = {
+  kiosk: "KIOSK",
+  supervisor: "SUPERVISOR",
+  store: "STORE",
+} as const satisfies Record<string, UserRole>;
+
 /** Returned by GET /api/auth/socket-token. */
 export interface SocketTokenResponse {
   token: string;

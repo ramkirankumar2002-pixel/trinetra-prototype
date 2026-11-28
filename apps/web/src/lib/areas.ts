@@ -1,11 +1,11 @@
 // The three role-based parts of the website, each with its own login.
-import type { UserRole } from "@trinetra/shared";
+import { APP_HEADER, APP_ROLES } from "@trinetra/shared";
 
 export const AREAS = {
-  kiosk: { role: "KIOSK", home: "/kiosk", login: "/kiosk/login" },
-  supervisor: { role: "SUPERVISOR", home: "/supervisor", login: "/supervisor/login" },
-  store: { role: "STORE", home: "/store", login: "/store/login" },
-} as const satisfies Record<string, { role: UserRole; home: string; login: string }>;
+  kiosk: { role: APP_ROLES.kiosk, home: "/kiosk", login: "/kiosk/login" },
+  supervisor: { role: APP_ROLES.supervisor, home: "/supervisor", login: "/supervisor/login" },
+  store: { role: APP_ROLES.store, home: "/store", login: "/store/login" },
+} as const satisfies Record<keyof typeof APP_ROLES, object>;
 
 export type AreaName = keyof typeof AREAS;
 
@@ -17,6 +17,15 @@ export function areaOf(pathname: string): AreaName | undefined {
   if (pathname === SETTINGS_PATH) return "store";
   const first = pathname.split("/")[1] ?? "";
   return Object.hasOwn(AREAS, first) ? (first as AreaName) : undefined;
+}
+
+/**
+ * Tells the backend which app is asking, so it reads that app's login cookie. Pages of no
+ * app (the ticket page, the phone's upload page) send nothing.
+ */
+export function appHeaders(pathname: string): Record<string, string> {
+  const area = areaOf(pathname);
+  return area ? { [APP_HEADER]: area } : {};
 }
 
 /** A page of this part, other than its login, that a login may go back to. */

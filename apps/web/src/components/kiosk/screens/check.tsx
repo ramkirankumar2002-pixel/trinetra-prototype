@@ -60,7 +60,11 @@ export function CheckScreen({ ticket }: { ticket: TicketView }) {
       skipped: "kiosk.check.notGiven",
       step: "name",
     },
-    { icon: FileText, label: "slip.invoiceNo", value: invoice.number },
+    {
+      icon: FileText,
+      label: "slip.invoiceNo",
+      value: ticket.noInvoice ? t("slip.noInvoicePill") : invoice.number,
+    },
     {
       icon: Weight,
       label: "slip.invoiceWeight",

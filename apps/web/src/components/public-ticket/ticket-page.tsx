@@ -65,6 +65,7 @@ const STEP_LOOK: Record<PublicStepName, { icon: LucideIcon; tone: Tone }> = {
   PLATE_READ: { icon: ScanLine, tone: "info" },
   BILL_READ: { icon: FileText, tone: "info" },
   FIRST_WEIGHT: { icon: Scale, tone: "info" },
+  EMPTY_WEIGHT: { icon: Scale, tone: "info" },
   PLATE_ALLOWED: { icon: ShieldCheck, tone: "go" },
   MATERIAL_SET: { icon: ShieldCheck, tone: "go" },
   SUPERVISOR_APPROVED: { icon: ShieldCheck, tone: "go" },
@@ -140,6 +141,9 @@ function Summary({ ticket }: { ticket: PublicTicketView }) {
         </div>
       </div>
 
+      {ticket.load === "EMPTY" && <StatusPill tone="info">{t("slip.empty")}</StatusPill>}
+      {ticket.noInvoice && <Banner tone="info">{t("slip.noInvoice")}</Banner>}
+
       <dl>
         <Row
           label={t("slip.material")}
@@ -148,7 +152,10 @@ function Summary({ ticket }: { ticket: PublicTicketView }) {
         <Row label={t("public.type")} value={ticket.type && t(`public.type.${ticket.type}`)} />
         <Row label={t("slip.invoiceNo")} value={ticket.invoiceNo} />
         <Row label={t("public.invoiceWeight")} value={kg(ticket.invoiceWeightKg)} />
-        <Row label={t("slip.firstWeight")} value={kg(ticket.firstWeightKg)} />
+        <Row
+          label={t(ticket.load === "EMPTY" ? "slip.emptyWeight" : "slip.firstWeight")}
+          value={kg(ticket.firstWeightKg)}
+        />
         <Row label={t("public.secondWeight")} value={kg(ticket.secondWeightKg)} />
         <Row label={t("slip.netWeight")} value={kg(ticket.netKg)} />
         <Row

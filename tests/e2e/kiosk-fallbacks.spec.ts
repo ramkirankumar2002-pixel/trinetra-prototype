@@ -8,6 +8,7 @@ import type { AnprCameraResult, AnprResponse, TicketView } from "@trinetra/share
 import { expectDriverRules } from "./driver-rules";
 import {
   arrive,
+  confirmLoaded,
   confirmPlate,
   heading,
   leave,
@@ -111,7 +112,7 @@ test("the plate: still reading, failed, front and back differ, and the keypad", 
   await look(page, "04-plate-keypad");
   await page.unroute("**/api/anpr");
   await press(page, "Next");
-  await heading(page, "Invoice");
+  await heading(page, "Loaded or empty?");
 });
 
 test("the invoice: no phone, being read, not read; then five wrong materials", async ({
@@ -121,7 +122,7 @@ test("the invoice: no phone, being read, not read; then five wrong materials", a
   await office.pick("UP70GH3456", "cement");
   await openKiosk(page);
   await arrive(page, bridge, 21_000);
-  await confirmPlate(page, "UP 70 GH 3456");
+  await confirmLoaded(page, "UP 70 GH 3456");
   await heading(page, "Invoice");
 
   const helpCalls: string[] = [];

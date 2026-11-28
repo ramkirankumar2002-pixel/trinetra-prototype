@@ -164,13 +164,15 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
       expect(read.warnings.map((w) => w.code)).toEqual(["VEHICLE_MISMATCH"]);
     });
 
-    it("has one sample that fails tolerance against the simulator's truck", () => {
-      const net = 32_560 - 18_250;
-      const results = Object.fromEntries(
-        SAMPLE_INVOICES.map((s) => [s.id, checkTolerance(net, s.expected.weightKg).pass]),
-      );
-      expect(results.aggregate).toBe(false);
-      expect(results.cement).toBe(true);
+    it("matches the simulator's trucks with every bill but the two made not to", () => {
+      const failing = (net: number) =>
+        SAMPLE_INVOICES.filter((s) => !checkTolerance(net, s.expected.weightKg).pass).map(
+          (s) => s.id,
+        );
+      // Loaded 32,500 kg, empty 12,500 kg.
+      expect(failing(20_000)).toEqual(["scrap-small", "aggregate-short"]);
+      // The small bill with its own loaded weight: pnpm sim --loaded 13400.
+      expect(failing(900)).not.toContain("scrap-small");
     });
   });
 

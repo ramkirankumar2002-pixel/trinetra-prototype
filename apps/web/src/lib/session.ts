@@ -5,8 +5,10 @@
 import { useQuery } from "@tanstack/react-query";
 import type { AuthResponse } from "@trinetra/shared";
 import { api } from "./api";
+import type { AreaName } from "./areas";
 
-export const ME_KEY = ["me"] as const;
+/** Each app has its own login, so each is remembered apart. */
+export const meKey = (area: AreaName) => ["me", area] as const;
 const SERVER_RETRY_MS = 3000;
 
 /** The server cannot be reached, or is asked too often: asking again later will work. */
@@ -19,10 +21,10 @@ export function isTemporary(error: unknown): boolean {
  * With `redirectOn401` (the default) an ended login goes to the login page; a login page
  * asks without it.
  */
-export function useMe(options: { redirectOn401?: boolean } = {}) {
+export function useMe(area: AreaName, options: { redirectOn401?: boolean } = {}) {
   const { redirectOn401 = true } = options;
   return useQuery({
-    queryKey: ME_KEY,
+    queryKey: meKey(area),
     queryFn: async ({ signal }) =>
       (await api.get<AuthResponse>("/api/auth/me", { signal, redirectOn401 })).user,
     // Asked again when the window gets focus: another tab may have logged out.

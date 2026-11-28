@@ -27,6 +27,8 @@ const publicUrl = publicWebUrl();
 const liveThroughWebsite = process.env.NEXT_PUBLIC_SOCKET_URL === "same-origin";
 
 const nextConfig: NextConfig = {
+  // A second Next beside a running one (the browser tests) needs its own build folder.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   env: { PUBLIC_WEB_URL: publicUrl },
   // Lets a phone on the same network use the development server.
   ...(publicUrl ? { allowedDevOrigins: [new URL(publicUrl).hostname] } : {}),

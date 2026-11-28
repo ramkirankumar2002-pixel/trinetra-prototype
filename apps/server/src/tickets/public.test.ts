@@ -71,9 +71,9 @@ describe.skipIf(!testDatabaseUrl)("public routes", { timeout: 30_000 }, () => {
     });
 
     it("never shows a phone number, an id, a PIN, the bill or a staff photo", async () => {
-      const id = await weighed({ material: "Cement Bags" });
+      const id = await weighed({ material: "Sand" });
       const request = await pending(id, "SUPERVISOR");
-      await h.call("amit", "POST", `/api/approvals/${request}/decide`, {
+      await h.call("pankaj", "POST", `/api/approvals/${request}/decide`, {
         decision: "REJECT",
         reason: "Driver said call 9811122233",
       });
@@ -106,8 +106,10 @@ describe.skipIf(!testDatabaseUrl)("public routes", { timeout: 30_000 }, () => {
           "invoiceNo",
           "invoiceWeightKg",
           "isDemo",
+          "load",
           "material",
           "netKg",
+          "noInvoice",
           "plate",
           "secondWeightKg",
           "status",
@@ -133,7 +135,7 @@ describe.skipIf(!testDatabaseUrl)("public routes", { timeout: 30_000 }, () => {
 
       const rejected = body.timeline.find((step) => step.step === "SUPERVISOR_REJECTED");
       expect(rejected).toMatchObject({
-        by: { name: "Amit Kumar", role: "SUPERVISOR" },
+        by: { name: "Pankaj Gupta", role: "SUPERVISOR" },
         reason: "Driver said call [number hidden]",
       });
       // A short-lived signed link to the newest front photo.
@@ -145,7 +147,7 @@ describe.skipIf(!testDatabaseUrl)("public routes", { timeout: 30_000 }, () => {
     });
 
     it("lists every step of a visit in order, as it goes on", async () => {
-      const id = await weighed({ material: "Cement Bags" });
+      const id = await weighed({ material: "Sand" });
       const { publicToken } = await view(id);
       const steps = async () => (await open(publicToken)).body.timeline.map((step) => step.step);
       expect(await steps()).toEqual(["ARRIVED", "PLATE_READ", "FIRST_WEIGHT"]);
@@ -154,13 +156,13 @@ describe.skipIf(!testDatabaseUrl)("public routes", { timeout: 30_000 }, () => {
       h.supervisorSees(PLATE);
       const form = h.form({ data: await h.jpeg(), type: "image/jpeg" });
       await h.call(
-        "amit",
+        "pankaj",
         "POST",
         `/api/supervisor/tickets/${id}/photo`,
         form.payload,
         form.headers,
       );
-      await h.call("amit", "POST", `/api/approvals/${request}/decide`, { decision: "APPROVE" });
+      await h.call("pankaj", "POST", `/api/approvals/${request}/decide`, { decision: "APPROVE" });
       await secondWeight(id);
 
       const { body } = await open(publicToken);
@@ -174,11 +176,11 @@ describe.skipIf(!testDatabaseUrl)("public routes", { timeout: 30_000 }, () => {
         "COMPLETED",
       ]);
       expect(body.timeline[2]).toMatchObject({ kg: 32_560, by: null });
-      expect(body.timeline[3]?.by).toEqual({ name: "Amit Kumar", role: "SUPERVISOR" });
+      expect(body.timeline[3]?.by).toEqual({ name: "Pankaj Gupta", role: "SUPERVISOR" });
     });
 
     it("shows the store officer's approval and the weight they accepted", async () => {
-      const id = await weighed({ material: "Sand", invoiceKg: 14_500 });
+      const id = await weighed({ material: "Cement Bags", invoiceKg: 14_500 });
       const first = await pending(id, "STORE_TYPE2");
       await h.call("store", "POST", `/api/approvals/${first}/decide`, { decision: "APPROVE" });
       await secondWeight(id);
@@ -213,7 +215,7 @@ describe.skipIf(!testDatabaseUrl)("public routes", { timeout: 30_000 }, () => {
     it("counts today's trucks and weights, with nothing private", async () => {
       const done = await weighed();
       await secondWeight(done);
-      await weighed({ plate: OTHER_PLATE, material: "Sand", invoiceKg: 14_500 });
+      await weighed({ plate: OTHER_PLATE, material: "Cement Bags", invoiceKg: 14_500 });
       const third = await started({ plate: "UP32EF9012" });
       await h.db.execute(
         `update tickets set status = 'REJECTED', closed_at = now() where id = ${third}`,

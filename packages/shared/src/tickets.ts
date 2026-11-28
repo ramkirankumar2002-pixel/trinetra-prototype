@@ -13,6 +13,8 @@ import {
   type PhotoKind,
   type PlateMatchResult,
   type PlateWarningReason,
+  TICKET_LOADS,
+  type TicketLoad,
   type TicketStatus,
   type TicketType,
 } from "./domain";
@@ -51,6 +53,10 @@ export const ticketDetailsSchema = z
     transporter: shortText,
     driverName: shortText,
     driverPhone: z.string().regex(DRIVER_PHONE_PATTERN, "Enter a 10 digit mobile number."),
+    /** "Loaded" or "Empty". An empty truck is weighed once, and that ends its visit. */
+    load: z.enum(TICKET_LOADS),
+    /** "No invoice": there is no tolerance check, and the store officer must approve. */
+    noInvoice: z.literal(true),
     /** The driver switched language: the phone's upload page follows the ticket. */
     language: z.enum(LANGUAGES),
   })
@@ -244,6 +250,9 @@ export interface TicketView {
   status: TicketStatus;
   type: TicketType | null;
   language: Language;
+  load: TicketLoad;
+  /** A loaded truck without an invoice: no tolerance check. */
+  noInvoice: boolean;
   material: string | null;
   supplier: string | null;
   transporter: string | null;
@@ -339,6 +348,7 @@ export interface StoreRequestView {
     status: TicketStatus;
     type: TicketType | null;
     material: string | null;
+    noInvoice: boolean;
     supplier: string | null;
     invoiceWeightKg: number | null;
     heldWeightKg: number | null;
@@ -395,6 +405,10 @@ export interface StoreTicketView {
   plate: string;
   status: TicketStatus;
   type: TicketType | null;
+  load: TicketLoad;
+  noInvoice: boolean;
+  /** An empty truck's one weight; a loaded truck's first. */
+  firstWeightKg: number | null;
   material: string | null;
   tripNo: number | null;
   unloadingPoint: { code: string; name: string } | null;

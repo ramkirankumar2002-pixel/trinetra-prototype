@@ -20,6 +20,7 @@ import {
   type CreateTicketResponse,
   type DemoSettings,
   type DetailsResponse,
+  type KioskCollectResponse,
   type KioskStateResponse,
   type LiveSummaryResponse,
   type PublicTicketView,
@@ -34,6 +35,7 @@ import {
 } from "@trinetra/shared";
 import { SEED_USERS, type SampleInvoiceId } from "@trinetra/shared/seed";
 import { SimMainBoard } from "./sim/board";
+import { EMPTY_KG, LOADED_KG } from "./sim/weight-model";
 
 const envFile = fileURLToPath(new URL("../apps/server/.env", import.meta.url));
 if (existsSync(envFile)) process.loadEnvFile(envFile);
@@ -123,8 +125,10 @@ async function logIn(username: string): Promise<void> {
 
 const KIOSK = "wb01";
 const STORE = "ram";
-const SUPERVISOR = "amit";
-const VIKRAM = "vikram";
+// Whom the unloading rules send the Type 1 trucks of these journeys to.
+const PANKAJ = "pankaj";
+const SURESH = "suresh";
+const RAVI = "ravi";
 
 const demo = <T>(method: string, path: string, body?: unknown) =>
   api<T>(method, `/api/demo/${path}`, {
@@ -280,6 +284,8 @@ async function checkIn(truck: Truck): Promise<TicketView> {
   });
   step(`Driver confirms the plate. Ticket ${ticket.ticketNo} is ${ticket.status}.`);
   hardwareSaid();
+  await api("PATCH", `/api/tickets/${ticket.id}/details`, { who: KIOSK, body: { load: "LOADED" } });
+  step("No open ticket for this plate: the driver says the truck is loaded.");
 
   const link = await api<UploadLinkResponse>("POST", `/api/tickets/${ticket.id}/upload-link`, {
     who: KIOSK,
@@ -351,9 +357,12 @@ async function secondVisit(truck: Truck, ticket: TicketView): Promise<TicketView
   const saved = await api<TicketView>("POST", `/api/tickets/${ticket.id}/second-weight`, {
     who: KIOSK,
   });
+  const compared =
+    saved.invoice.weightKg === null
+      ? "no invoice, no tolerance check"
+      : `invoice ${formatKg(saved.invoice.weightKg)}, variance ${saved.variancePct}%`;
   step(
-    `Second weight ${formatKg(saved.secondWeightKg!)}: net ${formatKg(saved.netKg!)}, invoice ` +
-      `${formatKg(saved.invoice.weightKg!)}, variance ${saved.variancePct}%.`,
+    `Second weight ${formatKg(saved.secondWeightKg!)}: net ${formatKg(saved.netKg!)}, ${compared}.`,
   );
   say(`    Status: ${saved.status}${saved.holdReason ? ` (${saved.holdReason})` : ""}`);
   await sleep(200);
@@ -393,7 +402,7 @@ const waitingFor = async (who: string) =>
     )
   ).tickets;
 
-async function supervisorChecks(ticket: TicketView, seen: string, who: string = SUPERVISOR) {
+async function supervisorChecks(ticket: TicketView, seen: string, who: string = PANKAJ) {
   const tickets = await waitingFor(who);
   const mine = tickets.find((item) => item.ticketId === ticket.id);
   check(mine, "The truck is not on the supervisor's list.");
@@ -423,7 +432,7 @@ async function supervisorChecks(ticket: TicketView, seen: string, who: string = 
 const decideAsSupervisor = (
   approvalId: number,
   body: Record<string, unknown>,
-  who: string = SUPERVISOR,
+  who: string = PANKAJ,
 ) => api("POST", `/api/approvals/${approvalId}/decide`, { who, body });
 
 // ---- The final ticket ----
@@ -452,8 +461,18 @@ async function showTicket(id: number, expected: TicketStatus): Promise<TicketVie
   const kg = (value: number | null) => (value === null ? "-" : formatKg(value));
   const lines: [string, string][] = [
     ["Ticket", `${ticket.ticketNo}  ${formatPlate(ticket.plate)}  ${ticket.status}`],
-    ["Material", `${ticket.material} (${ticket.type}), ${ticket.supplier}`],
-    ["Invoice", `${ticket.invoice.number}, ${kg(ticket.invoice.weightKg)}`],
+    [
+      "Material",
+      ticket.load === "EMPTY"
+        ? "empty vehicle"
+        : `${ticket.material} (${ticket.type}), ${ticket.supplier ?? "-"}`,
+    ],
+    [
+      "Invoice",
+      ticket.noInvoice
+        ? "none: no tolerance check"
+        : `${ticket.invoice.number ?? "-"}, ${kg(ticket.invoice.weightKg)}`,
+    ],
     ["Weights", `first ${kg(ticket.firstWeightKg)}, second ${kg(ticket.secondWeightKg)}`],
     [
       "Result",
@@ -483,18 +502,19 @@ function title(text: string): void {
   console.log(`\n${"=".repeat(78)}\n${text}\n${"=".repeat(78)}`);
 }
 
-// ---- The six journeys ----
+// ---- The eight journeys ----
 
 async function typeThreeAutomatic(): Promise<string> {
-  title("1. Type 3, fully automatic: sand, 900 kg on the invoice");
+  title("1. Type 3, fully automatic: steel scrap, 900 kg (at or below the 1,000 kg threshold)");
   const truck: Truck = {
-    plate: "MP09JK7890",
-    invoice: "sand",
-    material: "Sand",
-    loadedKg: 19_150,
-    emptyKg: 18_250,
+    plate: "UP32EF9012",
+    invoice: "scrap-small",
+    material: "Steel Scrap",
+    loadedKg: EMPTY_KG + 900,
+    emptyKg: EMPTY_KG,
   };
   let ticket = await firstWeight(await checkIn(truck));
+  check(ticket.type === "TYPE_3", "900 kg of steel scrap is Type 3.");
   check(ticket.status === "READY_FOR_SECOND", "A Type 3 truck needs nobody.");
   await printSlip(ticket.id, "FIRST");
   await driveOff();
@@ -510,32 +530,42 @@ async function typeThreeAutomatic(): Promise<string> {
   return ticket.publicToken;
 }
 
+const SAND: Truck = {
+  plate: "MP09JK7890",
+  invoice: "sand",
+  material: "Sand",
+  loadedKg: LOADED_KG,
+  emptyKg: EMPTY_KG,
+};
+
+function checkGoesTo(ticket: TicketView, point: string, name: string): void {
+  check(
+    ticket.unloadingPoint?.code === point && ticket.supervisor?.name === name,
+    `Expected ${point}, ${name}; got ${ticket.unloadingPoint?.code}, ${ticket.supervisor?.name}.`,
+  );
+}
+
 async function typeOneApproved(): Promise<string> {
-  title("2. Type 1, supervisor approves: cement");
-  const truck: Truck = {
-    plate: "MH12AB1234",
-    invoice: "cement",
-    material: "Cement Bags",
-    loadedKg: 32_560,
-    emptyKg: 18_250,
-  };
-  let ticket = await firstWeight(await checkIn(truck));
+  title("2. Type 1, supervisor approves: sand, always Type 1, goes to Pankaj Gupta");
+  let ticket = await firstWeight(await checkIn(SAND));
+  check(ticket.type === "TYPE_1", "Sand is Type 1 whatever it weighs.");
   check(ticket.status === "SUPERVISOR_PENDING", "A Type 1 truck needs its supervisor.");
+  checkGoesTo(ticket, "CH-012+300", "Pankaj Gupta");
   await printSlip(ticket.id, "FIRST");
   await driveOff();
 
-  await driveOn(truck.emptyKg);
+  await driveOn(SAND.emptyKg);
   say(
     `    Weighing too early: ${await refused("POST", `/api/tickets/${ticket.id}/second-weight`, 409, { who: KIOSK })}`,
   );
   await driveOff();
 
-  const { approvalId, match } = await supervisorChecks(ticket, truck.plate);
+  const { approvalId, match } = await supervisorChecks(ticket, SAND.plate);
   check(match, "The supervisor's photo should match.");
   await decideAsSupervisor(approvalId, { decision: "APPROVE" });
   step("Supervisor: APPROVE.");
 
-  ticket = await secondVisit(truck, ticket);
+  ticket = await secondVisit(SAND, ticket);
   await printSlip(ticket.id, "FINAL");
   await driveOff();
   await showTicket(ticket.id, "COMPLETED");
@@ -544,20 +574,14 @@ async function typeOneApproved(): Promise<string> {
 
 async function fraudBlocked(): Promise<string> {
   title("3. Fraud blocked: another truck is at the unloading point");
-  const truck: Truck = {
-    plate: "MH14CD5678",
-    invoice: "cement",
-    material: "Cement Bags",
-    loadedKg: 32_560,
-    emptyKg: 18_250,
-  };
+  const truck: Truck = { ...SAND, plate: "MH14CD5678" };
   const ticket = await firstWeight(await checkIn(truck));
   await driveOff();
 
   const { approvalId, match } = await supervisorChecks(ticket, "RJ14LM2345");
   check(!match, "The supervisor's photo should not match.");
   say(
-    `    Approving anyway: ${await refused("POST", `/api/approvals/${approvalId}/decide`, 409, { who: SUPERVISOR, body: { decision: "APPROVE" } })}`,
+    `    Approving anyway: ${await refused("POST", `/api/approvals/${approvalId}/decide`, 409, { who: PANKAJ, body: { decision: "APPROVE" } })}`,
   );
   await decideAsSupervisor(approvalId, { decision: "REJECT", reason: "Wrong vehicle" });
   step('Supervisor: REJECT, "Wrong vehicle". The ticket is BLOCKED.');
@@ -594,20 +618,22 @@ async function fraudBlocked(): Promise<string> {
 }
 
 async function typeTwoApproved(): Promise<string> {
-  title("4. Type 2, approved by the store officer: steel scrap, 1,500 kg");
+  title("4. Type 2, approved by the store officer: cement bags, 20,000 kg");
   const truck: Truck = {
-    plate: "UP32EF9012",
-    invoice: "steel-scrap",
-    material: "Steel Scrap",
-    loadedKg: 19_750,
-    emptyKg: 18_250,
+    plate: "MH12AB1234",
+    invoice: "cement",
+    material: "Cement Bags",
+    loadedKg: LOADED_KG,
+    emptyKg: EMPTY_KG,
   };
   let ticket = await firstWeight(await checkIn(truck));
+  check(ticket.type === "TYPE_2", "20,000 kg of cement is Type 2.");
   check(ticket.status === "STORE_PENDING", "A Type 2 weight is held.");
   await driveOff();
   await storeDecides(ticket, "STORE_TYPE2", { decision: "APPROVE" });
   ticket = await api<TicketView>("GET", `/api/tickets/${ticket.id}`, { who: KIOSK });
   describeFirstWeight(ticket);
+  checkGoesTo(ticket, "Plant", "Amit Kumar");
   await printSlip(ticket.id, "FIRST");
   ticket = await secondVisit(truck, ticket);
   await printSlip(ticket.id, "FINAL");
@@ -617,22 +643,22 @@ async function typeTwoApproved(): Promise<string> {
 }
 
 async function toleranceFail(): Promise<string> {
-  title("5. Tolerance fail, resolved by the store officer: aggregate, 14,500 kg invoiced");
+  title("5. Tolerance fail, resolved by the store officer: 20,200 kg of aggregate invoiced");
   const truck: Truck = {
     plate: "DL01NP6789",
-    invoice: "aggregate",
+    invoice: "aggregate-short",
     material: "Aggregate 20 mm",
-    loadedKg: 32_560,
-    emptyKg: 18_250,
+    loadedKg: LOADED_KG,
+    emptyKg: EMPTY_KG,
   };
   let ticket = await firstWeight(await checkIn(truck));
+  checkGoesTo(ticket, "CH-003+750", "Suresh Yadav");
   await driveOff();
-  // 14,500 kg of aggregate is above 500 kg, so this truck is Type 2 first.
-  await storeDecides(ticket, "STORE_TYPE2", { decision: "APPROVE" });
-  ticket = await api<TicketView>("GET", `/api/tickets/${ticket.id}`, { who: KIOSK });
-  describeFirstWeight(ticket);
+  const { approvalId } = await supervisorChecks(ticket, truck.plate, SURESH);
+  await decideAsSupervisor(approvalId, { decision: "APPROVE" }, SURESH);
+  step("Suresh Yadav: APPROVE.");
   ticket = await secondVisit(truck, ticket);
-  check(ticket.status === "HOLD_PENDING", "1.31% is outside the 0.5% tolerance.");
+  check(ticket.status === "HOLD_PENDING", "0.99% is outside the 0.5% tolerance.");
   await driveOff();
   await storeDecides(ticket, "HOLD", { decision: "APPROVE", chosenWeight: "NET" });
   await printSlip(ticket.id, "FINAL");
@@ -650,6 +676,121 @@ async function toleranceFail(): Promise<string> {
   return ticket.publicToken;
 }
 
+async function aggregateToRavi(): Promise<string> {
+  title("6. Type 1 at another unloading point: 10 mm aggregate goes to Ravi Singh");
+  const truck: Truck = {
+    plate: "UP70GH3456",
+    invoice: "aggregate-10",
+    material: "Aggregate 10 mm",
+    loadedKg: LOADED_KG,
+    emptyKg: EMPTY_KG,
+  };
+  let ticket = await firstWeight(await checkIn(truck));
+  check(ticket.status === "SUPERVISOR_PENDING", "A Type 1 truck needs its supervisor.");
+  checkGoesTo(ticket, "CH-005+250", "Ravi Singh");
+  await printSlip(ticket.id, "FIRST");
+  await driveOff();
+
+  const others = await waitingFor(PANKAJ);
+  check(!others.some((item) => item.ticketId === ticket.id), "Pankaj Gupta must not see it.");
+  step("Pankaj Gupta's list does not show the truck.");
+  say(
+    `    Pankaj opens it anyway: ${await refused("GET", `/api/tickets/${ticket.id}`, 403, { who: PANKAJ })}`,
+  );
+
+  const { approvalId, match } = await supervisorChecks(ticket, truck.plate, RAVI);
+  check(match, "Ravi's photo should match.");
+  await decideAsSupervisor(approvalId, { decision: "APPROVE" }, RAVI);
+  step("Ravi Singh: APPROVE.");
+
+  ticket = await secondVisit(truck, ticket);
+  await printSlip(ticket.id, "FINAL");
+  await driveOff();
+  await showTicket(ticket.id, "COMPLETED");
+  return ticket.publicToken;
+}
+
+/** A new visit up to the answer to "loaded or empty". */
+async function newVisit(truck: Truck, weighs: number, load: "LOADED" | "EMPTY") {
+  await pickDemo(truck);
+  await driveOn(weighs);
+  const read = await readPlate();
+  check(read.openTicket === null, "This plate should have no open ticket.");
+  const { ticket } = await api<CreateTicketResponse>("POST", "/api/tickets", {
+    who: KIOSK,
+    body: { plate: read.plate, language: "en", photoIds: read.photoIds },
+  });
+  await api("PATCH", `/api/tickets/${ticket.id}/details`, { who: KIOSK, body: { load } });
+  step(`Ticket ${ticket.ticketNo}. The driver says the truck is ${load}.`);
+  hardwareSaid();
+  return ticket;
+}
+
+const collectList = async () =>
+  (await api<KioskCollectResponse>("GET", "/api/kiosk/collect", { who: KIOSK })).ready;
+
+async function emptyTruck(): Promise<string> {
+  title("7. Empty truck: one weight, no invoice, no material, no approval");
+  const truck: Truck = { ...SAND, plate: "BR06QR4321" };
+  const started = await newVisit(truck, EMPTY_KG, "EMPTY");
+  const ticket = await api<TicketView>("POST", `/api/tickets/${started.id}/first-weight`, {
+    who: KIOSK,
+  });
+  step(`Empty vehicle weight ${formatKg(ticket.firstWeightKg!)} saved. Please drive off.`);
+  await sleep(200);
+  hardwareSaid();
+  check(ticket.status === "COMPLETED" && ticket.load === "EMPTY", "The visit should be over.");
+  check(ticket.approvals.length === 0 && ticket.material === null, "Nothing else is asked.");
+  check(
+    (await collectList()).some((item) => item.ticketId === ticket.id),
+    "The slip should be listed as ready to collect.",
+  );
+  await driveOff();
+  await printSlip(ticket.id, "FINAL");
+  check(!(await collectList()).some((item) => item.ticketId === ticket.id), "Printed: gone.");
+  await showTicket(ticket.id, "COMPLETED");
+  return ticket.publicToken;
+}
+
+async function noInvoiceTruck(): Promise<string> {
+  title("8. Loaded truck with no invoice: store officer first, then its supervisor");
+  const truck: Truck = { ...SAND, plate: "RJ14LM2345" };
+  const started = await newVisit(truck, truck.loadedKg, "LOADED");
+  const details = await api<DetailsResponse>("PATCH", `/api/tickets/${started.id}/details`, {
+    who: KIOSK,
+    body: { noInvoice: true, material: "Sand", driverPhone: "9000000001" },
+  });
+  step('The driver presses "No invoice" and chooses Sand.');
+  let ticket = await firstWeight(details.ticket);
+  check(ticket.status === "STORE_PENDING", "Without an invoice the store officer decides.");
+  check(ticket.noInvoice && ticket.firstWeightKg === null, "Nothing is saved before that.");
+  await driveOff();
+  const { requests } = await api<StoreRequestsResponse>("GET", "/api/store/requests", {
+    who: STORE,
+  });
+  check(
+    requests.some((item) => item.ticket?.id === ticket.id && item.ticket.noInvoice),
+    'The store officer\'s list should say "No invoice".',
+  );
+  await storeDecides(ticket, "STORE_TYPE2", { decision: "APPROVE" });
+  ticket = await api<TicketView>("GET", `/api/tickets/${ticket.id}`, { who: KIOSK });
+  describeFirstWeight(ticket);
+  check(ticket.status === "SUPERVISOR_PENDING", "Sand is Type 1: the supervisor checks too.");
+  await printSlip(ticket.id, "FIRST");
+
+  const { approvalId } = await supervisorChecks(ticket, truck.plate);
+  await decideAsSupervisor(approvalId, { decision: "APPROVE" });
+  step("Pankaj Gupta: APPROVE.");
+
+  ticket = await secondVisit(truck, ticket);
+  check(ticket.status === "COMPLETED", "With no invoice there is no tolerance check.");
+  check(ticket.variancePct === null, "No variance is worked out.");
+  await printSlip(ticket.id, "FINAL");
+  await driveOff();
+  await showTicket(ticket.id, "COMPLETED");
+  return ticket.publicToken;
+}
+
 // ---- Running it ----
 
 async function serverAnswers(): Promise<boolean> {
@@ -658,43 +799,6 @@ async function serverAnswers(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-async function steelBarsToVikram(): Promise<string> {
-  title("6. Type 1 at another unloading point: steel bars go to Vikram Sharma");
-  const truck: Truck = {
-    plate: "RJ14LM2345",
-    invoice: "steel-bars",
-    material: "Steel Bars",
-    loadedKg: 32_560,
-    emptyKg: 18_250,
-  };
-  let ticket = await firstWeight(await checkIn(truck));
-  check(ticket.status === "SUPERVISOR_PENDING", "A Type 1 truck needs its supervisor.");
-  check(
-    ticket.unloadingPoint?.code === "CH-010+500" && ticket.supervisor?.name === "Vikram Sharma",
-    `Steel Bars should go to CH-010+500, Vikram Sharma, not ${ticket.supervisor?.name}.`,
-  );
-  await printSlip(ticket.id, "FIRST");
-  await driveOff();
-
-  const amits = await waitingFor(SUPERVISOR);
-  check(!amits.some((item) => item.ticketId === ticket.id), "Amit Kumar must not see it.");
-  step("Amit Kumar's list does not show the truck.");
-  say(
-    `    Amit opens it anyway: ${await refused("GET", `/api/tickets/${ticket.id}`, 403, { who: SUPERVISOR })}`,
-  );
-
-  const { approvalId, match } = await supervisorChecks(ticket, truck.plate, VIKRAM);
-  check(match, "Vikram's photo should match.");
-  await decideAsSupervisor(approvalId, { decision: "APPROVE" }, VIKRAM);
-  step("Vikram Sharma: APPROVE.");
-
-  ticket = await secondVisit(truck, ticket);
-  await printSlip(ticket.id, "FINAL");
-  await driveOff();
-  await showTicket(ticket.id, "COMPLETED");
-  return ticket.publicToken;
 }
 
 /** Starts the backend if none is running. Returns the process to stop afterwards. */
@@ -730,7 +834,7 @@ async function main(): Promise<void> {
   const server = await ensureServer();
   let before: DemoSettings | undefined;
   try {
-    for (const user of [KIOSK, STORE, SUPERVISOR, VIKRAM]) await logIn(user);
+    for (const user of [KIOSK, STORE, PANKAJ, SURESH, RAVI]) await logIn(user);
     before = await demo<DemoSettings>("GET", "settings");
     await demo("PUT", "settings", { weightMode: "real" });
     const reset = await demo<{ deletedTickets: number }>("POST", "reset");
@@ -744,10 +848,12 @@ async function main(): Promise<void> {
       ["Fraud blocked", await fraudBlocked()],
       ["Type 2 store approves", await typeTwoApproved()],
       ["Tolerance fail resolved", await toleranceFail()],
-      ["Steel bars to Vikram", await steelBarsToVikram()],
+      ["10 mm aggregate to Ravi", await aggregateToRavi()],
+      ["Empty truck", await emptyTruck()],
+      ["No invoice", await noInvoiceTruck()],
     ];
 
-    title("All six journeys finished");
+    title("All eight journeys finished");
     for (const [name, token] of results) {
       const ticket = await api<PublicTicketView>("GET", `/api/public/tickets/${token}`);
       say(`${name.padEnd(28)} ${ticket.ticketNo}  ${ticket.status}`);

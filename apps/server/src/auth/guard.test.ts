@@ -3,7 +3,7 @@ import { USER_ROLES, type UserRole } from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../app";
-import { SESSION_COOKIE } from "../plugins/security";
+import { SESSION_COOKIES } from "../plugins/security";
 import { testEnv } from "../test/env";
 import { requireRole } from "./guard";
 
@@ -25,7 +25,7 @@ const call = (url: string, role?: UserRole) =>
     method: "GET",
     url,
     cookies: role
-      ? { [SESSION_COOKIE]: app.jwt.sign({ userId: 1, role, name: "Test", use: "session" }) }
+      ? { [SESSION_COOKIES[role]]: app.jwt.sign({ userId: 1, role, name: "Test", use: "session" }) }
       : {},
   });
 

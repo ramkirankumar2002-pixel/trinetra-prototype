@@ -57,6 +57,8 @@ function stepsOf({ data, at, type, actor }: TimelineEntry, staff: Staff): Public
     case "FIRST_WEIGHT_SAVED":
     case "FIRST_WEIGHT_HELD":
       return [step("FIRST_WEIGHT", { kg })];
+    case "EMPTY_WEIGHT_SAVED":
+      return [step("EMPTY_WEIGHT", { kg }), completed()];
     case "PLATE_WARNING_APPROVED":
       return [step("PLATE_ALLOWED")];
     case "MISMATCH_RESOLVED":
@@ -125,6 +127,8 @@ export async function publicTicket(app: FastifyInstance, token: string): Promise
     plate: ticket.plate,
     status: ticket.status,
     type: ticket.type,
+    load: ticket.load,
+    noInvoice: ticket.noInvoice,
     material: ticket.material,
     invoiceNo: typed(ticket.invoice.number),
     invoiceWeightKg: ticket.invoice.weightKg,

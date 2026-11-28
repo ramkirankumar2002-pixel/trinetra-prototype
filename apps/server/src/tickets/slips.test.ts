@@ -44,7 +44,7 @@ describe.skipIf(!testDatabaseUrl)("discard weight and slips", { timeout: 30_000 
     });
 
     it("cannot remove a first weight that is waiting for a person", async () => {
-      const id = await weighed({ material: "Cement Bags" });
+      const id = await weighed({ material: "Sand" });
       expect((await post(id, "discard-weight")).status).toBe(409);
       expect((await h.ticketRow(id)).firstWeightKg).toBe(LOADED);
     });

@@ -1,7 +1,8 @@
 // What the simulated load cells and sensors report, as a function of time. No I/O.
 
-export const LOADED_KG = 32_560;
-export const EMPTY_KG = 18_250;
+/** The simulator's trucks. They differ by 20,000 kg, which is what the demo bills say. */
+export const LOADED_KG = 32_500;
+export const EMPTY_KG = 12_500;
 
 const DRIVE_ON_MS = 3000;
 const SETTLE_WOBBLE_MS = 2000;

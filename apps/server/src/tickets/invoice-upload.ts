@@ -36,7 +36,7 @@ import {
 const hashCode = (code: string) => createHash("sha256").update(code).digest("hex");
 
 const needsStarted = (ticket: TicketRow) => {
-  if (ticket.status !== "STARTED") {
+  if (ticket.status !== "STARTED" || ticket.load === "EMPTY") {
     throw wrongStage("The invoice can only be added before the first weight.");
   }
 };
@@ -201,8 +201,10 @@ async function saveInvoice(
 
   await app.eventTransaction(async (tx) => {
     let ticket = await lockTicket(tx, ticketId);
-    // The driver may have been weighed, or have left, while the invoice was being read.
-    if (ticket.status !== "STARTED" || (await isSuperseded(tx, ticketId, photoId))) return;
+    // The driver may have been weighed, have left, or have pressed "No invoice" while the
+    // invoice was being read.
+    if (ticket.status !== "STARTED" || ticket.noInvoice) return;
+    if (await isSuperseded(tx, ticketId, photoId)) return;
 
     // A material chosen before must still agree with this invoice, or it is asked again.
     // Not if the store officer chose it.
@@ -350,8 +352,9 @@ async function takeInvoiceFile(
   await app.eventTransaction(async (tx) => {
     const locked = await lockTicket(tx, ticketId);
     needsStarted(locked);
-    // Also counts as activity, so the ticket is not abandoned while we read.
-    await updateTicket(tx, locked, {});
+    // Also counts as activity, so the ticket is not abandoned while we read. A file means
+    // there is an invoice after all.
+    await updateTicket(tx, locked, { noInvoice: false });
     await addEvent(tx, ticketId, "INVOICE_RECEIVED", options.actor, {
       photoId: file.id,
       ...(options.forDriver ? { forDriver: true } : {}),

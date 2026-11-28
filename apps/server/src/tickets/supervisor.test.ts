@@ -8,8 +8,8 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
   const h = useTicketHarness();
   const { view, started, weighed, pending } = flows(h);
 
-  /** A Type 1 truck, which goes to Amit Kumar. */
-  const type1 = () => weighed({ material: "Cement Bags" });
+  /** A Type 1 truck, which goes to Pankaj Gupta. */
+  const type1 = () => weighed({ material: "Sand" });
 
   const list = (who: Who, query = "") =>
     h.call<SupervisorTicketsResponse>(who, "GET", `/api/supervisor/tickets${query}`);
@@ -22,7 +22,7 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       file?: { data: Buffer; type: string } | null;
     } = {},
   ) {
-    const { who = "amit", fields = {} } = options;
+    const { who = "pankaj", fields = {} } = options;
     const file =
       options.file === undefined ? { data: await h.jpeg(), type: "image/jpeg" } : options.file;
     const body = h.form(file, fields);
@@ -47,36 +47,38 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
   describe("GET /api/supervisor/tickets", () => {
     it("lists only this supervisor's Type 1 trucks", async () => {
       const id = await type1();
-      await weighed({ plate: OTHER_PLATE, material: "Sand", invoiceKg: 900 });
+      await weighed({ plate: OTHER_PLATE, material: "Cement Bags", invoiceKg: 900 });
 
-      const mine = await list("amit");
+      const mine = await list("pankaj");
       expect(mine.status).toBe(200);
       expect(mine.body.tickets).toMatchObject([
         {
           ticketId: id,
           plate: PLATE,
-          material: "Cement Bags",
+          material: "Sand",
           invoiceWeightKg: 14_310,
-          unloadingPoint: { code: "Plant" },
+          unloadingPoint: { code: "CH-012+300" },
           approvalStatus: "PENDING",
           photosUsed: 0,
         },
       ]);
       expect((await list("suresh")).body.tickets).toEqual([]);
-      expect((await list("amit", "?status=done")).body.tickets).toEqual([]);
+      expect((await list("pankaj", "?status=done")).body.tickets).toEqual([]);
     });
 
     it("names the supervisor's unloading points, even with no truck", async () => {
       expect((await list("suresh")).body.points).toEqual([
         { code: "CH-003+750", name: "Bridge Approach Road" },
       ]);
-      expect((await list("amit")).body.points).toEqual([{ code: "Plant", name: "Plant" }]);
+      expect((await list("pankaj")).body.points).toEqual([
+        { code: "CH-012+300", name: "Valley Crossing" },
+      ]);
     });
 
     it("puts the truck that has waited longest first, with its trip number", async () => {
       const first = await type1();
-      const second = await weighed({ plate: OTHER_PLATE, material: "Cement Bags" });
-      const { tickets } = (await list("amit")).body;
+      const second = await weighed({ plate: OTHER_PLATE, material: "Sand" });
+      const { tickets } = (await list("pankaj")).body;
       expect(tickets.map((item) => [item.ticketId, item.tripNo])).toEqual([
         [first, 1],
         [second, 2],
@@ -85,16 +87,16 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
 
     it("keeps only today's decisions in the done list, newest first, with the photo", async () => {
       const first = await type1();
-      const second = await weighed({ plate: OTHER_PLATE, material: "Cement Bags" });
+      const second = await weighed({ plate: OTHER_PLATE, material: "Sand" });
       h.supervisorSees(PLATE);
       await photo(first);
       for (const id of [first, second]) {
-        await h.call("amit", "POST", `/api/approvals/${await pending(id, "SUPERVISOR")}/decide`, {
+        await h.call("pankaj", "POST", `/api/approvals/${await pending(id, "SUPERVISOR")}/decide`, {
           decision: "REJECT",
           reason: "Wrong truck",
         });
       }
-      const done = async () => (await list("amit", "?status=done")).body.tickets;
+      const done = async () => (await list("pankaj", "?status=done")).body.tickets;
       expect(await done()).toMatchObject([
         { ticketId: second, photoUrl: null, reason: "Wrong truck" },
         { ticketId: first, photoUrl: expect.stringContaining("/api/files/"), matchResult: "MATCH" },
@@ -105,31 +107,31 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       expect((await done()).map((item) => item.ticketId)).toEqual([second]);
     });
 
-    it("sends a Steel Bars truck to Vikram Sharma, and Amit Kumar does not see it", async () => {
-      const id = await weighed({ material: "Steel Bars" });
+    it("sends an Aggregate 10 mm truck to Ravi Singh, and Pankaj Gupta does not see it", async () => {
+      const id = await weighed({ material: "Aggregate 10 mm" });
 
-      expect((await list("vikram")).body.tickets).toMatchObject([
+      expect((await list("ravi")).body.tickets).toMatchObject([
         {
           ticketId: id,
-          material: "Steel Bars",
-          unloadingPoint: { code: "CH-010+500", name: "Middle Section Point" },
+          material: "Aggregate 10 mm",
+          unloadingPoint: { code: "CH-005+250", name: "Hill Section Area" },
         },
       ]);
-      expect((await list("amit")).body.tickets).toEqual([]);
+      expect((await list("pankaj")).body.tickets).toEqual([]);
 
       const request = await pending(id, "SUPERVISOR");
-      const opened = await h.call("amit", "GET", `/api/tickets/${id}`);
+      const opened = await h.call("pankaj", "GET", `/api/tickets/${id}`);
       expect(opened.body.error?.code).toBe("NOT_YOUR_TICKET");
       h.supervisorSees(PLATE);
-      expect((await photo(id, { who: "amit" })).status).toBe(403);
-      const refused = await h.call("amit", "POST", `/api/approvals/${request}/decide`, {
+      expect((await photo(id, { who: "pankaj" })).status).toBe(403);
+      const refused = await h.call("pankaj", "POST", `/api/approvals/${request}/decide`, {
         decision: "REJECT",
         reason: "Wrong truck",
       });
       expect(refused.status).toBe(403);
 
-      expect((await photo(id, { who: "vikram" })).body.matchResult).toBe("MATCH");
-      const approved = await h.call("vikram", "POST", `/api/approvals/${request}/decide`, {
+      expect((await photo(id, { who: "ravi" })).body.matchResult).toBe("MATCH");
+      const approved = await h.call("ravi", "POST", `/api/approvals/${request}/decide`, {
         decision: "APPROVE",
       });
       expect(approved.status).toBe(200);
@@ -137,36 +139,33 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
     });
 
     it.each([
-      [1, "suresh"],
-      [3, "pankaj"],
-    ])("sends Bitumen trip %i to %s", async (trips, username) => {
+      ["Aggregate 20 mm", 1, "Suresh Yadav"],
+      ["Aggregate 20 mm", 5, "Vikram Sharma"],
+      ["Aggregate 10 mm", 1, "Ravi Singh"],
+      ["Aggregate 10 mm", 4, "Mahesh Patel"],
+    ])("sends %s trip %i to %s", async (material, trips, name) => {
+      const plates = [PLATE, OTHER_PLATE, "UP32EF9012", "UP70GH3456", "MP09JK7890"];
       let id = 0;
-      for (const plate of [PLATE, OTHER_PLATE, "UP32EF9012"].slice(0, trips)) {
-        id = await weighed({ plate, material: "Bitumen" });
+      for (const plate of plates.slice(0, trips)) {
+        id = await weighed({ plate, material });
         h.leave();
       }
       const ticket = await view(id);
-      expect(ticket.tripNo).toBe(trips);
-      expect(ticket.supervisor?.name.toLowerCase()).toContain(username);
-    });
-
-    it("sends Additive to the default point, Amit Kumar", async () => {
-      const id = await weighed({ material: "Additive" });
-      expect((await view(id)).unloadingPoint?.code).toBe("Plant");
-      expect((await list("amit")).body.tickets).toMatchObject([{ ticketId: id }]);
+      expect(ticket).toMatchObject({ type: "TYPE_1", tripNo: trips });
+      expect(ticket.supervisor?.name).toBe(name);
     });
 
     it("answers 403 when another supervisor opens the truck", async () => {
       const id = await type1();
       const open = (who: Who) => h.call(who, "GET", `/api/tickets/${id}`);
-      expect((await open("amit")).status).toBe(200);
+      expect((await open("pankaj")).status).toBe(200);
       const other = await open("suresh");
       expect(other.status).toBe(403);
       expect(other.body.error?.code).toBe("NOT_YOUR_TICKET");
     });
 
     it("refuses an unknown status", async () => {
-      expect((await list("amit", "?status=old")).status).toBe(400);
+      expect((await list("pankaj", "?status=old")).status).toBe(400);
     });
   });
 
@@ -201,7 +200,7 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       expect(ticket.photos.map((item) => item.kind)).toContain("SUPERVISOR");
       expect(ticket.timeline.at(-1)).toMatchObject({
         type: "SUPERVISOR_PHOTO",
-        actorName: "Amit Kumar",
+        actorName: "Pankaj Gupta",
       });
       expect(ticket.status).toBe("SUPERVISOR_PENDING");
     });
@@ -235,7 +234,7 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       const body = h.form({ data: await h.jpeg(), type: "image/jpeg" });
       const send = () =>
         h.call<SupervisorPhotoResponse>(
-          "amit",
+          "pankaj",
           "POST",
           `/api/supervisor/tickets/${id}/photo`,
           body.payload,
@@ -245,7 +244,7 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       const again = await send();
       expect(again.status).toBe(200);
       expect(again.body).toEqual(first.body);
-      expect((await list("amit")).body.tickets[0]?.photosUsed).toBe(1);
+      expect((await list("pankaj")).body.tickets[0]?.photosUsed).toBe(1);
     });
 
     it("allows 3 photos and no more", async () => {
@@ -255,7 +254,7 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       const fourth = await photo(id);
       expect(fourth.status).toBe(409);
       expect(fourth.body.error?.code).toBe("PHOTO_LIMIT");
-      expect((await list("amit")).body.tickets[0]?.photosUsed).toBe(3);
+      expect((await list("pankaj")).body.tickets[0]?.photosUsed).toBe(3);
     });
 
     it("answers 403 for another supervisor's truck", async () => {
@@ -270,7 +269,7 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       const id = await started();
       expect((await photo(id)).status).toBe(403);
       expect((await photo(999)).status).toBe(404);
-      const waiting = await weighed({ plate: OTHER_PLATE, material: "Cement Bags" });
+      const waiting = await weighed({ plate: OTHER_PLATE, material: "Sand" });
       await h.db.execute(`update tickets set status = 'BLOCKED' where id = ${waiting}`);
       expect((await photo(waiting)).body.error?.code).toBe("WRONG_STAGE");
     });
@@ -290,11 +289,11 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
   });
 
   it("says when a photo's reading came from demo mode, not from the photo", async () => {
-    const id = await flows(h).weighed({ material: "Cement Bags" });
+    const id = await flows(h).weighed({ material: "Sand" });
     const demoReading = async () =>
       (
         await h.call<{ tickets: { demoReading: boolean }[] }>(
-          "amit",
+          "pankaj",
           "GET",
           "/api/supervisor/tickets?status=pending",
         )
@@ -311,7 +310,7 @@ describe.skipIf(!testDatabaseUrl)("supervisor", { timeout: 30_000 }, () => {
       });
       const body = h.form({ data: await h.jpeg(), type: "image/jpeg" });
       const url = `/api/supervisor/tickets/${id}/photo`;
-      expect((await h.call("amit", "POST", url, body.payload, body.headers)).status).toBe(200);
+      expect((await h.call("pankaj", "POST", url, body.payload, body.headers)).status).toBe(200);
     };
 
     expect(await demoReading()).toBe(false);

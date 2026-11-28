@@ -94,6 +94,7 @@ async function requestViews(app: FastifyInstance, rows: RequestRow[]) {
       status: ticket.status,
       type: ticket.type,
       material,
+      noInvoice: ticket.noInvoice,
       supplier: ticket.supplier,
       invoiceWeightKg: ticket.invoiceWeightKg,
       heldWeightKg: ticket.heldWeightKg,

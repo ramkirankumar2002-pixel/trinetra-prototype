@@ -8,7 +8,7 @@ import { buildApp } from "../app";
 import { createDb } from "../db/client";
 import { photos } from "../db/schema";
 import { seedDatabase } from "../db/seed";
-import { SESSION_COOKIE } from "../plugins/security";
+import { SESSION_COOKIES } from "../plugins/security";
 import { resetTestDatabase } from "../test/database";
 import { testDatabaseUrl, testEnv } from "../test/env";
 import { fakeApis, geminiText, json, plates } from "../test/fake-apis";
@@ -60,7 +60,7 @@ describe.skipIf(!testDatabaseUrl)("dev reader routes", { timeout: 30_000 }, () =
       url,
       headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
       cookies: role
-        ? { [SESSION_COOKIE]: app.jwt.sign({ userId: 1, role, name: "T", use: "session" }) }
+        ? { [SESSION_COOKIES[role]]: app.jwt.sign({ userId: 1, role, name: "T", use: "session" }) }
         : {},
       payload: Buffer.concat([
         Buffer.from(
@@ -124,7 +124,7 @@ describe.skipIf(!testDatabaseUrl)("dev reader routes", { timeout: 30_000 }, () =
     );
 
     expect(response.json().result).toMatchObject({
-      weightKg: 14_310,
+      weightKg: 20_000,
       material: { matched: "Cement Bags" },
       warnings: [{ code: "VEHICLE_MISMATCH" }],
       source: "gemini",

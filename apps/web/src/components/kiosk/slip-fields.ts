@@ -66,6 +66,29 @@ export function slipFields(ticket: TicketView, slip: SlipName, t: Translate): Sl
     ? [{ label: "slip.approvedBy", value: approvals, wide: true }]
     : [];
 
+  if (ticket.load === "EMPTY") {
+    return [
+      { ...plate, wide: true },
+      {
+        label: "slip.emptyWeight",
+        value: weighed(ticket.firstWeightKg, ticket.firstWeightAt),
+        emphasis: "live",
+        wide: true,
+      },
+    ];
+  }
+
+  /** In place of everything about a bill, for a truck that has none. */
+  const withoutInvoice: SlipField = {
+    label: "slip.invoice",
+    value: t("slip.noInvoice"),
+    wide: true,
+  };
+  const invoiceFields: SlipField[] = [
+    { label: "slip.invoiceNo", value: ticket.invoice.number ?? DASH },
+    { label: "slip.invoiceWeight", value: kg(ticket.invoice.weightKg) },
+  ];
+
   if (slip === "FIRST") {
     return [
       plate,
@@ -77,8 +100,7 @@ export function slipFields(ticket: TicketView, slip: SlipName, t: Translate): Sl
       { label: "slip.material", value: materialAndType, wide: true },
       { label: "slip.supplier", value: ticket.supplier ?? DASH, wide: true },
       { label: "slip.transporter", value: ticket.transporter ?? DASH, wide: true },
-      { label: "slip.invoiceNo", value: ticket.invoice.number ?? DASH },
-      { label: "slip.invoiceWeight", value: kg(ticket.invoice.weightKg) },
+      ...(ticket.noInvoice ? [withoutInvoice] : invoiceFields),
       { label: "slip.driverPhone", value: ticket.driverPhone ?? DASH },
       ...approvedBy,
       { label: "slip.goTo", value: point, printOnly: true },
@@ -95,6 +117,17 @@ export function slipFields(ticket: TicketView, slip: SlipName, t: Translate): Sl
         emphasis: "highlight",
       }
     : { label: "slip.result", value: t("slip.pass"), emphasis: "live" };
+  // Without an invoice there is nothing to pass; a store decision on the weights still shows.
+  const checked: SlipField[] = ticket.noInvoice
+    ? [withoutInvoice, ...(hold ? [accepted] : [])]
+    : [
+        { label: "slip.invoiceWeight", value: kg(ticket.invoice.weightKg) },
+        {
+          label: "slip.variance",
+          value: ticket.variancePct === null ? DASH : `${ticket.variancePct}%`,
+        },
+        accepted,
+      ];
   return [
     {
       label: "slip.firstShort",
@@ -105,14 +138,9 @@ export function slipFields(ticket: TicketView, slip: SlipName, t: Translate): Sl
       value: weighed(ticket.secondWeightKg, ticket.secondWeightAt),
     },
     { label: "slip.netWeight", value: kg(ticket.netKg), emphasis: "live" },
-    { label: "slip.invoiceWeight", value: kg(ticket.invoice.weightKg) },
-    {
-      label: "slip.variance",
-      value: ticket.variancePct === null ? DASH : `${ticket.variancePct}%`,
-    },
-    accepted,
+    ...checked,
     plate,
-    { label: "slip.invoiceNo", value: ticket.invoice.number ?? DASH },
+    ...(ticket.noInvoice ? [] : [invoiceFields[0]!]),
     { label: "slip.material", value: materialAndType, wide: true },
     { label: "slip.supplier", value: ticket.supplier ?? DASH, wide: true },
     { label: "slip.transporter", value: ticket.transporter ?? DASH, wide: true },

@@ -3,7 +3,7 @@ import { supervisorRoom, type Room } from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../app";
-import { SESSION_COOKIE } from "../plugins/security";
+import { SESSION_COOKIES } from "../plugins/security";
 import { connectDevice, deviceTokenEnv, TEST_DEVICE_TOKENS, waitFor } from "../test/device-client";
 import { testEnv } from "../test/env";
 import { connectLive, socketToken, type LiveClient } from "../test/live-client";
@@ -116,7 +116,7 @@ describe("authentication", () => {
     const response = await app.inject({
       method: "GET",
       url: "/api/auth/socket-token",
-      cookies: { [SESSION_COOKIE]: cookie },
+      cookies: { [SESSION_COOKIES.KIOSK]: cookie },
     });
     const client = await connect({ token: response.json().token });
 

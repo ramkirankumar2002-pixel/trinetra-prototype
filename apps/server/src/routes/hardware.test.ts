@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildApp, type AppOptions } from "../app";
 import { createDb } from "../db/client";
 import { seedDatabase } from "../db/seed";
-import { SESSION_COOKIE } from "../plugins/security";
+import { SESSION_COOKIES } from "../plugins/security";
 import { resetTestDatabase } from "../test/database";
 import {
   connectDevice,
@@ -58,7 +58,7 @@ function feed(device: TestDevice, weight: { g: number; stable: boolean; pos: str
 }
 
 const session = (role: "KIOSK" | "SUPERVISOR" | "STORE") => ({
-  [SESSION_COOKIE]: app.jwt.sign({ userId: 1, role, name: "Test", use: "session" }),
+  [SESSION_COOKIES[role]]: app.jwt.sign({ userId: 1, role, name: "Test", use: "session" }),
 });
 
 const kioskState = async () =>

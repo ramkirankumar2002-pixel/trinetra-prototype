@@ -20,10 +20,13 @@ import { SEED_USERS, type SampleInvoiceId } from "@trinetra/shared/seed";
 import {
   answerQuestions,
   arrive,
+  confirmLoaded,
   confirmPlate,
   confirmWeight,
+  EMPTY_KG,
   heading,
   leave,
+  LOADED_KG,
   Office,
   openKiosk,
   press,
@@ -238,32 +241,32 @@ for (const device of DEVICES) {
       browser,
     }) => {
       await emptyQueue();
-      await office.pick("DL01NP6789", "aggregate");
+      await office.pick("MH12AB1234", "cement");
       const store = await storePage(device);
       await expect(store.getByText("Nothing is waiting for you")).toBeVisible();
       await expect(store).toHaveTitle("Trinetra");
       const decisions = watchDecisions(store);
 
       await openKiosk(page);
-      await arrive(page, bridge, 32_560);
-      await confirmPlate(page, "DL 01 NP 6789");
-      await uploadFromPhone(browser, page, "aggregate.jpg");
+      await arrive(page, bridge, LOADED_KG);
+      await confirmLoaded(page, "MH 12 AB 1234");
+      await uploadFromPhone(browser, page, "cement.jpg");
       await press(page, "Next");
-      await answerQuestions(page, "Aggregate 20 mm", "9000000005");
+      await answerQuestions(page, "Cement Bags", "9000000005");
       await press(page, "Next");
-      await confirmWeight(page, "32,560 kg");
-      await expect(page.getByTestId("message-waitStore")).toContainText("move aside and wait");
-      expect((await ticketOf("DL01NP6789")).firstWeightKg).toBeNull();
+      await confirmWeight(page, "32,500 kg");
+      await expect(page.getByTestId("message-waitStore")).toContainText("Wait aside");
+      expect((await ticketOf("MH12AB1234")).firstWeightKg).toBeNull();
 
       // The store page, untouched: the request is there, with a message and the tab's number.
-      await expect(rowOf(store, "DL 01 NP 6789")).toContainText("Type 2 check", { timeout: 5000 });
+      await expect(rowOf(store, "MH 12 AB 1234")).toContainText("Type 2 check", { timeout: 5000 });
       await expect(
-        store.getByText("New request: Type 2 check, DL 01 NP 6789").first(),
+        store.getByText("New request: Type 2 check, MH 12 AB 1234").first(),
       ).toBeVisible();
       await expect(store).toHaveTitle("(1) Trinetra");
       await expect(store.getByTestId("bell")).toContainText("Alerts: 1");
-      await openRequest(store, "DL 01 NP 6789");
-      await expect(store.getByTestId("bill-fields")).toContainText("SMPL-AGG-004");
+      await openRequest(store, "MH 12 AB 1234");
+      await expect(store.getByTestId("bill-fields")).toContainText("SMPL-CEM-001");
       await look(store, "04-type2-detail", device);
       await button(store, "Approve").dblclick();
       await outcome(store, "approved");
@@ -272,26 +275,27 @@ for (const device of DEVICES) {
 
       // The first weight is saved, and the weighbridge shows the slip by itself.
       await heading(page, /^Go to /);
-      expect((await ticketOf("DL01NP6789")).firstWeightKg).toBe(32_560);
+      expect((await ticketOf("MH12AB1234")).firstWeightKg).toBe(LOADED_KG);
       await leave(page, bridge);
 
-      await arrive(page, bridge, 18_250);
-      await confirmPlate(page, "DL 01 NP 6789");
+      // 190 kg less comes off than the bill says.
+      await arrive(page, bridge, EMPTY_KG + 190);
+      await confirmPlate(page, "MH 12 AB 1234");
       await press(page, "Second weight");
-      await confirmWeight(page, "18,250 kg");
+      await confirmWeight(page, "12,690 kg");
       await expect(page.getByTestId("message-hold")).toContainText("does not match the invoice");
 
       await store.getByRole("link", { name: "Back to approvals" }).click();
-      await expect(rowOf(store, "DL 01 NP 6789")).toContainText("Weight HOLD");
-      await openRequest(store, "DL 01 NP 6789");
-      await expect(field(store, "slip.invoiceWeight")).toHaveText("14,500 kg");
-      await expect(field(store, "slip.netWeight")).toHaveText("14,310 kg");
+      await expect(rowOf(store, "MH 12 AB 1234")).toContainText("Weight HOLD");
+      await openRequest(store, "MH 12 AB 1234");
+      await expect(field(store, "slip.invoiceWeight")).toHaveText("20,000 kg");
+      await expect(field(store, "slip.netWeight")).toHaveText("19,810 kg");
       await expect(field(store, "store.calc.difference")).toHaveText("−190 kg");
-      await expect(field(store, "store.calc.percent")).toHaveText("1.31%");
+      await expect(field(store, "store.calc.percent")).toHaveText("0.95%");
       await expect(field(store, "store.calc.limit")).toHaveText("0.5%");
       await look(store, "05-hold-detail", device);
 
-      await button(store, "Accept INVOICE weight: 14,500 kg").click();
+      await button(store, "Accept INVOICE weight: 20,000 kg").click();
       const confirm = button(store, "Accept invoice weight");
       await expect(confirm).toBeDisabled();
       await button(store, "Loss on the way (moisture or spillage)").click();
@@ -303,10 +307,10 @@ for (const device of DEVICES) {
       // The slip carries the weight the store officer chose.
       await heading(page, "Thank you, drive safely");
       await expect(page.getByTestId("slip")).toContainText("Accepted (invoice)");
-      await expect(page.getByTestId("slip")).toContainText("14,500 kg");
+      await expect(page.getByTestId("slip")).toContainText("20,000 kg");
       await expect(page.getByTestId("slip")).toContainText("Store approved");
-      const done = await ticketOf("DL01NP6789");
-      expect(done).toMatchObject({ status: "COMPLETED", finalWeightKg: 14_500, netKg: 14_310 });
+      const done = await ticketOf("MH12AB1234");
+      expect(done).toMatchObject({ status: "COMPLETED", finalWeightKg: 20_000, netKg: 19_810 });
       await store.close();
     });
 
@@ -317,8 +321,8 @@ for (const device of DEVICES) {
       await office.pick("MH12AB1234", "cement");
       const store = await storePage(device);
       await openKiosk(page);
-      await arrive(page, bridge, 32_560);
-      await confirmPlate(page, "MH 12 AB 1234");
+      await arrive(page, bridge, LOADED_KG);
+      await confirmLoaded(page, "MH 12 AB 1234");
       await press(page, "No phone?");
       await expect(page.getByTestId("no-phone")).toBeVisible();
 
@@ -387,7 +391,7 @@ for (const device of DEVICES) {
     // A truck the store officer rejects, which then comes back.
     const first = await startVisit("UP32EF9012", "steel-scrap");
     await say(first, "Steel Scrap");
-    await weigh(first, 19_750);
+    await weigh(first, LOADED_KG);
     await expect(rowOf(store, "UP 32 EF 9012")).toContainText("Type 2 check");
     await openRequest(store, "UP 32 EF 9012");
     await button(store, "Reject").click();
@@ -403,12 +407,12 @@ for (const device of DEVICES) {
     for (let n = 0; n < 5; n++) await say(mismatch, "Sand");
 
     // A Type 2 truck waiting, and a supervisor's truck that gets blocked.
-    const waiting = await startVisit("DL01NP6789", "aggregate");
-    await say(waiting, "Aggregate 20 mm");
-    await weigh(waiting, 32_560);
-    const blocked = await startVisit("RJ14LM2345", "steel-bars");
-    await say(blocked, "Steel Bars");
-    await weigh(blocked, 32_560);
+    const waiting = await startVisit("BR06QR4321", "bitumen");
+    await say(waiting, "Bitumen");
+    await weigh(waiting, LOADED_KG);
+    const blocked = await startVisit("UP70GH3456", "aggregate-10");
+    await say(blocked, "Aggregate 10 mm");
+    await weigh(blocked, LOADED_KG);
 
     await store.goto("/store");
     await online(store);
@@ -452,35 +456,35 @@ for (const device of DEVICES) {
 
     // Answered somewhere else while this page is open: "Already handled", then the list.
     await store.goto("/store/approvals");
-    await openRequest(store, "DL 01 NP 6789");
-    await office.storeDecides("DL01NP6789", "STORE_TYPE2", { decision: "APPROVE" });
+    await openRequest(store, "BR 06 QR 4321");
+    await office.storeDecides("BR06QR4321", "STORE_TYPE2", { decision: "APPROVE" });
     await outcome(store, "taken");
     await expect(store.getByText("Already handled.")).toBeVisible();
     await expect(store).toHaveURL(`${WEB_URL}/store/approvals`, { timeout: 15_000 });
 
     // A supervisor blocks a truck: the store officer is told.
     await expect(store.getByRole("heading", { name: "Approvals" })).toBeVisible();
-    await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "RJ14LM2345" });
-    const vikram = await browser.newContext();
-    await signIn(vikram, "vikram");
+    await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "UP70GH3456" });
+    const ravi = await browser.newContext();
+    await signIn(ravi, "ravi");
     const mine = (await (
-      await vikram.request.get(`${WEB_URL}/api/supervisor/tickets?status=pending`)
+      await ravi.request.get(`${WEB_URL}/api/supervisor/tickets?status=pending`)
     ).json()) as { tickets: { approvalId: number; ticketId: number }[] };
     const truck = mine.tickets.find((item) => item.ticketId === blocked)!;
     await ok(
-      await vikram.request.post(`${WEB_URL}/api/approvals/${truck.approvalId}/decide`, {
+      await ravi.request.post(`${WEB_URL}/api/approvals/${truck.approvalId}/decide`, {
         data: { decision: "REJECT", reason: "Wrong truck" },
       }),
     );
-    await vikram.close();
+    await ravi.close();
     await expect(store.getByText("A supervisor blocked a truck.").first()).toBeVisible();
 
     await store.goto("/store/trucks");
     await online(store);
-    await expect(rowOf(store, "DL 01 NP 6789")).toContainText("then second weight");
+    await expect(rowOf(store, "BR 06 QR 4321")).toContainText("then second weight");
     await expect(rowOf(store, "MH 12 AB 1234")).toContainText("answering questions");
     await look(store, "09-trucks", device);
-    await rowOf(store, "DL 01 NP 6789").getByRole("link", { name: /^View/ }).click();
+    await rowOf(store, "BR 06 QR 4321").getByRole("link", { name: /^View/ }).click();
     await expect(store.getByTestId("timeline")).toContainText("Store officer approved");
     await expect(store.getByTestId("who")).toContainText("Approved by store: Ram (Sr. Manager)");
     // To read only.
@@ -492,16 +496,14 @@ for (const device of DEVICES) {
     await expect(rowOf(store, "UP 32 EF 9012")).toContainText(
       "Rejected by store: Ram (Sr. Manager)",
     );
-    await expect(rowOf(store, "RJ 14 LM 2345")).toContainText(
-      "Rejected by supervisor: Vikram Sharma",
-    );
+    await expect(rowOf(store, "UP 70 GH 3456")).toContainText("Rejected by supervisor: Ravi Singh");
     await look(store, "10-history", device);
-    await store.getByRole("searchbox").fill("rj 14");
+    await store.getByRole("searchbox").fill("up 70");
     await expect(store.getByRole("table").getByRole("row")).toHaveCount(2);
     await store.getByRole("searchbox").fill("ZZ99");
     await expect(store.getByText("No truck matches")).toBeVisible();
     await store.getByRole("searchbox").fill("");
-    await rowOf(store, "RJ 14 LM 2345").getByRole("link", { name: /^View/ }).click();
+    await rowOf(store, "UP 70 GH 3456").getByRole("link", { name: /^View/ }).click();
     await expect(store.getByTestId("who")).toContainText("Rejected by supervisor");
     await expect(store).toHaveURL(/\/store\/history\/\d+$/);
     await look(store, "10b-history-detail", device);
@@ -528,13 +530,13 @@ test("the store officer cancels visits that wait for a person", async ({ page, b
 
   // A Type 2 truck waits at the real weighbridge screen for a decision.
   await openKiosk(page);
-  await arrive(page, bridge, 19_750);
-  await confirmPlate(page, "UP 32 EF 9012");
+  await arrive(page, bridge, LOADED_KG);
+  await confirmLoaded(page, "UP 32 EF 9012");
   await uploadFromPhone(browser, page, "steel-scrap.jpg");
   await press(page, "Next");
   await answerQuestions(page, "Steel Scrap", "9000000004");
   await press(page, "Next");
-  await confirmWeight(page, "19,750 kg");
+  await confirmWeight(page, "32,500 kg");
   await expect(page.getByTestId("message-waitStore")).toBeVisible();
 
   await openRequest(store, "UP 32 EF 9012");
@@ -551,13 +553,13 @@ test("the store officer cancels visits that wait for a person", async ({ page, b
   await leave(page, bridge);
 
   // A truck waiting for its supervisor can be cancelled from "Trucks on site".
-  const id = await startVisit("RJ14LM2345", "steel-bars");
-  await say(id, "Steel Bars");
-  await weigh(id, 32_560);
+  const id = await startVisit("UP70GH3456", "aggregate-10");
+  await say(id, "Aggregate 10 mm");
+  await weigh(id, LOADED_KG);
   await store.goto("/store/trucks");
   await online(store);
-  const row = rowOf(store, "RJ 14 LM 2345");
-  await expect(row).toContainText("waiting for Vikram Sharma");
+  const row = rowOf(store, "UP 70 GH 3456");
+  await expect(row).toContainText("waiting for Ravi Singh");
   await expect(row.getByTestId("wait")).toHaveText("0 min");
   await row.getByRole("link", { name: /^View/ }).click();
   await expect(store.getByText("Waiting for a decision:")).toBeVisible();
@@ -568,17 +570,17 @@ test("the store officer cancels visits that wait for a person", async ({ page, b
   await expect(store.getByTestId("timeline")).toContainText("Store officer cancelled the visit");
   await expect(button(store, "Cancel visit")).toHaveCount(0);
 
-  const vikram = await browser.newContext();
-  await signIn(vikram, "vikram");
-  const answer = await vikram.request.get(`${WEB_URL}/api/supervisor/tickets?status=pending`);
+  const ravi = await browser.newContext();
+  await signIn(ravi, "ravi");
+  const answer = await ravi.request.get(`${WEB_URL}/api/supervisor/tickets?status=pending`);
   expect(((await answer.json()) as { tickets: unknown[] }).tickets).toEqual([]);
-  await vikram.close();
+  await ravi.close();
 
   await store.goto("/store/history");
   await online(store);
   for (const [plate, why] of [
     ["UP 32 EF 9012", "Truck has left the site"],
-    ["RJ 14 LM 2345", "Sent back at the gate"],
+    ["UP 70 GH 3456", "Sent back at the gate"],
   ] as const) {
     await expect(rowOf(store, plate)).toContainText("Cancelled by Ram (Sr. Manager)");
     await expect(rowOf(store, plate)).toContainText(why);
@@ -587,18 +589,17 @@ test("the store officer cancels visits that wait for a person", async ({ page, b
   await store.close();
 });
 
-test("a Bitumen truck in demo mode is sent to Suresh Yadav", async ({ page, browser }) => {
+test("a 20 mm aggregate truck in demo mode is sent to Suresh Yadav", async ({ page, browser }) => {
   await emptyQueue();
-  await office.pick("BR06QR4321", "bitumen");
+  await office.pick("DL01NP6789", "aggregate");
   await openKiosk(page);
-  await arrive(page, bridge, 32_560);
-  await confirmPlate(page, "BR 06 QR 4321");
-  await uploadFromPhone(browser, page, "bitumen.pdf");
+  await arrive(page, bridge, LOADED_KG);
+  await confirmLoaded(page, "DL 01 NP 6789");
+  await uploadFromPhone(browser, page, "aggregate.pdf");
   await press(page, "Next");
-  await answerQuestions(page, "Bitumen", "9000000006");
+  await answerQuestions(page, "Aggregate 20 mm", "9000000006");
   await press(page, "Next");
-  await confirmWeight(page, "32,560 kg");
-  await heading(page, "Go to CH-003+750");
-  await expect(page.locator("body")).toContainText("Suresh Yadav");
+  await confirmWeight(page, "32,500 kg");
+  await heading(page, "Go to CH-003+750 – Suresh Yadav");
   await leave(page, bridge);
 });
