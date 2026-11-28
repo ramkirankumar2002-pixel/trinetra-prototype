@@ -27,11 +27,15 @@ const redactPaths = SECRET_FIELDS.flatMap((field) =>
   [0, 1, 2, 3].map((depth) => redactPath(field, depth)),
 );
 
-/** Hides secrets that travel in the address: file link signatures and invoice upload codes. */
+/**
+ * Hides secrets that travel in the address: file link signatures, invoice upload codes and
+ * the tokens of public ticket pages.
+ */
 export function scrubUrl(url: string): string {
   return url
     .replace(/([?&](?:sig|token)=)[^&]*/g, "$1[Redacted]")
-    .replace(/(\/api\/upload\/)[^/?]+/g, "$1[Redacted]");
+    .replace(/(\/api\/upload\/)[^/?]+/g, "$1[Redacted]")
+    .replace(/(\/api\/public\/tickets\/)[^/?]+/g, "$1[Redacted]");
 }
 
 export function loggerOptions(

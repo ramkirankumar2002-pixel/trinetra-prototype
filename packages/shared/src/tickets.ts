@@ -117,7 +117,10 @@ export const supervisorPhotoFieldsSchema = z
 
 export const demoSettingsSchema = z
   .strictObject({
+    /** The weighbridge's number plate reading. */
     anprMode: z.enum(["real", "pick"]),
+    /** The reading of the supervisor's photo: its own switch. */
+    supervisorMode: z.enum(["real", "pick"]),
     ocrMode: z.enum(["real", "pick"]),
     demoPlate: plateSchema,
     demoInvoice: z.string().max(40),
@@ -134,6 +137,7 @@ export const demoWeightSchema = z.strictObject({
 
 export interface DemoSettings {
   anprMode: "real" | "pick";
+  supervisorMode: "real" | "pick";
   ocrMode: "real" | "pick";
   demoPlate: string | null;
   demoInvoice: string | null;
@@ -227,6 +231,8 @@ export interface ApprovalView {
 export interface TicketView {
   id: number;
   ticketNo: string;
+  /** The random address of the ticket's public page (the slip's QR code). */
+  publicToken: string;
   plate: string;
   status: TicketStatus;
   type: TicketType | null;
@@ -479,32 +485,6 @@ export interface SupervisorPhotoResponse {
   confidence: number | null;
   photosUsed: number;
   photosLeft: number;
-}
-
-export interface PublicTicketView {
-  ticketNo: string;
-  plate: string;
-  status: TicketStatus;
-  type: TicketType | null;
-  material: string | null;
-  supplier: string | null;
-  transporter: string | null;
-  invoiceNo: string | null;
-  invoiceWeightKg: number | null;
-  firstWeightKg: number | null;
-  secondWeightKg: number | null;
-  netKg: number | null;
-  variancePct: number | null;
-  finalWeightKg: number | null;
-  tripNo: number | null;
-  unloadingPoint: { code: string; name: string } | null;
-  isDemo: boolean;
-  createdAt: string;
-  firstWeightAt: string | null;
-  secondWeightAt: string | null;
-  closedAt: string | null;
-  timeline: { type: string; at: string; actorName: string; data: Record<string, unknown> }[];
-  photos: Omit<PhotoView, "id">[];
 }
 
 export interface LiveSummaryResponse {

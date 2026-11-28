@@ -224,6 +224,7 @@ const approval = (values: Partial<ApprovalView>): ApprovalView => ({
 });
 
 const ticket: TicketView = {
+  publicToken: "0123456789abcdef0123456789abcdef",
   id: 7,
   ticketNo: "WB01-20261127-0007",
   plate: "MH12AB1234",

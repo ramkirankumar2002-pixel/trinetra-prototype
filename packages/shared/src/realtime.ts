@@ -61,6 +61,12 @@ export interface InvoiceReadEvent {
   error: string | null;
 }
 
+/** A demo switch changed (or demo data was reset). */
+export interface DemoChangedEvent {
+  /** True while any demo replacement is on. */
+  demo: boolean;
+}
+
 /** Every event and what it carries. Events only announce: pages load details over REST. */
 export interface RealtimeEvents {
   "hw:weight": HardwareWeightEvent;
@@ -73,6 +79,7 @@ export interface RealtimeEvents {
   "kiosk:ready": KioskReadyEvent;
   "invoice:read": InvoiceReadEvent;
   "photo:arrived": PhotoArrivedEvent;
+  "demo:changed": DemoChangedEvent;
 }
 
 export type RealtimeEventName = keyof RealtimeEvents;
@@ -105,6 +112,7 @@ export const EVENT_AUDIENCE: Readonly<Record<RealtimeEventName, readonly RoomKin
   "kiosk:ready": ["kiosk"],
   "invoice:read": ["kiosk"],
   "photo:arrived": ["kiosk"],
+  "demo:changed": ["kiosk", "supervisor", "store"],
 };
 
 export const REALTIME_EVENT_NAMES = Object.keys(EVENT_AUDIENCE) as RealtimeEventName[];

@@ -12,6 +12,7 @@ import { useOnReconnect } from "@/lib/socket-hooks";
 import { useStorePending } from "@/lib/store/queries";
 import { useSupervisorTrucks } from "@/lib/supervisor/queries";
 import { ConnectionStatusLight } from "./connection-status";
+import { DemoBadge } from "./demo-badge";
 import { DashboardShell } from "./layout/dashboard-shell";
 import { LogoutButton } from "./logout-button";
 import { NetworkBanner } from "./network-banner";
@@ -64,9 +65,15 @@ export function RoleShell({ area, page: own, children }: RoleShellProps) {
       title={own ? t(own.title) : t(page.href === home ? `area.${area}` : page.label)}
       subtitle={t(own?.subtitle ?? page.subtitle)}
       menu={menu}
-      active={page.href}
+      // A page that is in no menu, such as the demo settings, marks none of its pages.
+      active={own?.section ?? page.href}
       user={{ name: user.name, role: t(`area.${area}`), profileHref: `${home}/profile` }}
-      status={<ConnectionStatusLight />}
+      status={
+        <>
+          <ConnectionStatusLight />
+          <DemoBadge />
+        </>
+      }
       alerts={
         supervisor
           ? { count: trucks.data?.tickets.length ?? 0, href: `${home}/trucks` }

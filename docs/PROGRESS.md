@@ -274,7 +274,7 @@ Added 2026-11-26, not one of the 120 steps.
 
 **Windows firewall:** Node.js must be allowed on **private** networks. Windows usually asks the first time: tick **Private networks**. If it did not ask, or the phone cannot connect: Windows Security → Firewall & network protection → Allow an app through firewall → **Node.js JavaScript Runtime** → tick **Private**, and make sure the Wi-Fi is set as a private network.
 
-**One full Type 1 truck:** in a second terminal `pnpm office reset`, then `pnpm office pick cement`; in a third, `pnpm sim --loaded 32560`. Press `a` in the simulator, finish the first visit on the kiosk (material **Cement Bags**), then press `l`. On the phone: **Verify → Take photo → Use this photo → Approve**. Press `a` again: the kiosk offers the second weight. In "pick" mode the photo always "reads" the picked plate; `pnpm office real` after the first weight makes the supervisor's photo use the real readers.
+**One full Type 1 truck:** in a second terminal `pnpm office reset`, then `pnpm office pick cement`; in a third, `pnpm sim --loaded 32560`. Press `a` in the simulator, finish the first visit on the kiosk (material **Cement Bags**), then press `l`. On the phone: **Verify → Take photo → Use this photo → Approve**. Press `a` again: the kiosk offers the second weight. The supervisor's photo is read for real unless **Supervisor plate check** is on Pick on `/settings` (changed in Phase 14); on Pick it "reads" the picked plate.
 
 ### Supervisor logins (test only)
 
@@ -371,12 +371,32 @@ Use two browser windows with **separate logins** (for example a normal and a pri
 
 ## Phase 14 — Shared pages
 
-- [ ] **107.** Home page with the three role buttons.
-- [ ] **108.** Ticket timeline page `/t/<ticket-no>`.
-- [ ] **109.** Live summary page `/live`.
-- [ ] **110.** Hidden demo settings page.
+- [x] **107.** Home page with the three role buttons.
+- [x] **108.** Ticket page `/t/<token>`.
+- **109.** ~~Live summary page `/live`.~~ Dropped on 2026-11-28: no `/live` page and no future-features page.
+- [x] **110.** Demo settings page `/settings` (store officer login).
 
-**Done when:** scanning the QR on the on-screen slip with a phone opens that ticket's timeline.
+**Also in this phase** (added 2026-11-28, not one of the 120 steps):
+
+- [x] The slip's QR code holds an unguessable token instead of the ticket number.
+- [x] The supervisor's plate check has its own demo switch (real unless switched).
+- [x] DEMO badge on the weighbridge, supervisor, store and settings pages.
+- [ ] The new Hindi text needs your review: [HINDI_REVIEW.md](HINDI_REVIEW.md#phase-14).
+
+**Done when:** scanning the QR on the on-screen slip with a phone opens that ticket's page.
+
+✅ Passed on 2026-11-28 **in the browser test only**: Playwright reads the address inside the slip's QR code at the real weighbridge screen, opens it in a second browser of 390×844 with no login, and sees the page change when the supervisor approves and after the second weighing. **No real phone has scanned a QR code.** The tests also cover the home page's three cards, wrong ticket addresses, the settings login and the supervisor being refused, each switch showing and hiding the DEMO badge on four open screens, and the reset with its typed word. All 53 browser tests, all six `pnpm journey` scenarios, typecheck, lint, format, the unit and API tests and the build passed. In the first full browser run one older test failed: it matched any "Open" link, and an earlier test leaves a help call with no ticket (which "Reset demo data" does not delete). It now opens its own truck's request. Pictures are in [screenshots/phase14](screenshots/phase14).
+
+- **Not tried:** a real phone (scanning, printing or Save as PDF from the phone), a real printer. The print view was checked in Chrome's print mode at A4 width only.
+- **Not seen:** the usage warning from 80% on screen (the API tests cover the figures and the warning).
+- A ticket page address works for anyone who has it, and does not expire.
+
+### Showing the demo
+
+1. `pnpm install` (once), `pnpm db:migrate`, `pnpm db:seed`, then `pnpm dev` (for phones: `pnpm lan`).
+2. Home page: <http://localhost:3000/>.
+3. Demo settings: <http://localhost:3000/settings>, store officer `ram`, PIN `2001` (test only; change before Phase 16). One browser holds one login: open it in another browser or a private window than the weighbridge.
+4. A ticket page: scan the QR code on a slip (a phone needs `pnpm lan`), or, while developing, copy the address from the picture's `data-url`.
 
 ## Phase 15 — Testing
 

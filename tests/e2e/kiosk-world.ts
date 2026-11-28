@@ -139,9 +139,19 @@ export class Office {
     await this.demo("post", "reset");
   }
 
+  /** Every demo replacement off, as a test leaves the settings. */
+  allReal(): Promise<void> {
+    return this.demo("put", "settings", {
+      anprMode: "real",
+      supervisorMode: "real",
+      ocrMode: "real",
+    });
+  }
+
   pick(plate: string, invoice: SampleInvoiceId): Promise<void> {
     return this.demo("put", "settings", {
       anprMode: "pick",
+      supervisorMode: "pick",
       ocrMode: "pick",
       demoPlate: plate,
       demoInvoice: invoice,
@@ -198,7 +208,7 @@ export class Office {
     const { tickets } = (await list.json()) as { tickets: SupervisorTicketView[] };
     const truck = tickets.find((item) => item.plate === plate);
     expect(truck, `${plate} is on the supervisor's list`).toBeDefined();
-    await this.demo("put", "settings", { demoPlate: seen });
+    await this.demo("put", "settings", { supervisorMode: "pick", demoPlate: seen });
     const photo = await this.supervisor.post(
       `${WEB_URL}/api/supervisor/tickets/${truck!.ticketId}/photo`,
       {

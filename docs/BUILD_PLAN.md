@@ -13,9 +13,11 @@ We will build the Trinetra funding prototype from scratch with Claude, as **one 
 | Weighbridge kiosk | Driver, alone | Touchscreen laptop/PC beside the model, with speaker; no printer (slips shown on screen with a Print button); invoices come from the driver's phone | `/kiosk` |
 | Supervisor dashboard | Site supervisor | Phone browser | `/supervisor` |
 | Store officer dashboard | Store officer | Phone browser | `/store` |
-| Ticket timeline (QR page) | Anyone, investors | Any browser | `/t/<ticket-no>` |
-| Live summary screen (optional) | Demo audience | Projector | `/live` |
-| Demo settings | Us, during the pitch | Kiosk (hidden) | `/kiosk/settings` |
+| Ticket page (QR page) | Anyone with the slip, investors | Phone browser | `/t/<token>` |
+| Home page | Anyone | Any browser | `/` |
+| Demo settings | Us, during the pitch (store officer login) | Any browser | `/settings` |
+
+There is **no** live summary screen (`/live`) and **no** future-features page (decided 2026-11-28).
 
 ### What we do not build
 
@@ -319,11 +321,14 @@ All bodies and answers are JSON (photos are `multipart/form-data`). Errors alway
 | `GET /api/store/requests` | Store | Pending and past requests (Type 2, HOLD, mismatch, blocked) |
 | `POST /api/approvals/:id/decide` | Supervisor, store | Approve / reject + reason; store adds chosen weight (HOLD) or material (mismatch) |
 | `GET /api/photos/:id` | Logged-in users | Short-lived link to view a photo |
-| `GET /api/public/tickets/:ticketNo` | Anyone with the QR | Read-only timeline (no phone numbers) |
-| `GET /api/live/summary` | Live screen | Trucks today, tons by material, pending, blocked |
-| `GET/PUT /api/demo/settings` | Kiosk + admin PIN | Demo switches (weight, ANPR, OCR, voice) |
-| `POST /api/demo/weight` | Kiosk + admin PIN | Set a simulated weight, stable and position flags |
-| `POST /api/demo/reset` | Kiosk + admin PIN | Delete demo tickets, reset trip counters |
+| `GET /api/public/tickets/:token` | Anyone with the QR | Read-only ticket and timeline, found only by its random token (no phone numbers, ids, bill or staff photos) |
+| `GET /api/live/summary` | Anyone | Counts only. Built in Phase 8; **no page uses it** (no `/live` page) |
+| `GET/PUT /api/demo/settings` | Store officer, or kiosk + admin PIN | Demo switches: kiosk plate reading, supervisor plate check, bill reading |
+| `GET /api/demo/overview` | Store officer, or kiosk + admin PIN | Usage meters and device status |
+| `GET /api/demo/master-data` | Store officer, or kiosk + admin PIN | The seeded rules, read-only |
+| `GET /api/demo/status` | Any login | Is a demo mode on? (the DEMO badge) |
+| `POST /api/demo/weight` | Kiosk + admin PIN only | Set a simulated weight, stable and position flags |
+| `POST /api/demo/reset` | Store officer, or kiosk + admin PIN | Delete demo tickets, reset trip counters |
 
 **Invoice upload from the driver's phone** uses two more endpoints with no login, protected by the one-time code instead: `GET /api/upload/:code` (checks the code, shows the plate so the driver knows it is his truck) and `POST /api/upload/:code` (photo or PDF up to 8 MB → Gemini → fields saved on the ticket → live event `invoice:read` to the kiosk). Codes are stored hashed in an `upload_links` table (ticket, expiry, used time) and work once.
 
@@ -340,6 +345,9 @@ After login, each screen joins its own "room" so it only gets its own news: `kio
 | `approval:new` | the one supervisor, or store | New request to decide (with sound) |
 | `approval:decided` | kiosk, store, supervisor | Result of a decision |
 | `kiosk:ready` | kiosk | Type 2 ticket approved; driver can print slip |
+| `demo:changed` | kiosk, supervisor, store | A demo switch changed: show or hide the DEMO badge |
+
+The `live` room stays in the backend, but no page joins it (there is no `/live` page). The ticket page needs no room: it asks again every 5 seconds.
 
 If the connection drops, Socket.IO reconnects by itself; on reconnect, each page reloads its data once so nothing is missed.
 
@@ -509,7 +517,7 @@ A phone-first web page where the store officer receives every request that needs
 
 ### Home (`/`)
 
-Three big buttons: **Weighbridge**, **Supervisor**, **Store officer**, each leading to its login. Used only to reach the right part; the kiosk opens `/kiosk` directly.
+A simple landing page in the kiosk's dark style: the Trinetra logo, one line about what Trinetra does, three big cards (**Weighbridge kiosk**, **Supervisor**, **Store officer**), each opening its page, a small "How it works" strip (truck arrives → plate read → bill read → weighed → verified → slip), and the English / Hindi switch. The kiosk opens `/kiosk` directly.
 
 ### Slips
 
@@ -524,27 +532,35 @@ Shown on screen as a slip, labels in English + the driver's language. A Print bu
 | First weight | Unloading point used |
 | **Go to: CH-6**, supervisor name and phone | "Reprint" marked if printed again |
 
-### Ticket timeline (`/t/<ticket-no>`, opened by the QR)
+### Ticket page (`/t/<token>`, opened by the QR)
 
-Read-only page anyone can open: every event in order with time and actor — plate read, invoice read, first weight, supervisor photo and match, store decision, second weight, tolerance result, slips printed. Photos open on tap. Manual fallbacks and demo-mode events are marked. Phone numbers are hidden.
+Public, read-only, made for a phone, no login. The address holds a long random **token**, not the ticket number, so nobody can step through other tickets; a wrong token shows "Ticket not found".
 
-### Live summary (`/live`, optional)
+- Ticket number, plate, material, type, invoice number and weight, first, second and net weight, difference %, status, unloading point name, and a small front photo of the truck
+- A timeline of every step with its time: arrived, plate read, bill read, first weight, verified by the supervisor / approved by the store, second weight, completed / rejected
+- Never shown: phone numbers, PINs, internal ids, the bill picture, staff photos. Staff are named by name and role only
+- A **Print** button with a clean print layout; English and Hindi
+- While the visit is going on, the page asks again every 5 seconds
 
-For the projector: trucks today, tons received per material, pending approvals, blocked/rejected tickets, ESP32 online. Updates live.
+### No live summary page, no future-features page
 
-### Demo settings (`/kiosk/settings`, hidden)
+Decided 2026-11-28: there is no `/live` page and no future-features page.
 
-Opened by holding the kiosk logo for 3 seconds + admin PIN.
+### Demo settings (`/settings`)
 
-- **Weight source:** ESP32 or Simulated. Simulated shows a slider and preset buttons (Loaded 32,560 kg, Empty 18,250 kg, a tolerance-fail value), plus Stable and Position-OK switches
-- **ANPR:** Real or Pick a plate from the vehicle list
-- **Invoice OCR:** Real or Pick one of the sample invoices
-- **Voice:** on / off
-- **Cameras:** front and back ESP32-CAM online status, last photo, and a Test photo button
-- **ESP32:** online status, last reading, **Tare** button
-- **Reset demo data:** deletes demo tickets and resets trip counters (asks to confirm)
+For the **store officer** (there is no admin role; the server checks the role).
 
-Every ticket made while any switch is on Simulated / Pick is tagged "demo".
+- **Kiosk plate reading:** Real / Pick
+- **Supervisor plate check:** Real / Pick (its own switch; Real unless switched)
+- **Bill reading:** Real / Pick
+- When a switch is on Pick: which plate and which sample invoice
+- A small **DEMO** badge on the weighbridge, supervisor and store pages while any demo replacement is on
+- **Usage:** Plate Recognizer calls this month (of 2,500) and Gemini calls today, with a warning from 80%
+- **Devices:** the main ESP32 and both cameras, with when each was last heard
+- **Reset demo data:** deletes demo tickets and resets trip counters; the word RESET must be typed. Users and master data are never touched
+- The seeded rules, read-only: materials with their type rules, chainages and supervisors, unloading rules, tolerance
+
+Every ticket made while any switch is on Pick (or the weight is simulated) is tagged "demo". The simulated weight is not on this page: it needs the kiosk login and the admin PIN. Tare, test photos and voice switches are not built.
 
 ## 13. Small but important details
 
@@ -597,7 +613,7 @@ These are the things that usually break a demo if forgotten.
 ```
 trinetra-prototype/
 ├─ apps/
-│  ├─ web/            Next.js website (kiosk, supervisor, store, timeline, live)
+│  ├─ web/            Next.js website (home, kiosk, supervisor, store, ticket page, demo settings)
 │  └─ server/         Fastify backend (REST, Socket.IO, ESP32 WebSocket)
 ├─ packages/
 │  └─ shared/         Zod schemas, types, statuses, rules, voice matching, seed data
@@ -788,11 +804,11 @@ trinetra-prototype/
 ### Phase 14 — Shared pages
 
 107. Home page with the three role buttons.
-108. Ticket timeline page `/t/<ticket-no>`.
-109. Live summary page `/live`.
-110. Hidden demo settings page.
+108. Ticket page `/t/<token>`.
+109. ~~Live summary page `/live`.~~ Dropped (2026-11-28): no `/live` page and no future-features page.
+110. Demo settings page `/settings` (store officer login).
 
-**Done when:** scanning the QR on the on-screen slip with a phone opens that ticket's timeline.
+**Done when:** scanning the QR on the on-screen slip with a phone opens that ticket's page.
 
 ### Phase 15 — Testing
 

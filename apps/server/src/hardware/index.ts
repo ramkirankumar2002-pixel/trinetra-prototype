@@ -1,4 +1,5 @@
 // Puts the hardware parts together and runs their timers.
+import type { DeviceId } from "@trinetra/shared";
 import type { FastifyBaseLogger } from "fastify";
 import type { Database } from "../db/client";
 import type { StorageService } from "../services/storage";
@@ -46,14 +47,22 @@ export function createHardware(options: HardwareOptions) {
     ...(photoTimeoutMs === undefined ? {} : { timeoutMs: photoTimeoutMs }),
   });
 
+  // When each real board was last heard. Kept after it goes offline, and not fed by the
+  // simulated weight: the settings page must never show a board that is not there.
+  const heard = new Map<DeviceId, Date>();
+
   const listener: DeviceListener = {
     mainMessage: (message) => {
+      heard.set("main", new Date());
       // In demo mode the ESP32 still takes commands, but its readings are set aside.
       if (simulatedWeight.current()) return;
       if (message.t === "w") state.addWeight(message);
       else state.seen("main");
     },
-    cameraMessage: (camera) => state.seen(camera),
+    cameraMessage: (camera) => {
+      heard.set(camera, new Date());
+      state.seen(camera);
+    },
     disconnected: (device) => {
       if (device === "main" && simulatedWeight.current()) return;
       state.disconnected(device);
@@ -92,6 +101,8 @@ export function createHardware(options: HardwareOptions) {
     signals,
     listener,
     ready,
+    /** When the real board last sent anything, since the server started. */
+    lastHeard: (device: DeviceId): Date | null => heard.get(device) ?? null,
     start(): void {
       tick = setInterval(() => state.checkTimeouts(), TICK_MS).unref();
       // Not awaited: the server starts even while the database is unreachable.

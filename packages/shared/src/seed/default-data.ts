@@ -223,6 +223,8 @@ export const SEED_SETTINGS = {
   scale_factor: 1,
   // Demo replacements, if something fails on stage. "real" or "pick".
   anpr_mode: "real",
+  // The reading of the supervisor's photo has its own switch.
+  supervisor_anpr_mode: "real",
   ocr_mode: "real",
   // Used only in "pick" mode: a plate from SEED_VEHICLES and an id from SAMPLE_INVOICES.
   demo_plate: "MH12AB1234",

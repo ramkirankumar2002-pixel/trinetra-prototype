@@ -24,6 +24,8 @@ export { parseDigits, parseYesNo } from "./matching/speech";
 export * from "./rules/ticket-state";
 export * from "./format";
 export * from "./public-url";
+export * from "./public-ticket";
+export * from "./demo-settings";
 export * from "./hardware";
 export * from "./readers";
 export * from "./realtime";

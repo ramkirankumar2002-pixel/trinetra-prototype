@@ -34,7 +34,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async () => {
   bridge.stop();
-  await office?.demo("put", "settings", { anprMode: "real", ocrMode: "real" });
+  await office?.allReal();
   await office?.dispose();
 });
 

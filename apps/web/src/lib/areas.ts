@@ -9,14 +9,19 @@ export const AREAS = {
 
 export type AreaName = keyof typeof AREAS;
 
-/** The area an address belongs to, or undefined for a public page such as /live. */
+/** The demo settings: the store officer's page, though not under /store. */
+export const SETTINGS_PATH = "/settings";
+
+/** The area an address belongs to, or undefined for a public page such as /t/<token>. */
 export function areaOf(pathname: string): AreaName | undefined {
+  if (pathname === SETTINGS_PATH) return "store";
   const first = pathname.split("/")[1] ?? "";
   return Object.hasOwn(AREAS, first) ? (first as AreaName) : undefined;
 }
 
 /** A page of this part, other than its login, that a login may go back to. */
 function isPageOf(area: AreaName, path: string): boolean {
+  if (area === "store" && path === SETTINGS_PATH) return true;
   const { home, login } = AREAS[area];
   // Only letters, digits, dashes and single slashes: nothing that could leave the website.
   return path.startsWith(`${home}/`) && path !== login && /^(\/[A-Za-z0-9-]+)+$/.test(path);

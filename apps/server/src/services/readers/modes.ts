@@ -10,6 +10,8 @@ const mode = z.enum(["real", "pick"]).default("real");
 const modesSchema = z.object({
   /** "pick": use the demo_plate from the vehicle list instead of the cameras. */
   anpr_mode: mode,
+  /** "pick": the supervisor's photo "shows" the demo_plate; the photo is not read. */
+  supervisor_anpr_mode: mode,
   /** "pick": use the demo_invoice sample instead of reading a file. */
   ocr_mode: mode,
   demo_plate: z.string().optional(),

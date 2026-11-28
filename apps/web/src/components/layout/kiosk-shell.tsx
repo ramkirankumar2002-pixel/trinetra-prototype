@@ -37,6 +37,8 @@ export interface KioskShellProps {
   onStartOver?: (() => void) | undefined;
   /** For staff: the logo was held for 3 seconds. */
   onStaffHold?: (() => void) | undefined;
+  /** A mark in the rail, such as "DEMO". */
+  badge?: ReactNode;
   variant?: "kiosk" | "phone";
   children: ReactNode;
 }
@@ -45,7 +47,8 @@ function Rail({
   onAskHelp,
   onStartOver,
   onStaffHold,
-}: Pick<KioskShellProps, "onAskHelp" | "onStartOver" | "onStaffHold">) {
+  badge,
+}: Pick<KioskShellProps, "onAskHelp" | "onStartOver" | "onStaffHold" | "badge">) {
   const t = useT();
   const held = useRef<ReturnType<typeof setTimeout>>(undefined);
   const release = () => clearTimeout(held.current);
@@ -83,6 +86,7 @@ function Rail({
           <span className="whitespace-nowrap text-highlight">{t("kiosk.systemNameSecond")}</span>
         </p>
       </div>
+      {badge}
       <div className="mt-auto flex w-full flex-col gap-3">
         <LanguageToggle className="w-full px-2" />
         <HelpButton className="w-full px-2" onAsk={onAskHelp} />

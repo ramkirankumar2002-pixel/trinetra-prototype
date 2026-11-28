@@ -1,0 +1,2 @@
+ALTER TABLE "tickets" ADD COLUMN "public_token" text DEFAULT replace(gen_random_uuid()::text, '-', '') NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "tickets_public_token_unique" ON "tickets" USING btree ("public_token");

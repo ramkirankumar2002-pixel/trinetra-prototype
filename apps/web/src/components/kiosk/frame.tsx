@@ -7,6 +7,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useT } from "@/i18n/use-t";
 import { api } from "@/lib/api";
 import type { IdleStage } from "@/lib/kiosk/idle";
+import { DemoBadge } from "../demo-badge";
 import { KioskShell, type KioskShellProps } from "../layout/kiosk-shell";
 import { LogoutButton } from "../logout-button";
 import { Banner } from "../ui/banner";
@@ -73,6 +74,7 @@ export function KioskFrame({
       onAskHelp={() => callStoreOfficer(frame.ticketId)}
       onStartOver={frame.canStartOver ? frame.startOver : undefined}
       onStaffHold={() => frame.setStaffOpen(true)}
+      badge={<DemoBadge />}
     >
       {/* For tests and support: which screen this is. */}
       <span hidden data-testid="screen" data-screen={frame.screen} />

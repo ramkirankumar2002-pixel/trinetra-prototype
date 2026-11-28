@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { afterLoginPath, loginPath } from "./areas";
+import { afterLoginPath, areaOf, loginPath } from "./areas";
 
 describe("coming back after a login", () => {
   it("remembers the page that was open", () => {
@@ -27,5 +27,23 @@ describe("coming back after a login", () => {
     "?next=/supervisorx/a",
   ])("goes home for %s", (search) => {
     expect(afterLoginPath("supervisor", search)).toBe("/supervisor");
+  });
+});
+
+describe("the demo settings", () => {
+  it("belong to the store officer's login, which comes back to them", () => {
+    expect(areaOf("/settings")).toBe("store");
+    const login = loginPath("store", "/settings");
+    expect(login).toBe("/store/login?next=%2Fsettings");
+    expect(afterLoginPath("store", new URL(login, "http://x").search)).toBe("/settings");
+  });
+
+  it("are no way into another part", () => {
+    expect(afterLoginPath("supervisor", "?next=/settings")).toBe("/supervisor");
+    expect(afterLoginPath("store", "?next=/settingsx")).toBe("/store");
+  });
+
+  it.each(["/", "/t/0123456789abcdef0123456789abcdef"])("leave %s public", (path) => {
+    expect(areaOf(path)).toBeUndefined();
   });
 });

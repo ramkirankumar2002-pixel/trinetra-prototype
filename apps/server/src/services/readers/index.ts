@@ -178,10 +178,13 @@ export function createReaders(deps: ReaderDependencies) {
     return readInvoiceWithGemini(gemini, file, { lists, ticketPlate });
   }
 
-  /** Reads the supervisor's live photo. In "pick" mode it shows the chosen demo plate. */
+  /**
+   * Reads the supervisor's live photo. With the supervisor's own switch on "pick" it
+   * shows the chosen demo plate; the kiosk's switch changes nothing here.
+   */
   async function readSupervisorPlate(jpeg: Buffer): Promise<PlateRead> {
     const modes = await loadReaderModes(db);
-    if (modes.anpr_mode !== "pick") return readPlate(jpeg);
+    if (modes.supervisor_anpr_mode !== "pick") return readPlate(jpeg);
     const { plate, source, model, confidence, validFormat, ms, problems } =
       await pickedPlate(modes);
     return { plate, source, model, confidence, validFormat, ms, problems };

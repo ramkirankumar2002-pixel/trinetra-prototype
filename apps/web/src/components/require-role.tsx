@@ -3,10 +3,10 @@
 // Keeps a part of the website for its own role. This only decides what to show: the
 // backend checks the role again on every request.
 import type { AuthUser } from "@trinetra/shared";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useT } from "@/i18n/use-t";
-import { AREAS, type AreaName } from "@/lib/areas";
+import { AREAS, loginPath, type AreaName } from "@/lib/areas";
 import { isTemporary, useMe } from "@/lib/session";
 import { AuthShell } from "./layout/auth-shell";
 import { KioskShell } from "./layout/kiosk-shell";
@@ -26,15 +26,16 @@ export function useCurrentUser(): AuthUser {
 export function RequireRole({ area, children }: { area: AreaName; children: ReactNode }) {
   const t = useT();
   const router = useRouter();
+  const pathname = usePathname();
   const { data: user, error, refetch } = useMe();
-  const { role, login } = AREAS[area];
+  const { role } = AREAS[area];
   const wrongRole = user !== undefined && user.role !== role;
 
   useEffect(() => {
     // Logged in as someone else: to this part's own login. (No login at all is sent
     // there by the API client.)
-    if (wrongRole) router.replace(login);
-  }, [wrongRole, router, login]);
+    if (wrongRole) router.replace(loginPath(area, pathname));
+  }, [wrongRole, router, area, pathname]);
 
   // Once known, the user stays shown while the server is out of reach.
   if (user && !wrongRole) {

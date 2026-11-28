@@ -169,6 +169,13 @@ export const tickets = pgTable(
   {
     id: id(),
     ticketNo: text("ticket_no").notNull(),
+    /**
+     * The address of the public ticket page, in the slip's QR code. Random (122 bits), so
+     * nobody can reach another ticket by guessing, as they could with the ticket number.
+     */
+    publicToken: text("public_token")
+      .notNull()
+      .default(sql`replace(gen_random_uuid()::text, '-', '')`),
     plate: text().notNull(),
     status: ticketStatus().notNull().default("STARTED"),
     language: language().notNull(),
@@ -212,6 +219,7 @@ export const tickets = pgTable(
   },
   (t) => [
     uniqueIndex("tickets_ticket_no_unique").on(t.ticketNo),
+    uniqueIndex("tickets_public_token_unique").on(t.publicToken),
     uniqueIndex("tickets_one_open_per_plate")
       .on(t.plate)
       .where(sql`${t.status} not in (${closedStatuses})`),

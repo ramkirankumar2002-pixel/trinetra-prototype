@@ -103,6 +103,34 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
     });
   });
 
+  describe("the supervisor's own switch", () => {
+    // fakeApis({}) answers nothing, and the test key is empty: a real reading fails.
+    const photo = Buffer.from([0xff, 0xd8, 0xff]);
+
+    it("is real while only the kiosk's plate reading is on pick", async () => {
+      await set({ anpr_mode: "pick", demo_plate: "UP32EF9012" });
+      const read = await readers().readSupervisorPlate(photo);
+      expect(read.source).not.toBe("demo");
+      expect(read.plate).toBeNull();
+    });
+
+    it("gives the picked plate on pick, whatever the kiosk's switch says", async () => {
+      await set({ supervisor_anpr_mode: "pick", demo_plate: "UP32EF9012" });
+      expect(await readers().readSupervisorPlate(photo)).toMatchObject({
+        plate: "UP32EF9012",
+        source: "demo",
+      });
+      expect(apis.calls.plateRecognizer).toHaveLength(0);
+      expect(apis.calls.gemini).toHaveLength(0);
+    });
+
+    it("leaves the kiosk's plate reading real", async () => {
+      await set({ supervisor_anpr_mode: "pick" });
+      await readers().readPlates(null);
+      expect(requestPhotos).toHaveBeenCalled();
+    });
+  });
+
   describe("ocr_mode = pick", () => {
     it.each(SAMPLE_INVOICE_IDS)(
       "gives the %s sample, which reads and classifies as planned",
@@ -149,6 +177,7 @@ describe.skipIf(!testDatabaseUrl)("demo pick modes", { timeout: 30_000 }, () => 
   it.each([
     ["anpr_mode", "Pick"],
     ["ocr_mode", "fake"],
+    ["supervisor_anpr_mode", "yes"],
     ["demo_invoice", "gravel"],
   ])("refuses a wrong value for %s", async (key, value) => {
     await set({ [key]: value });

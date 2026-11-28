@@ -2,7 +2,7 @@
 
 // A slip on the weighbridge screen, and the same slip on white paper. The paper one is
 // outside the app, and the only thing the browser's print dialog gets (globals.css).
-import { formatIST, formatPlate, type TicketView } from "@trinetra/shared";
+import { formatIST, formatPlate, publicTicketPath, type TicketView } from "@trinetra/shared";
 import { cn } from "cn";
 import QRCode from "qrcode";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -12,9 +12,6 @@ import { useLanguage, useT } from "@/i18n/use-t";
 import { SURFACE } from "../ui/card";
 import { StatusPill } from "../ui/status-pill";
 import { holdApproval, slipFields, type SlipName } from "./slip-fields";
-
-/** The address the QR code on a slip opens: the ticket's timeline (Phase 14). */
-export const timelinePath = (ticketNo: string) => `/t/${ticketNo}`;
 
 /** A QR code as a picture. Empty until it has been drawn. */
 export function useQrImage(text: string | null): string | null {
@@ -33,7 +30,8 @@ export function useQrImage(text: string | null): string | null {
   return drawn && drawn.text === text ? drawn.image : null;
 }
 
-const useTimelineQr = (ticketNo: string) => {
+/** The QR code that opens the ticket's public page. */
+const useTicketQr = (token: string) => {
   const origin = useSyncExternalStore(
     () => () => {},
     () => window.location.origin,
@@ -41,7 +39,8 @@ const useTimelineQr = (ticketNo: string) => {
   );
   // PUBLIC_WEB_URL where it is set: a phone cannot open the kiosk's own "localhost".
   const base = process.env.PUBLIC_WEB_URL || origin;
-  return useQrImage(base ? `${base}${timelinePath(ticketNo)}` : null);
+  const url = base ? `${base}${publicTicketPath(token)}` : null;
+  return { url, image: useQrImage(url) };
 };
 
 const slipTime = (ticket: TicketView, slip: SlipName) => {
@@ -64,7 +63,7 @@ export function SlipView({
   reprint: boolean;
 }) {
   const t = useT();
-  const qr = useTimelineQr(ticket.ticketNo);
+  const { url, image: qr } = useTicketQr(ticket.publicToken);
   const fields = slipFields(ticket, slip, t).filter((field) => !field.printOnly);
   const name = t(slip === "FIRST" ? "slip.first" : "slip.final");
   return (
@@ -73,7 +72,14 @@ export function SlipView({
         {/* The picture is made here, in the browser: there is nothing for Next to optimise. */}
         {qr ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={qr} alt={t("slip.qr")} className="size-26 shrink-0 rounded-lg" />
+          <img
+            src={qr}
+            alt={t("slip.qr")}
+            // For tests and support: the address the picture holds.
+            data-testid="slip-qr"
+            data-url={url}
+            className="size-26 shrink-0 rounded-lg"
+          />
         ) : (
           <span className="size-26 shrink-0" />
         )}
@@ -135,7 +141,7 @@ export function PrintSlip({
 }) {
   const words = usePaperWords();
   const t = useT();
-  const qr = useTimelineQr(ticket.ticketNo);
+  const { image: qr } = useTicketQr(ticket.publicToken);
   // The page's body exists only in the browser.
   const body = useSyncExternalStore(
     () => () => {},

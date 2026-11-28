@@ -580,3 +580,137 @@ New texts for the issues in [MANUAL_CHECK.md](MANUAL_CHECK.md). Not checked by a
 | `sup.demoPlate` | Demo reading (not your photo) | डेमो रीडिंग (आपकी फ़ोटो से नहीं) |
 | `sup.demoShort` | demo reading | डेमो रीडिंग |
 | `kiosk.check.notGiven` | Not given | नहीं बताया |
+
+## Phase 14
+
+115 new texts, none checked by a Hindi speaker. The old home page line (`home.subtitle`) was removed.
+
+### Home page and the DEMO badge
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `demo.badge` | DEMO | डेमो |
+| `home.line` | A smart weighbridge that reads, weighs and verifies every truck. | एक स्मार्ट धर्मकांटा जो हर ट्रक को पढ़ता, तौलता और जाँचता है। |
+| `home.kiosk` | Weighbridge kiosk | धर्मकांटा कियोस्क |
+| `home.kioskText` | The driver's screen at the weighbridge | धर्मकांटे पर ड्राइवर की स्क्रीन |
+| `home.supervisorText` | Check trucks where they unload | माल उतरने की जगह पर ट्रक जाँचें |
+| `home.storeText` | Decide requests from the weighbridge | धर्मकांटे से आए अनुरोधों पर फ़ैसला करें |
+| `home.how` | How it works | यह कैसे काम करता है |
+| `home.step.arrives` | Truck arrives | ट्रक आता है |
+| `home.step.plate` | Plate read | नंबर प्लेट पढ़ी गई |
+| `home.step.bill` | Bill read | बिल पढ़ा गया |
+| `home.step.weighed` | Weighed | तौल हुई |
+| `home.step.verified` | Verified | जाँच हुई |
+| `home.step.slip` | Slip | पर्ची |
+
+### Ticket page
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `public.loading` | Loading the ticket… | टिकट खुल रहा है… |
+| `public.notFound` | Ticket not found | टिकट नहीं मिला |
+| `public.notFoundText` | Please scan the QR code on your slip again. | कृपया अपनी पर्ची का QR कोड फिर से स्कैन करें। |
+| `public.unreachable` | Cannot reach the server. Trying again… | सर्वर से संपर्क नहीं हो रहा। फिर कोशिश हो रही है… |
+| `public.live` | This visit is still going on. The page updates by itself. | यह विज़िट अभी जारी है। पेज अपने आप बदलता रहेगा। |
+| `public.print` | Print | प्रिंट करें |
+| `public.ticketNo` | Ticket no. | टिकट नंबर |
+| `public.truckPhoto` | Photo of the truck | ट्रक की फ़ोटो |
+| `public.timeline` | Timeline | क्रमवार विवरण |
+| `public.type` | Type | प्रकार |
+| `public.type.TYPE_1` | Type 1 · supervisor check | टाइप 1 · सुपरवाइज़र जाँच |
+| `public.type.TYPE_2` | Type 2 · store check | टाइप 2 · स्टोर जाँच |
+| `public.type.TYPE_3` | Type 3 · normal | टाइप 3 · सामान्य |
+| `public.invoiceWeight` | Invoice weight | बिल का वज़न |
+| `public.secondWeight` | Second weight | दूसरा वज़न |
+| `public.difference` | Difference | अंतर |
+| `public.accepted` | Accepted weight | स्वीकार किया गया वज़न |
+| `public.point` | Unloading point | माल उतारने की जगह |
+| `public.reason` | Reason: {reason} | कारण: {reason} |
+| `public.manual.plate` | Number typed by the driver | नंबर ड्राइवर ने टाइप किया |
+| `public.manual.check` | Approved after a check by eye | आँखों से जाँच के बाद मंज़ूर |
+| `public.status.STARTED` | At the weighbridge | धर्मकांटे पर |
+| `public.status.WAIT_STORE` | Waiting for the store officer | स्टोर अधिकारी का इंतज़ार |
+| `public.status.WAIT_SUPERVISOR` | Waiting for the supervisor | सुपरवाइज़र का इंतज़ार |
+| `public.status.UNLOADING` | Second weight due | दूसरी तौल बाकी |
+| `public.status.HOLD` | On hold | रोका गया |
+| `public.status.COMPLETED` | Completed | पूरा हुआ |
+| `public.status.REJECTED` | Rejected | अस्वीकार |
+| `public.status.ENDED` | Visit ended | विज़िट समाप्त |
+| `public.step.ARRIVED` | Truck arrived | ट्रक आया |
+| `public.step.PLATE_READ` | Number plate read | नंबर प्लेट पढ़ी गई |
+| `public.step.BILL_READ` | Bill read | बिल पढ़ा गया |
+| `public.step.FIRST_WEIGHT` | First weight | पहला वज़न |
+| `public.step.PLATE_ALLOWED` | Plate allowed by the store officer | स्टोर अधिकारी ने गाड़ी को अनुमति दी |
+| `public.step.MATERIAL_SET` | Material set by the store officer | स्टोर अधिकारी ने सामग्री तय की |
+| `public.step.SUPERVISOR_APPROVED` | Verified by the supervisor | सुपरवाइज़र ने जाँच की |
+| `public.step.SUPERVISOR_REJECTED` | Rejected by the supervisor | सुपरवाइज़र ने अस्वीकार किया |
+| `public.step.STORE_APPROVED` | Approved by the store officer | स्टोर अधिकारी ने मंज़ूरी दी |
+| `public.step.SECOND_WEIGHT` | Second weight | दूसरा वज़न |
+| `public.step.ON_HOLD` | On hold for the store officer | स्टोर अधिकारी के लिए रोका गया |
+| `public.step.HOLD_APPROVED` | Weight accepted by the store officer | स्टोर अधिकारी ने वज़न स्वीकार किया |
+| `public.step.STORE_REJECTED` | Rejected by the store officer | स्टोर अधिकारी ने अस्वीकार किया |
+| `public.step.COMPLETED` | Completed | पूरा हुआ |
+| `public.step.CANCELLED` | Visit cancelled by the store officer | स्टोर अधिकारी ने विज़िट रद्द की |
+| `public.step.ABANDONED` | Visit ended: the driver left | विज़िट समाप्त: ड्राइवर चला गया |
+
+### Demo settings
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `settings.title` | Demo settings | डेमो सेटिंग |
+| `settings.subtitle` | For the demonstration only | केवल प्रदर्शन के लिए |
+| `settings.switches` | Reading | पढ़ने का तरीका |
+| `settings.demoOn` | A demo mode is on. Tickets made now are marked as demo. | डेमो मोड चालू है। अभी बनने वाले टिकट डेमो माने जाएँगे। |
+| `settings.allReal` | Everything is real. | सब कुछ असली है। |
+| `settings.kioskPlate` | Kiosk plate reading | कियोस्क पर प्लेट पढ़ना |
+| `settings.kioskPlateText` | The two cameras at the weighbridge | धर्मकांटे के दो कैमरे |
+| `settings.supervisorPlate` | Supervisor plate check | सुपरवाइज़र की प्लेट जाँच |
+| `settings.supervisorText` | The supervisor's live photo. Real unless you switch it. | सुपरवाइज़र की लाइव फ़ोटो। आपके बदलने तक असली रहती है। |
+| `settings.bill` | Bill reading | बिल पढ़ना |
+| `settings.billText` | The invoice sent from the driver's phone | ड्राइवर के फ़ोन से भेजा गया बिल |
+| `settings.real` | Real | असली |
+| `settings.pick` | Pick | चुना हुआ |
+| `settings.pickedPlate` | Picked plate | चुनी हुई नंबर प्लेट |
+| `settings.pickedBill` | Picked sample bill | चुना हुआ नमूना बिल |
+| `settings.pickedNote` | Used only while a switch is on Pick. Both plate switches use the same plate. | केवल तब इस्तेमाल होते हैं जब कोई स्विच ‘चुना हुआ’ पर हो। दोनों प्लेट स्विच एक ही प्लेट लेते हैं। |
+| `settings.saved` | Saved | सेव हो गया |
+| `settings.saveFailed` | Could not save. Try again. | सेव नहीं हुआ। फिर कोशिश करें। |
+| `settings.weightSimulated` | The weight is simulated. | वज़न नकली (सिम्युलेटेड) है। |
+| `settings.useRealWeight` | Use the real weight | असली वज़न लें |
+| `settings.usage` | Free reading services | मुफ़्त पढ़ने की सेवाएँ |
+| `settings.plateRecognizer` | Plate Recognizer calls this month | इस महीने Plate Recognizer कॉल |
+| `settings.gemini` | Gemini calls today | आज की Gemini कॉल |
+| `settings.used` | {used} of {limit} | {limit} में से {used} |
+| `settings.nearLimit` | Close to the limit | सीमा के पास |
+| `settings.withinLimit` | Within the limit | सीमा के अंदर |
+| `settings.usageNote` | Counted by UTC date: a new day starts at 05:30 in India. Google states no fixed free limit, so 200 is our own early warning. | गिनती UTC तारीख से होती है: भारत में नया दिन 05:30 बजे शुरू होता है। Google कोई तय मुफ़्त सीमा नहीं बताता, इसलिए 200 हमारी अपनी चेतावनी सीमा है। |
+| `settings.devices` | Devices | उपकरण |
+| `settings.device.main` | Main ESP32 | मुख्य ESP32 |
+| `settings.device.front` | Front camera | आगे का कैमरा |
+| `settings.device.back` | Back camera | पीछे का कैमरा |
+| `settings.online` | Online | ऑनलाइन |
+| `settings.offline` | Offline | ऑफ़लाइन |
+| `settings.lastSeen` | Last seen {time} | आखिरी बार {time} को दिखा |
+| `settings.neverSeen` | Not seen since the server started | सर्वर चालू होने के बाद से नहीं दिखा |
+| `settings.reset` | Reset demo data | डेमो डेटा रीसेट करें |
+| `settings.resetText` | Deletes the demo tickets and starts the trip numbers at 1. Real tickets, users, materials and rules stay. | डेमो टिकट मिट जाते हैं और ट्रिप नंबर 1 से शुरू होते हैं। असली टिकट, उपयोगकर्ता, सामग्री और नियम बने रहते हैं। |
+| `settings.resetTitle` | Reset demo data? | डेमो डेटा रीसेट करें? |
+| `settings.resetType` | Type {word} to confirm | पक्का करने के लिए {word} टाइप करें |
+| `settings.resetConfirm` | Delete demo tickets | डेमो टिकट मिटाएँ |
+| `settings.cancel` | Cancel | रद्द करें |
+| `settings.resetDone` | Demo tickets deleted: {count} | मिटाए गए डेमो टिकट: {count} |
+| `settings.resetFailed` | Could not reset. Try again. | रीसेट नहीं हुआ। फिर कोशिश करें। |
+| `settings.rules` | Rules (read only) | नियम (केवल देखने के लिए) |
+| `settings.tolerance` | Weight tolerance: {pct}% | वज़न में छूट: {pct}% |
+| `settings.materials` | Materials | सामग्री |
+| `settings.typeRule` | Type rule | प्रकार का नियम |
+| `settings.rule.type1` | Always Type 1 (supervisor) | हमेशा टाइप 1 (सुपरवाइज़र) |
+| `settings.rule.type3` | Always Type 3 (normal) | हमेशा टाइप 3 (सामान्य) |
+| `settings.rule.threshold` | Above {kg}: Type 2 (store). Otherwise Type 3 | {kg} से ज़्यादा: टाइप 2 (स्टोर)। वरना टाइप 3 |
+| `settings.unloadingRules` | Unloading rules | माल उतारने के नियम |
+| `settings.trips` | Trips | ट्रिप |
+| `settings.anyTrip` | Any | कोई भी |
+| `settings.everythingElse` | Everything else | बाकी सब |
+| `settings.chainages` | Chainages and supervisors | चेनेज और सुपरवाइज़र |
+| `settings.chainage` | Chainage | चेनेज |
+| `settings.location` | Location | जगह |

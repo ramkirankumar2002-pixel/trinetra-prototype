@@ -8,7 +8,7 @@ import { updateTicket, type Reader, type TicketRow } from "./repo";
 export async function isDemoActive(db: Reader, hardware: Hardware): Promise<boolean> {
   if (hardware.simulatedWeight.current()) return true;
   const modes = await loadReaderModes(db);
-  return modes.anpr_mode === "pick" || modes.ocr_mode === "pick";
+  return [modes.anpr_mode, modes.supervisor_anpr_mode, modes.ocr_mode].includes("pick");
 }
 
 /** Once demo, always demo: the tag is never removed. */

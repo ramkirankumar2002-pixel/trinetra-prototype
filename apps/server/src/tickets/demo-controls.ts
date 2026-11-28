@@ -1,6 +1,11 @@
 // The demo settings (build plan section 12): replacements for the hardware and the
 // reading services if something fails on stage, and "Reset demo data".
-import type { DemoSettings, demoSettingsSchema } from "@trinetra/shared";
+import {
+  supervisorRoom,
+  type DemoSettings,
+  type demoSettingsSchema,
+  type Room,
+} from "@trinetra/shared";
 import { SAMPLE_INVOICE_IDS } from "@trinetra/shared/seed";
 import { eq, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -12,17 +17,35 @@ import {
   ticketEvents,
   tickets,
   uploadLinks,
+  users,
   vehicles,
 } from "../db/schema";
 import { AppError } from "../errors/app-error";
 import type { Transaction } from "../realtime/after-commit";
 import { loadReaderModes } from "../services/readers/modes";
+import { isDemoActive } from "./demo";
+
+/**
+ * Tells every signed-in screen whether the DEMO badge belongs there. Sent after every
+ * change, also one that leaves the badge as it was: a reset empties their lists.
+ */
+export async function announceDemo(app: FastifyInstance): Promise<void> {
+  const supervisors = await app.db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.role, "SUPERVISOR"));
+  const rooms: Room[] = ["kiosk", "store", ...supervisors.map((row) => supervisorRoom(row.id))];
+  app.realtime.publish("demo:changed", rooms, {
+    demo: await isDemoActive(app.db, app.hardware),
+  });
+}
 
 export async function demoSettings(app: FastifyInstance): Promise<DemoSettings> {
   const modes = await loadReaderModes(app.db);
   const simulated = app.hardware.simulatedWeight.current();
   return {
     anprMode: modes.anpr_mode,
+    supervisorMode: modes.supervisor_anpr_mode,
     ocrMode: modes.ocr_mode,
     demoPlate: modes.demo_plate ?? null,
     demoInvoice: modes.demo_invoice ?? null,
@@ -44,7 +67,7 @@ export async function changeDemoSettings(
   app: FastifyInstance,
   changes: z.output<typeof demoSettingsSchema>,
 ): Promise<DemoSettings> {
-  const { anprMode, ocrMode, demoPlate, demoInvoice, weightMode } = changes;
+  const { anprMode, supervisorMode, ocrMode, demoPlate, demoInvoice, weightMode } = changes;
   if (demoPlate !== undefined) {
     const [vehicle] = await app.db.select().from(vehicles).where(eq(vehicles.plate, demoPlate));
     if (!vehicle) {
@@ -65,6 +88,7 @@ export async function changeDemoSettings(
   await app.db.transaction(async (tx) => {
     const values = {
       anpr_mode: anprMode,
+      supervisor_anpr_mode: supervisorMode,
       ocr_mode: ocrMode,
       demo_plate: demoPlate,
       demo_invoice: demoInvoice,
@@ -74,6 +98,7 @@ export async function changeDemoSettings(
     }
   });
   if (weightMode === "real") app.hardware.simulatedWeight.stop();
+  await announceDemo(app);
   return demoSettings(app);
 }
 
@@ -105,5 +130,6 @@ export async function resetDemoData(app: FastifyInstance): Promise<{ deletedTick
     return ids.length;
   });
   app.anpr.clear();
+  await announceDemo(app);
   return { deletedTickets };
 }

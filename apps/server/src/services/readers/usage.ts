@@ -10,7 +10,7 @@ import type { ApiService } from "./errors";
 export const PLATE_RECOGNIZER_MONTHLY_LIMIT = 2500;
 /** Google does not publish one fixed free limit: this is only an early warning. */
 export const GEMINI_DAILY_WARNING = 200;
-const WARN_FRACTION = 0.8;
+export const WARN_FRACTION = 0.8;
 
 export interface UsageCounter {
   /** Call once for every request sent to the service. Never throws. */

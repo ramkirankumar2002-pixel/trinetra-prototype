@@ -67,7 +67,7 @@ describe.skipIf(!url)("database", { timeout: 60_000 }, () => {
         transporters: 4,
         vehicles: 8,
         suppliers: 4,
-        settings: 11,
+        settings: 12,
         tickets: 0,
       });
     });

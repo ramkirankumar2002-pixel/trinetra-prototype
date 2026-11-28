@@ -12,6 +12,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   formatPlate,
+  type DemoSettings,
   type StoreRequestsResponse,
   type SupervisorPhotoResponse,
   type SupervisorTicketView,
@@ -132,10 +133,14 @@ const isNotice = async (item: Waiting): Promise<boolean> => {
   );
 };
 
-/** The supervisor's live photo. In pick mode it "shows" the demo plate: the truck's own. */
+/**
+ * The supervisor's live photo. The supervisor's own switch is put on "pick" for it, so the
+ * photo "shows" the demo plate: the truck's own. Afterwards the switch is as it was.
+ */
 async function supervisorPhoto(item: Waiting): Promise<void> {
   const ticket = await call<TicketView>("ram", "GET", `/api/tickets/${item.ticketId}`);
-  await demo("PUT", "settings", { anprMode: "pick", demoPlate: ticket.plate });
+  const before = (await demo("GET", "settings")) as DemoSettings;
+  await demo("PUT", "settings", { supervisorMode: "pick", demoPlate: ticket.plate });
   const form = new FormData();
   const photo = await readFile(new URL("./sample-plates/match-front.jpg", import.meta.url));
   form.append("file", new Blob([new Uint8Array(photo)], { type: "image/jpeg" }), "photo.jpg");
@@ -145,6 +150,7 @@ async function supervisorPhoto(item: Waiting): Promise<void> {
     `/api/supervisor/tickets/${item.ticketId}/photo`,
     form,
   );
+  await demo("PUT", "settings", { supervisorMode: before.supervisorMode });
   console.log(`Supervisor's photo: ${result.match ? "MATCH" : "NO MATCH"}.`);
 }
 
@@ -195,7 +201,12 @@ const COMMANDS: Record<string, () => Promise<unknown>> = {
   approve: () => decide(true),
   reject: () => decide(false),
   real: async () => {
-    await demo("PUT", "settings", { anprMode: "real", ocrMode: "real", weightMode: "real" });
+    await demo("PUT", "settings", {
+      anprMode: "real",
+      supervisorMode: "real",
+      ocrMode: "real",
+      weightMode: "real",
+    });
     console.log("Demo modes off: real cameras, readers and weight.");
   },
   reset: async () => {

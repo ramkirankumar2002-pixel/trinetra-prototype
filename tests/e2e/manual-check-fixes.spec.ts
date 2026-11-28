@@ -17,6 +17,7 @@ import {
   typeDigits,
   Weighbridge,
 } from "./kiosk-world";
+import { WEB_URL } from "./playwright.config";
 import { LAPTOP, PHONE } from "./staff-look";
 import { signIn } from "./staff-session";
 
@@ -33,7 +34,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async () => {
   bridge.stop();
-  await office?.demo("put", "settings", { anprMode: "real", ocrMode: "real" });
+  await office?.allReal();
   await office?.reset();
   await office?.dispose();
 });
@@ -91,8 +92,17 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await home.goto("/store");
   await expect(home.getByTestId("connection")).toHaveText("Online");
   await expect(home.getByText("Tap the screen once")).toBeVisible();
-  await home.getByRole("table").getByRole("link", { name: /^Open/ }).click();
-  await expect(home).toHaveURL(/\/store\/approvals\/\d+$/);
+  // This truck's own request: an earlier test may have left a help call with no ticket,
+  // which "Reset demo data" does not delete.
+  const mine = home
+    .getByRole("table")
+    .getByRole("row")
+    .filter({ hasText: "RJ 14 LM 2345" })
+    .getByRole("link", { name: /^Open/ });
+  const address = (await mine.getAttribute("href"))!;
+  expect(address).toMatch(/^\/store\/approvals\/\d+$/);
+  await mine.click();
+  await expect(home).toHaveURL(`${WEB_URL}${address}`);
   await home.close();
 
   // Issue 5: "Cancel visit" is not a second red button, and says what it is.

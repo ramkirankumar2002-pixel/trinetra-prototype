@@ -180,6 +180,7 @@ export async function ticketView(
   return {
     id: ticket.id,
     ticketNo: ticket.ticketNo,
+    publicToken: ticket.publicToken,
     plate: ticket.plate,
     status: ticket.status,
     type: ticket.type,

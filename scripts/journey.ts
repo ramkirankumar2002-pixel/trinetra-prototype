@@ -233,6 +233,7 @@ interface Truck {
 const pickDemo = (truck: Truck) =>
   demo<DemoSettings>("PUT", "settings", {
     anprMode: "pick",
+    supervisorMode: "pick",
     ocrMode: "pick",
     demoPlate: truck.plate,
     demoInvoice: truck.invoice,
@@ -500,11 +501,11 @@ async function typeThreeAutomatic(): Promise<string> {
   await driveOff();
   await showTicket(ticket.id, "COMPLETED");
 
-  const shared = await api<PublicTicketView>("GET", `/api/public/tickets/${ticket.ticketNo}`);
+  const shared = await api<PublicTicketView>("GET", `/api/public/tickets/${ticket.publicToken}`);
   const text = JSON.stringify(shared);
-  check(!text.includes("9000000001"), "The public timeline shows a phone number.");
+  check(!/9000000001|98765432\d\d/.test(text), "The public ticket shows a phone number.");
   say(`\n  Public timeline (no login): ${shared.timeline.length} entries, no phone numbers.`);
-  return ticket.ticketNo;
+  return ticket.publicToken;
 }
 
 async function typeOneApproved(): Promise<string> {
@@ -536,7 +537,7 @@ async function typeOneApproved(): Promise<string> {
   await printSlip(ticket.id, "FINAL");
   await driveOff();
   await showTicket(ticket.id, "COMPLETED");
-  return ticket.ticketNo;
+  return ticket.publicToken;
 }
 
 async function fraudBlocked(): Promise<string> {
@@ -587,7 +588,7 @@ async function fraudBlocked(): Promise<string> {
   const again = await api<TicketView>("GET", `/api/tickets/${retry.id}`, { who: STORE });
   check(again.status === "REJECTED", "The new ticket should be rejected.");
   say(`    New ticket ${again.ticketNo}: ${again.status}, no weight saved.`);
-  return blocked.ticketNo;
+  return blocked.publicToken;
 }
 
 async function typeTwoApproved(): Promise<string> {
@@ -610,7 +611,7 @@ async function typeTwoApproved(): Promise<string> {
   await printSlip(ticket.id, "FINAL");
   await driveOff();
   await showTicket(ticket.id, "COMPLETED");
-  return ticket.ticketNo;
+  return ticket.publicToken;
 }
 
 async function toleranceFail(): Promise<string> {
@@ -644,7 +645,7 @@ async function toleranceFail(): Promise<string> {
     "The store officer's history does not show both decisions and the accepted weight.",
   );
   step("The store officer's history shows the accepted weight and who approved what.");
-  return ticket.ticketNo;
+  return ticket.publicToken;
 }
 
 // ---- Running it ----
@@ -691,7 +692,7 @@ async function steelBarsToVikram(): Promise<string> {
   await printSlip(ticket.id, "FINAL");
   await driveOff();
   await showTicket(ticket.id, "COMPLETED");
-  return ticket.ticketNo;
+  return ticket.publicToken;
 }
 
 /** Starts the backend if none is running. Returns the process to stop afterwards. */
@@ -745,9 +746,9 @@ async function main(): Promise<void> {
     ];
 
     title("All six journeys finished");
-    for (const [name, ticketNo] of results) {
-      const ticket = await api<PublicTicketView>("GET", `/api/public/tickets/${ticketNo}`);
-      say(`${name.padEnd(28)} ${ticketNo}  ${ticket.status}`);
+    for (const [name, token] of results) {
+      const ticket = await api<PublicTicketView>("GET", `/api/public/tickets/${token}`);
+      say(`${name.padEnd(28)} ${ticket.ticketNo}  ${ticket.status}`);
     }
     const summary = await api<LiveSummaryResponse>("GET", "/api/live/summary");
     say(
@@ -760,6 +761,7 @@ async function main(): Promise<void> {
     if (before) {
       await demo("PUT", "settings", {
         anprMode: before.anprMode,
+        supervisorMode: before.supervisorMode,
         ocrMode: before.ocrMode,
         ...(before.demoPlate ? { demoPlate: before.demoPlate } : {}),
         ...(before.demoInvoice ? { demoInvoice: before.demoInvoice } : {}),

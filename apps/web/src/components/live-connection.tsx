@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { loginPath, type AreaName } from "@/lib/areas";
 import { socketClient } from "@/lib/socket";
-import { useOnReconnect, useSocketStatus } from "@/lib/socket-hooks";
+import { useOnReconnect, useSocketEvent, useSocketStatus } from "@/lib/socket-hooks";
 
 export function LiveConnection({ area }: { area: AreaName }) {
   const queryClient = useQueryClient();
@@ -19,6 +19,8 @@ export function LiveConnection({ area }: { area: AreaName }) {
   }, []);
 
   useOnReconnect(() => void queryClient.invalidateQueries());
+  // A demo switch changed, or demo data was reset: the DEMO badge and the lists are old.
+  useSocketEvent("demo:changed", () => void queryClient.invalidateQueries());
 
   useEffect(() => {
     // The login ended while the page was open.

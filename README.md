@@ -148,36 +148,38 @@ Every error looks like `{ "error": { "code": "...", "message": "..." } }`, some 
 
 Request and answer types are in [packages/shared/src/tickets.ts](packages/shared/src/tickets.ts). **No request carries a weight:** the backend takes it from the weighbridge.
 
-| Address                                                   | Who                          | What it does                                                                                                                                            |
-| --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /api/anpr`                                          | Kiosk                        | Reads both plates of the truck on the bridge; returns an open or recently blocked ticket                                                                |
-| `POST /api/tickets`                                       | Kiosk                        | Starts a ticket, or resumes one younger than 10 minutes                                                                                                 |
-| `GET /api/tickets/:id`                                    | Kiosk, its supervisor, store | The ticket with requests, photos and timeline                                                                                                           |
-| `POST /api/tickets/:id/upload-link`                       | Kiosk                        | One-time invoice upload link (10 minutes)                                                                                                               |
-| `GET` and `POST /api/upload/:code`                        | Whoever has the code         | The driver's phone: plate and language; then the file (JPEG, PNG, WebP or PDF, 8 MB), answered 202 and read afterwards (`invoice:read` tells the kiosk) |
-| `PATCH /api/tickets/:id/details`                          | Kiosk                        | Material, supplier, transporter, driver; mismatch check                                                                                                 |
-| `POST /api/tickets/:id/first-weight` and `/second-weight` | Kiosk                        | Captures the stable weight                                                                                                                              |
-| `POST /api/tickets/:id/discard-weight` and `/printed`     | Kiosk                        | "Weigh again" before confirming; logs the Print button                                                                                                  |
-| `GET /api/master`, `GET /api/kiosk/collect`               | Kiosk                        | The tile lists; the Ready screen's "Ready to collect" and "Not approved"                                                                                |
-| `GET /api/supervisor/tickets?status=`                     | Supervisor                   | Their Type 1 trucks (`pending` or `done`)                                                                                                               |
-| `POST /api/supervisor/tickets/:id/photo`                  | Its supervisor               | Live JPEG with optional `lat`, `lng`, `accuracyM` form fields; plate match (3 photos)                                                                   |
-| `POST /api/approvals/:id/decide`                          | Supervisor, store            | `APPROVE` or `REJECT`; a decision cannot be changed                                                                                                     |
-| `GET /api/store/requests?status=`                         | Store                        | Requests (`pending` or `done`), newest first, and warnings of the last 24 hours                                                                         |
-| `GET /api/store/requests/:id`                             | Store                        | One request with its ticket's summary                                                                                                                   |
-| `POST /api/store/requests/:id/invoice`                    | Store                        | The bill of a driver without a phone, for a pending help call; read like the driver's own upload                                                        |
-| `POST /api/store/tickets/:id/cancel`                      | Store                        | Ends a visit that is waiting for a person, with a reason                                                                                                |
-| `GET /api/store/summary`                                  | Store                        | The numbers on the store officer's home                                                                                                                 |
-| `GET /api/store/trucks`, `GET /api/store/history?q=`      | Store                        | Trucks on site now; today's completed, rejected and blocked tickets (search by plate or ticket number)                                                  |
-| `POST /api/help`                                          | Kiosk                        | Calls the store officer                                                                                                                                 |
-| `GET /api/public/tickets/:ticketNo`                       | Anyone                       | Read-only timeline without phone numbers                                                                                                                |
-| `GET /api/live/summary`                                   | Anyone                       | Counts for the projector screen                                                                                                                         |
-| `/api/demo/settings`, `/weight`, `/reset`                 | Kiosk + admin PIN            | Demo switches, simulated weight, delete demo tickets                                                                                                    |
+| Address                                                     | Who                          | What it does                                                                                                                                            |
+| ----------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/anpr`                                            | Kiosk                        | Reads both plates of the truck on the bridge; returns an open or recently blocked ticket                                                                |
+| `POST /api/tickets`                                         | Kiosk                        | Starts a ticket, or resumes one younger than 10 minutes                                                                                                 |
+| `GET /api/tickets/:id`                                      | Kiosk, its supervisor, store | The ticket with requests, photos and timeline                                                                                                           |
+| `POST /api/tickets/:id/upload-link`                         | Kiosk                        | One-time invoice upload link (10 minutes)                                                                                                               |
+| `GET` and `POST /api/upload/:code`                          | Whoever has the code         | The driver's phone: plate and language; then the file (JPEG, PNG, WebP or PDF, 8 MB), answered 202 and read afterwards (`invoice:read` tells the kiosk) |
+| `PATCH /api/tickets/:id/details`                            | Kiosk                        | Material, supplier, transporter, driver; mismatch check                                                                                                 |
+| `POST /api/tickets/:id/first-weight` and `/second-weight`   | Kiosk                        | Captures the stable weight                                                                                                                              |
+| `POST /api/tickets/:id/discard-weight` and `/printed`       | Kiosk                        | "Weigh again" before confirming; logs the Print button                                                                                                  |
+| `GET /api/master`, `GET /api/kiosk/collect`                 | Kiosk                        | The tile lists; the Ready screen's "Ready to collect" and "Not approved"                                                                                |
+| `GET /api/supervisor/tickets?status=`                       | Supervisor                   | Their Type 1 trucks (`pending` or `done`)                                                                                                               |
+| `POST /api/supervisor/tickets/:id/photo`                    | Its supervisor               | Live JPEG with optional `lat`, `lng`, `accuracyM` form fields; plate match (3 photos)                                                                   |
+| `POST /api/approvals/:id/decide`                            | Supervisor, store            | `APPROVE` or `REJECT`; a decision cannot be changed                                                                                                     |
+| `GET /api/store/requests?status=`                           | Store                        | Requests (`pending` or `done`), newest first, and warnings of the last 24 hours                                                                         |
+| `GET /api/store/requests/:id`                               | Store                        | One request with its ticket's summary                                                                                                                   |
+| `POST /api/store/requests/:id/invoice`                      | Store                        | The bill of a driver without a phone, for a pending help call; read like the driver's own upload                                                        |
+| `POST /api/store/tickets/:id/cancel`                        | Store                        | Ends a visit that is waiting for a person, with a reason                                                                                                |
+| `GET /api/store/summary`                                    | Store                        | The numbers on the store officer's home                                                                                                                 |
+| `GET /api/store/trucks`, `GET /api/store/history?q=`        | Store                        | Trucks on site now; today's completed, rejected and blocked tickets (search by plate or ticket number)                                                  |
+| `POST /api/help`                                            | Kiosk                        | Calls the store officer                                                                                                                                 |
+| `GET /api/public/tickets/:token`                            | Anyone with the slip's QR    | The public ticket page's data, found only by the ticket's random token; no phone numbers, ids, bill or staff photos                                     |
+| `GET /api/live/summary`                                     | Anyone                       | Counts only (no page uses it)                                                                                                                           |
+| `/api/demo/settings`, `/overview`, `/master-data`, `/reset` | Store, or kiosk + admin PIN  | Demo switches, usage and devices, the seeded rules, delete demo tickets                                                                                 |
+| `GET /api/demo/status`                                      | Logged in                    | Is a demo mode on? (the DEMO badge)                                                                                                                     |
+| `POST /api/demo/weight`                                     | Kiosk + admin PIN            | A simulated weight                                                                                                                                      |
 
 A job abandons STARTED tickets with no activity for 10 minutes. The lights, buzzer and display follow the ticket by themselves.
 
 **Idempotency-Key:** any logged-in `POST`, `PATCH` or `PUT` may send this header. A repeat of a successful request gets the first answer again and nothing is done twice (kept in memory for 12 hours).
 
-**Demo routes:** set `ADMIN_PIN` (6 to 12 digits) in `apps/server/.env` and restart the backend; send it in an `x-admin-pin` header. `GET` and `PUT /api/demo/settings`, `POST /api/demo/weight` and `POST /api/demo/reset`. Tickets made while a demo switch is on are tagged demo, and only those are deleted by a reset.
+**Demo routes:** the store officer uses them from the [demo settings page](#website). The helper scripts use the kiosk login: set `ADMIN_PIN` (6 to 12 digits) in `apps/server/.env`, restart the backend and send it in an `x-admin-pin` header. A simulated weight (`POST /api/demo/weight`) is only for the kiosk with the admin PIN. Tickets made while a demo switch is on are tagged demo, and only those are deleted by a reset.
 
 ## Journeys
 
@@ -312,6 +314,9 @@ With `pnpm dev` running (and the database seeded):
 | <http://localhost:3000/kiosk>      | The kiosk user (landscape, 1366×768 or 1920×1080)                                                                   |
 | <http://localhost:3000/supervisor> | A supervisor (made for a phone)                                                                                     |
 | <http://localhost:3000/store>      | The store officer (laptop first; also a phone)                                                                      |
+| <http://localhost:3000/>           | No login: the home page                                                                                             |
+| <http://localhost:3000/settings>   | The store officer: demo switches, usage, devices, reset                                                             |
+| `/t/<token>`                       | No login: a ticket's page, from the QR code on its slip                                                             |
 | <http://localhost:3000/dev/ui>     | No login: the design system; `?kiosk=details` and others show sample weighbridge screens (not in production builds) |
 
 Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/default-data.ts), and `pnpm db:seed` prints them. One browser holds one login: logging in to another part replaces it. To be logged in to two at once, use two browser profiles or a private window.
@@ -335,7 +340,7 @@ The backend pushes news to the browsers with **Socket.IO** on the same port as t
 
 - A page first calls `GET /api/auth/socket-token` with its login cookie, then connects with that token, which lasts 60 seconds. A new one is fetched for every reconnection. A missing, wrong or expired token is refused. The connection ends when the login expires.
 - The **backend** puts each connection in its room: kiosk, `supervisor:<userId>` or store. A browser cannot choose.
-- The **live** room (for the projector screen) needs no login: connect with `{ live: true }`. It is read-only.
+- The **live** room (no page uses it) needs no login: connect with `{ live: true }`. It is read-only.
 - Only the website at `FRONTEND_ORIGIN` may connect from a browser.
 
 | Event                         | Sent to                        | Carries                                                             |
@@ -347,6 +352,7 @@ The backend pushes news to the browsers with **Socket.IO** on the same port as t
 | `approval:new`                | supervisor, store              | approvalId, ticketId, kind                                          |
 | `approval:decided`            | kiosk, supervisor, store       | the same, and status                                                |
 | `kiosk:ready`                 | kiosk                          | ticketId, ticketNo, plate                                           |
+| `demo:changed`                | kiosk, supervisor, store       | demo (a switch changed: show or hide the DEMO badge)                |
 | `invoice:read`                | kiosk                          | ticketId                                                            |
 
 The names and types are in [packages/shared/src/realtime.ts](packages/shared/src/realtime.ts).
@@ -397,12 +403,13 @@ With `pnpm dev` running, open <http://localhost:3000/dev/readers> and log in as 
 
 ### Demo mode ("pick")
 
-If a service fails on stage, these settings replace it. They are in [default-data.ts](packages/shared/src/seed/default-data.ts); edit them and run `pnpm db:seed` (a settings page comes in Phase 14). Running `pnpm db:seed` also puts them back to whatever the file says.
+If a service fails on stage, these settings replace it. They are in [default-data.ts](packages/shared/src/seed/default-data.ts); edit them and run `pnpm db:seed` (or change them while it runs on the `/settings` page). Running `pnpm db:seed` also puts them back to whatever the file says.
 
-| Setting     | Values         | Effect of `pick`                                                                                                         |
-| ----------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `anpr_mode` | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                                         |
-| `ocr_mode`  | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand`, `aggregate`, `steel-bars` or `bitumen` |
+| Setting                | Values         | Effect of `pick`                                                                                                         |
+| ---------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `anpr_mode`            | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                                         |
+| `supervisor_anpr_mode` | `real`, `pick` | The supervisor's photo "shows" `demo_plate` and is not read                                                              |
+| `ocr_mode`             | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand`, `aggregate`, `steel-bars` or `bitumen` |
 
 ### Sample invoices and the real check
 

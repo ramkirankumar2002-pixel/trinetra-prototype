@@ -82,7 +82,7 @@ Related docs:
 
 ## Current status
 
-Phase 13 done (the store officer website), with a Bitumen sample bill. Next: Phase 14 (shared pages), or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run. **Nothing has been tried on a real touchscreen, phone or printer** (the "Done when" of Phases 12 and 13 passed in the browser tests only). The Hindi text is unchecked ([docs/HINDI_REVIEW.md](docs/HINDI_REVIEW.md)). To try the store officer: [docs/PROGRESS.md](docs/PROGRESS.md#testing-the-store-officer); on a phone: [docs/PROGRESS.md](docs/PROGRESS.md#testing-on-your-phone).
+Phase 14 done (home page, public ticket page, demo settings). **No `/live` page and no future-features page** (decided 2026-11-28). Next: Phase 15 (testing), or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run. **Nothing has been tried on a real touchscreen, phone or printer** (the "Done when" of Phases 12, 13 and 14 passed in the browser tests only; no real phone has scanned a slip's QR code). The Hindi text is unchecked ([docs/HINDI_REVIEW.md](docs/HINDI_REVIEW.md)). To show the demo: [docs/PROGRESS.md](docs/PROGRESS.md#showing-the-demo); store officer: [docs/PROGRESS.md](docs/PROGRESS.md#testing-the-store-officer); on a phone: [docs/PROGRESS.md](docs/PROGRESS.md#testing-on-your-phone).
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website. The ticket API's request schemas and answer types are in `src/tickets.ts`.
 
@@ -98,6 +98,10 @@ Supervisor rules to keep: the supervisor's pages are `app/supervisor/(signed-in)
 
 Store officer rules to keep: pages are `app/store/(signed-in)/` (data in `lib/store/queries.ts`, keys start with `STORE_KEY`; wording and sums in `lib/store/logic.ts`); `StoreWatcher` in `RoleShell` does live reloading, sound, messages and the tab title. Every store route uses `requireRole("STORE")`. The server, not only the page, requires a reason to reject, to accept the invoice weight and to allow a blocked plate. A refusal `WRONG_STAGE` or `ALREADY_DECIDED` shows "Already handled" and returns to the list. A visit waiting for a person (`waitsForPerson()` in shared) is never auto-abandoned; use that rule, not the status alone. The store officer's "Cancel visit" (`tickets/cancel.ts`) ends it as ABANDONED with a `STORE_CANCELLED` event. `store.spec.ts` covers both sizes; `PHASE13_SHOTS=1` retakes `docs/screenshots/phase13` (then compress). `lookAt()` (`tests/e2e/staff-look.ts`) checks every staff screen.
 
+Public ticket rules to keep: a ticket is found without a login only by `public_token`, never by number or id. `GET /api/public/tickets/:token` answers only the named fields of `PublicTicketView` (`packages/shared/src/public-ticket.ts`); add nothing private (`public.test.ts` lists the keys). The page asks again every 5 s until the ticket is closed.
+
+Demo settings rules to keep: `/settings` is the store officer's; the server accepts the store officer, or the kiosk with the admin PIN. A simulated weight stays kiosk + admin PIN only. Three switches: `anprMode`, `supervisorMode`, `ocrMode`. Every change goes through `announceDemo()` (the DEMO badge). **A browser test or script whose supervisor takes a photo must set `supervisorMode: "pick"`**, or it calls the real reading services. `shared-pages.spec.ts` covers Phase 14; `PHASE14_SHOTS=1` retakes `docs/screenshots/phase14` (then compress).
+
 Settle before the phases that need it:
 
 - **Phase 5B:** do not tick Phase 5 until 5B passes. The firmware must follow the device protocol in the README ("Device connection"). Send a heartbeat or weight often enough: the main ESP32 is offline after 3 s of silence, a camera after 15 s.
@@ -111,12 +115,11 @@ Settle before the phases that need it:
 - **To try with a real phone (Phase 13):** the camera for a bill, opening a PDF bill, the sound.
 - **To try with a real phone (Phase 12):** certificate warning, camera on Android Chrome and iPhone Safari, the live connection on iPhone with the self-signed certificate, sound and vibration.
 - **Decided:** the supervisor's GPS is skipped in the prototype (a future feature).
-- **Phase 14:** build `/t/<ticket-no>` (the slips' QR codes point to it) and the demo settings behind the 3 second logo hold (it offers only "Log out" now).
 - **To try with a real phone:** the QR codes hold `PUBLIC_WEB_URL` (`pnpm lan` sets it). Test "Take photo" and an iPhone HEIC photo.
 - **A high plate confidence is not proof** (a 99% read was wrong in the Phase 7 check): the driver always confirms the plate.
 - **Gemini backup (decided):** `GEMINI_FALLBACK_MODEL` (default `gemini-3.5-flash-lite`) is asked once when `GEMINI_MODEL` is busy, rate limited or times out. Results carry `model`. `gemini-3.8-flash` itself had not answered a request during Phase 7.
 - **To decide:** Whether to ask Gemini for a second opinion when Plate Recognizer's read is not in the vehicle list or front and back differ.
-- **To decide:** ticket numbers can be guessed, so anyone can open another ticket's public timeline (`/t/<ticket-no>`).
+- **To try with a real phone (Phase 14):** scan a slip's QR code (with `pnpm lan`), the ticket page, and Print / Save as PDF.
 - **Before Phase 16:** change the demo usernames and PINs; they are public in the repository.
 - **Before Phase 16:** set a new `ADMIN_PIN` on Railway.
 - **Before Phase 16:** set `NODE_ENV=production` on Railway (otherwise the login cookie is not `Secure`).

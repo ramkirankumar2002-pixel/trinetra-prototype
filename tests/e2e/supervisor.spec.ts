@@ -46,7 +46,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async () => {
   bridge.stop();
-  await office?.demo("put", "settings", { anprMode: "real", ocrMode: "real" });
+  await office?.allReal();
   await office?.dispose();
 });
 
@@ -242,7 +242,7 @@ test("one letter different, a wrong truck, and a rejection", async ({ browser })
   // The ticket's plate is one letter from the one the photo will "read".
   const close = await office.weighType1(bridge, "MH12AB1235");
   const wrong = await office.weighType1(bridge, "UP32EF9012");
-  await office.demo("put", "settings", { anprMode: "pick", demoPlate: "MH12AB1234" });
+  await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "MH12AB1234" });
   const { phone, context } = await signedInPhone(browser);
 
   await phone.goto(`/supervisor/verify/${close}`);
@@ -284,7 +284,7 @@ test("one letter different, a wrong truck, and a rejection", async ({ browser })
 
 test("a plate that could not be read: a manual check", async ({ browser }) => {
   const id = await office.weighType1(bridge, "MH14CD5678");
-  await office.demo("put", "settings", { anprMode: "pick", demoPlate: "MH14CD5678" });
+  await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "MH14CD5678" });
   const { phone, context } = await signedInPhone(browser);
   // Demo mode always reads a plate, so "not read" is put into the backend's answer. (The
   // backend's own handling of an unread photo is in its API tests.)
@@ -330,7 +330,7 @@ test("a plate that could not be read: a manual check", async ({ browser }) => {
 
 test("lost network, a decision made elsewhere, and logging in again", async ({ browser }) => {
   const id = await office.weighType1(bridge, "UP70GH3456");
-  await office.demo("put", "settings", { anprMode: "pick", demoPlate: "UP70GH3456" });
+  await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "UP70GH3456" });
   const { phone, context } = await signedInPhone(browser);
   await phone.goto(`/supervisor/verify/${id}`);
   await online(phone);
@@ -368,7 +368,7 @@ test("lost network, a decision made elsewhere, and logging in again", async ({ b
 
   // The decision arrives but its answer is lost: the page must not blame someone else.
   const own = await office.weighType1(bridge, "BR06QR4321");
-  await office.demo("put", "settings", { demoPlate: "BR06QR4321" });
+  await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "BR06QR4321" });
   await phone.unrouteAll({ behavior: "wait" });
   await phone.goto(`/supervisor/verify/${own}`);
   await takePhoto(phone);
@@ -407,7 +407,7 @@ test("another supervisor sees nothing of it", async ({ browser }) => {
 
 test("a camera that is refused, and a page that cannot open one", async ({ browser }) => {
   const id = await office.weighType1(bridge, "DL01NP6789");
-  await office.demo("put", "settings", { anprMode: "pick", demoPlate: "DL01NP6789" });
+  await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "DL01NP6789" });
 
   const denied = await browser.newContext({ viewport: PHONE });
   await signIn(denied, "amit");

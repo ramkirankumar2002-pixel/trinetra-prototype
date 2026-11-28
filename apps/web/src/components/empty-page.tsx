@@ -1,6 +1,7 @@
 "use client";
 
 // A menu page that is not built yet.
+import type { ReactNode } from "react";
 import type { MessageKey } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
 import { MENUS, type StaffArea } from "@/lib/menus";
@@ -12,10 +13,13 @@ export function EmptyPage({
   area,
   page,
   text,
+  children,
 }: {
   area: StaffArea;
   page: string;
   text: MessageKey;
+  /** Below the card. */
+  children?: ReactNode;
 }) {
   const t = useT();
   const icon = MENUS[area].find((item) => item.href === `/${area}/${page}`)?.icon;
@@ -33,6 +37,7 @@ export function EmptyPage({
           {t(text)}
         </EmptyState>
       </Card>
+      {children}
     </RoleShell>
   );
 }

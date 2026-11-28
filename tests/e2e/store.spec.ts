@@ -62,7 +62,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async () => {
   bridge.stop();
-  await office?.demo("put", "settings", { anprMode: "real", ocrMode: "real" });
+  await office?.allReal();
   await office?.reset();
   await office?.dispose();
   await kioskContext?.close();
@@ -460,7 +460,7 @@ for (const device of DEVICES) {
 
     // A supervisor blocks a truck: the store officer is told.
     await expect(store.getByRole("heading", { name: "Approvals" })).toBeVisible();
-    await office.demo("put", "settings", { demoPlate: "RJ14LM2345" });
+    await office.demo("put", "settings", { supervisorMode: "pick", demoPlate: "RJ14LM2345" });
     const vikram = await browser.newContext();
     await signIn(vikram, "vikram");
     const mine = (await (
