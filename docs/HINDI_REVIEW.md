@@ -693,7 +693,7 @@ New texts for the issues in [MANUAL_CHECK.md](MANUAL_CHECK.md). Not checked by a
 | `settings.lastSeen` | Last seen {time} | आखिरी बार {time} को दिखा |
 | `settings.neverSeen` | Not seen since the server started | सर्वर चालू होने के बाद से नहीं दिखा |
 | `settings.reset` | Reset demo data | डेमो डेटा रीसेट करें |
-| `settings.resetText` | Deletes the demo tickets and starts the trip numbers at 1. Real tickets, users, materials and rules stay. | डेमो टिकट मिट जाते हैं और ट्रिप नंबर 1 से शुरू होते हैं। असली टिकट, उपयोगकर्ता, सामग्री और नियम बने रहते हैं। |
+| `settings.resetText` | Deletes the demo tickets and the help calls that have no ticket, and starts the trip numbers at 1. Real tickets, users, materials and rules stay. | डेमो टिकट और बिना टिकट वाले मदद के बुलावे मिट जाते हैं, और ट्रिप नंबर 1 से शुरू होते हैं। असली टिकट, उपयोगकर्ता, सामग्री और नियम बने रहते हैं। |
 | `settings.resetTitle` | Reset demo data? | डेमो डेटा रीसेट करें? |
 | `settings.resetType` | Type {word} to confirm | पक्का करने के लिए {word} टाइप करें |
 | `settings.resetConfirm` | Delete demo tickets | डेमो टिकट मिटाएँ |

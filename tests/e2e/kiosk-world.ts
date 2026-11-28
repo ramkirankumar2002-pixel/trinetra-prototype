@@ -34,6 +34,7 @@ export class Weighbridge {
   private readonly model = new WeightModel();
   private readonly devices: SimDevice[] = [];
   private sender: NodeJS.Timeout | undefined;
+  private zerosSent = 0;
 
   start(): void {
     const url = `${BACKEND.replace("http", "ws")}/device`;
@@ -69,10 +70,16 @@ export class Weighbridge {
     this.devices.push(main, ...cameras);
     this.devices.forEach((device) => device.connect());
     this.model.leave(performance.now() - 60_000);
-    this.sender = setInterval(
-      () => main.send({ t: "w", ...this.model.read(performance.now()) }),
-      200,
-    );
+    this.sender = setInterval(() => {
+      const reading = this.model.read(performance.now());
+      main.send({ t: "w", ...reading });
+      this.zerosSent = reading.kg === 0 ? this.zerosSent + 1 : 0;
+    }, 200);
+  }
+
+  /** The backend has been told twice in a row that nothing is on the bridge. */
+  isEmpty(): boolean {
+    return this.zerosSent >= 2;
   }
 
   stop(): void {
@@ -312,6 +319,10 @@ async function atScreen(title: string, page: Page, run: () => Promise<void>) {
 
 /** A truck drives on: the screen wakes, and the driver chooses English. */
 export async function arrive(page: Page, bridge: Weighbridge, kg: number): Promise<void> {
+  // The truck of the test before may still be driving off. A screen opened then wakes for
+  // it, and resets under the driver's press when it has gone: wait for an empty bridge.
+  await expect.poll(() => bridge.isEmpty()).toBe(true);
+  await expect(page.getByTestId("bridge-status")).toContainText("Weighbridge ready");
   bridge.driveOn(kg);
   await expect(page.getByRole("button", { name: /^English/ }).first()).toBeVisible();
   await heading(page, "Language");

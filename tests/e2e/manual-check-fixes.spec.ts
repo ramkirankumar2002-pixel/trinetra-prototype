@@ -92,8 +92,7 @@ test("the issues of the manual-style check stay fixed", async ({ page, browser }
   await home.goto("/store");
   await expect(home.getByTestId("connection")).toHaveText("Online");
   await expect(home.getByText("Tap the screen once")).toBeVisible();
-  // This truck's own request: an earlier test may have left a help call with no ticket,
-  // which "Reset demo data" does not delete.
+  // This truck's own request, whatever else is waiting.
   const mine = home
     .getByRole("table")
     .getByRole("row")

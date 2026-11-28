@@ -557,7 +557,7 @@ For the **store officer** (there is no admin role; the server checks the role).
 - A small **DEMO** badge on the weighbridge, supervisor and store pages while any demo replacement is on
 - **Usage:** Plate Recognizer calls this month (of 2,500) and Gemini calls today, with a warning from 80%
 - **Devices:** the main ESP32 and both cameras, with when each was last heard
-- **Reset demo data:** deletes demo tickets and resets trip counters; the word RESET must be typed. Users and master data are never touched
+- **Reset demo data:** deletes demo tickets and the help calls that have no ticket, and resets trip counters; the word RESET must be typed. Users and master data are never touched
 - The seeded rules, read-only: materials with their type rules, chainages and supervisors, unloading rules, tolerance
 
 Every ticket made while any switch is on Pick (or the weight is simulated) is tagged "demo". The simulated weight is not on this page: it needs the kiosk login and the admin PIN. Tare, test photos and voice switches are not built.

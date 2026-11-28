@@ -321,6 +321,29 @@ describe.skipIf(!testDatabaseUrl)("demo controls", { timeout: 30_000 }, () => {
       expect(after.ticketNo.endsWith("-0004")).toBe(true);
     });
 
+    it("removes help calls made before a ticket, but not one on a real ticket", async () => {
+      const callForHelp = async (body: object) => {
+        expect((await h.call("kiosk", "POST", "/api/help", body)).status).toBe(200);
+      };
+      // One that the store officer has answered, and one still waiting.
+      await callForHelp({});
+      const [answered] = await h.approvalRows();
+      await h.call("store", "POST", `/api/approvals/${answered!.id}/decide`, {
+        decision: "APPROVE",
+      });
+      await callForHelp({});
+      const real = await started();
+      await callForHelp({ ticketId: real });
+      expect((await h.approvalRows()).map((row) => row.ticketId)).toEqual([null, null, real]);
+
+      const response = await h.call("store", "POST", "/api/demo/reset");
+
+      expect(response.body).toEqual({ deletedTickets: 0 });
+      expect(await h.approvalRows()).toMatchObject([
+        { ticketId: real, kind: "DRIVER_HELP", status: "PENDING" },
+      ]);
+    });
+
     it("keeps the users and the master data, whoever resets", async () => {
       const counts = async () => {
         const result: Record<string, unknown> = {};

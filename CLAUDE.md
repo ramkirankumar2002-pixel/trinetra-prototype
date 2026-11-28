@@ -108,7 +108,6 @@ Settle before the phases that need it:
 - **Open:** the backend keeps "truck on the bridge" and the plate reads in memory, so after a restart `truck:arrived` fires again (safe: it creates nothing) and the plate must be read again. Events missed while disconnected are not resent: pages reload over REST (`useOnReconnect`).
 - **Open:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires. (Such a tab goes to the login when it next gets focus.)
 - **Open:** the kiosk's dialogs are not measured by the driver-rule check.
-- **Open:** "Reset demo data" does not delete help calls made before a ticket existed.
 - **To decide:** a visit that waits for a person now stays open until someone answers or cancels it, also overnight. While it is open, its plate cannot start a new ticket (the old one is carried on).
 - **Decided:** cancelling a visit does not block the plate (only a rejection does), also for a truck waiting for its supervisor or on HOLD.
 - **To decide:** should a supervisor's rejection become something the store officer can overrule? Today it is BLOCKED and for information only.

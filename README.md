@@ -179,7 +179,7 @@ A job abandons STARTED tickets with no activity for 10 minutes. The lights, buzz
 
 **Idempotency-Key:** any logged-in `POST`, `PATCH` or `PUT` may send this header. A repeat of a successful request gets the first answer again and nothing is done twice (kept in memory for 12 hours).
 
-**Demo routes:** the store officer uses them from the [demo settings page](#website). The helper scripts use the kiosk login: set `ADMIN_PIN` (6 to 12 digits) in `apps/server/.env`, restart the backend and send it in an `x-admin-pin` header. A simulated weight (`POST /api/demo/weight`) is only for the kiosk with the admin PIN. Tickets made while a demo switch is on are tagged demo, and only those are deleted by a reset.
+**Demo routes:** the store officer uses them from the [demo settings page](#website). The helper scripts use the kiosk login: set `ADMIN_PIN` (6 to 12 digits) in `apps/server/.env`, restart the backend and send it in an `x-admin-pin` header. A simulated weight (`POST /api/demo/weight`) is only for the kiosk with the admin PIN. Tickets made while a demo switch is on are tagged demo. A reset deletes only those tickets, and the help calls made before any ticket existed.
 
 ## Journeys
 

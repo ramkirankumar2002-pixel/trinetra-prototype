@@ -7,7 +7,7 @@ import {
   type Room,
 } from "@trinetra/shared";
 import { SAMPLE_INVOICE_IDS } from "@trinetra/shared/seed";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, isNull, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import type { z } from "zod";
 import {
@@ -106,6 +106,9 @@ export async function changeDemoSettings(
  * Deletes the demo tickets with everything on them, and starts the trip numbers at 1
  * again. Real tickets are untouched, and ticket numbers are never used a second time.
  * Stored photo files stay: stored files are never removed.
+ *
+ * Help calls made before a ticket existed go too, waiting or answered. They belong to no
+ * ticket, so they cannot be tagged demo, and they would stay in the store officer's list.
  */
 export async function resetDemoData(app: FastifyInstance): Promise<{ deletedTickets: number }> {
   const deletedTickets = await app.db.transaction(async (tx) => {
@@ -126,6 +129,8 @@ export async function resetDemoData(app: FastifyInstance): Promise<{ deletedTick
       await tx.delete(photos).where(inArray(photos.ticketId, ids));
       await tx.delete(tickets).where(inArray(tickets.id, ids));
     }
+    // Only a help call can be without a ticket (the database checks it).
+    await tx.delete(approvals).where(isNull(approvals.ticketId));
     await saveSetting(tx, "trip_count_from", new Date().toISOString());
     return ids.length;
   });

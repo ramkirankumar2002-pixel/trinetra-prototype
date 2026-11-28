@@ -711,7 +711,7 @@
   "settings.lastSeen": "Last seen {time}",
   "settings.neverSeen": "Not seen since the server started",
   "settings.reset": "Reset demo data",
-  "settings.resetText": "Deletes the demo tickets and starts the trip numbers at 1. Real tickets, users, materials and rules stay.",
+  "settings.resetText": "Deletes the demo tickets and the help calls that have no ticket, and starts the trip numbers at 1. Real tickets, users, materials and rules stay.",
   "settings.resetTitle": "Reset demo data?",
   "settings.resetType": "Type {word} to confirm",
   "settings.resetConfirm": "Delete demo tickets",
