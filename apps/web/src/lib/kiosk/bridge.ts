@@ -2,6 +2,8 @@
 // nothing here is ever sent back to the backend.
 import type {
   CaptureBlockReason,
+  DeviceId,
+  WeighbridgeFault,
   HardwareStatusEvent,
   HardwareWeightEvent,
   KioskStateResponse,
@@ -28,6 +30,10 @@ export interface BridgeReading {
 export interface BridgeState {
   /** Null until the backend has said. */
   devices: HardwareStatusEvent | null;
+  /** When each board was last heard, as of the newest snapshot. */
+  lastSeen: Record<DeviceId, string | null> | null;
+  /** The weighbridge fault happening now: nothing can be weighed. */
+  fault: WeighbridgeFault | null;
   /** Null while the weighbridge is offline or has sent nothing. */
   reading: BridgeReading | null;
   truckPresent: boolean;
@@ -38,6 +44,8 @@ export interface BridgeState {
 
 export const EMPTY_BRIDGE: BridgeState = {
   devices: null,
+  lastSeen: null,
+  fault: null,
   reading: null,
   truckPresent: false,
   departures: 0,
@@ -71,6 +79,14 @@ export function afterStatus(
   return { devices, reading: devices.main ? state.reading : null };
 }
 
+/** A fault began or ended. A weight from before it means nothing. */
+export function afterFault(
+  state: BridgeState,
+  fault: WeighbridgeFault | null,
+): Partial<BridgeState> {
+  return { fault, reading: fault ? null : state.reading };
+}
+
 /** From GET /api/kiosk/state: when the page loads, and after a lost connection. */
 export function afterSnapshot(
   state: BridgeState,
@@ -81,20 +97,27 @@ export function afterSnapshot(
     front: snapshot.devices.front.online,
     back: snapshot.devices.back.online,
   };
+  const lastSeen = {
+    main: snapshot.devices.main.lastSeenAt,
+    front: snapshot.devices.front.lastSeenAt,
+    back: snapshot.devices.back.lastSeenAt,
+  };
+  const heard = { devices, lastSeen, fault: snapshot.fault };
   const reason = snapshot.canCapture.reason;
   const reading = snapshot.weight
     ? { kg: snapshot.weight.kg, canCapture: snapshot.canCapture.ok, reason }
     : null;
-  if (!reading) return { devices, reading };
+  if (!reading) return { ...heard, reading };
   if (TRUCK_REASONS.has(reason)) {
-    return { devices, reading, truckPresent: true, emptySince: null };
+    return { ...heard, reading, truckPresent: true, emptySince: null };
   }
-  return { devices, reading, ...(reason === "NO_TRUCK" ? gone(state) : {}) };
+  return { ...heard, reading, ...(reason === "NO_TRUCK" ? gone(state) : {}) };
 }
 
 interface BridgeStore extends BridgeState {
   weight: (event: HardwareWeightEvent) => void;
   status: (event: HardwareStatusEvent) => void;
+  setFault: (fault: WeighbridgeFault | null) => void;
   arrived: () => void;
   left: () => void;
   snapshot: (snapshot: KioskStateResponse) => void;
@@ -106,6 +129,7 @@ export const useBridge = create<BridgeStore>()((set) => ({
   weight: ({ kg, canCapture, reason }) =>
     set((state) => afterWeight(state, { kg, canCapture, reason }, Date.now())),
   status: (event) => set((state) => afterStatus(state, event)),
+  setFault: (fault) => set((state) => afterFault(state, fault)),
   arrived: () => set({ truckPresent: true, emptySince: null }),
   left: () => set((state) => gone(state)),
   snapshot: (snapshot) => set((state) => afterSnapshot(state, snapshot)),

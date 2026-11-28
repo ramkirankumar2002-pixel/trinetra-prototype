@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatPlate, type DemoMasterData, type DemoSettings } from "@trinetra/shared";
+import { formatKg, formatPlate, type DemoMasterData, type DemoSettings } from "@trinetra/shared";
 import { Check, SlidersHorizontal } from "lucide-react";
 import { useId } from "react";
 import type { MessageKey } from "@/i18n/translate";
@@ -129,7 +129,7 @@ export function SwitchesPanel({
           value={settings.demoInvoice ?? ""}
           options={master.invoices.map((invoice) => ({
             value: invoice.id,
-            label: `${materialText(invoice.material, t)} · ${formatPlate(invoice.plate)}`,
+            label: `${materialText(invoice.material, t)} · ${formatPlate(invoice.plate)} · ${formatKg(invoice.weightKg)}`,
           }))}
           disabled={save.isPending}
           onChange={(demoInvoice) => save.mutate({ demoInvoice })}

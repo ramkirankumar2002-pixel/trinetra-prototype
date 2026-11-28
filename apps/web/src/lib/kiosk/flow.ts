@@ -210,6 +210,8 @@ export type Screen =
   | Step
   | "ready"
   | "collect"
+  /** The load cell wiring was tampered with: nothing can be weighed. */
+  | "fault"
   | "position"
   | "loading"
   /** Type 2: the store officer is deciding. */
@@ -270,8 +272,11 @@ export function screenOf(
   session: Pick<Session, "step" | "ticketId" | "collect">,
   ticket: TicketView | undefined,
   positionBad: boolean,
+  faulty = false,
 ): Screen {
   const { step, ticketId, collect } = session;
+  // Over every screen. The driver's step is kept, and comes back when the fault is over.
+  if (faulty) return "fault";
   if (step === null) return collect ? "collect" : "ready";
   if (step === "language") return "language";
   let screen: Screen = step;

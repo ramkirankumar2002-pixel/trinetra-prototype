@@ -1,6 +1,6 @@
 // The demo settings page (/settings) and the DEMO badge.
 import type { TicketType } from "./domain";
-import type { DeviceId } from "./hardware";
+import type { DeviceId, WeighbridgeFault } from "./hardware";
 
 /** The word typed to confirm "Reset demo data". The same in both languages. */
 export const RESET_WORD = "RESET";
@@ -31,6 +31,8 @@ export interface DemoOverview {
   /** lastSeenAt: when the real board was last heard. Null: not since the server started. */
   devices: Record<DeviceId, { online: boolean; lastSeenAt: string | null }>;
   weightSimulated: boolean;
+  /** The weighbridge fault happening now, or null. */
+  fault: WeighbridgeFault | null;
 }
 
 /** GET /api/demo/master-data: the seeded rules, to read only. */
@@ -50,5 +52,5 @@ export interface DemoMasterData {
   }[];
   /** What the "Pick" switches can be set to. */
   plates: string[];
-  invoices: { id: string; material: string; plate: string }[];
+  invoices: { id: string; material: string; plate: string; weightKg: number }[];
 }

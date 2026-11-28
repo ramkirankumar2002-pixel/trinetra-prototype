@@ -45,6 +45,8 @@ export interface ReaderDependencies {
   db: Database;
   storage: StorageService;
   photos: Pick<PhotoService, "requestPhotos">;
+  /** Resolves when the weight is still, or after a few seconds. */
+  whenStill?: () => Promise<void>;
   log: FastifyBaseLogger;
   /** Replaced by tests. */
   fetch?: typeof fetch;
@@ -126,6 +128,9 @@ export function createReaders(deps: ReaderDependencies) {
   async function readPlates(ticketId: number | null): Promise<PlatesRead> {
     const modes = await loadReaderModes(db);
     if (modes.anpr_mode === "pick") return pickedPlates(modes, ticketId);
+    // A frame is at most 3 s old and "still" means 3 s without moving, so a frame taken
+    // once the weight is still shows a truck standing.
+    await deps.whenStill?.();
     const request = await photos.requestPhotos(ticketId);
 
     async function readCamera(camera: CameraId): Promise<CameraPlateRead> {

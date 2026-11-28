@@ -47,6 +47,7 @@ Related docs:
 - Load cells, position sensors, traffic lights, buzzer, a display, and front and back cameras. **No barrier.**
 - **Cameras are two ESP32-CAM boards (front and back).** They connect directly to the backend, not through the ESP32, and push photos to it over HTTPS.
 - The ESP32 handles only weight, sensors, lights, buzzer and display, and sends weight directly to the backend.
+- **Wiring, flashing and calibration:** [docs/HARDWARE.md](docs/HARDWARE.md). Firmware: `firmware/esp32/` and `firmware/esp32-cam/` (one sketch for both cameras); `firmware/original/` holds the offline sketches, with placeholders instead of Wi-Fi details. **Never write a Wi-Fi name, password or token into any committed file.**
 
 ### Plate reading and invoices
 
@@ -82,7 +83,9 @@ Related docs:
 
 ## Current status
 
-Phase 14 done (home page, public ticket page, demo settings). **No `/live` page and no future-features page** (decided 2026-11-28). Next: Phase 15 (testing), or Phase 5B (needs hardware code). Phase 5 is still open. The real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) is part of 5B and has not been run. **Nothing has been tried on a real touchscreen, phone or printer** (the "Done when" of Phases 12, 13 and 14 passed in the browser tests only; no real phone has scanned a slip's QR code). The Hindi text is unchecked ([docs/HINDI_REVIEW.md](docs/HINDI_REVIEW.md)). To show the demo: [docs/PROGRESS.md](docs/PROGRESS.md#showing-the-demo); store officer: [docs/PROGRESS.md](docs/PROGRESS.md#testing-the-store-officer); on a phone: [docs/PROGRESS.md](docs/PROGRESS.md#testing-on-your-phone).
+Phase 14 done (home page, public ticket page, demo settings). **No `/live` page and no future-features page** (decided 2026-11-28). **Phase 5B software is written (2026-11-28) but has NOT been tried on a board:** both sketches compile, and the backend was tested with pretend boards only. Next: the user flashes the boards and follows [docs/HARDWARE.md](docs/HARDWARE.md#first-power-on-checklist); then Phase 15. Phase 5 stays open until that passes, and the real plate-reading test (9 of 10 on ESP32-CAM photos of the model plates) has not been run. **Nothing has been tried on a real touchscreen, phone or printer** (the "Done when" of Phases 12, 13 and 14 passed in the browser tests only; no real phone has scanned a slip's QR code). The Hindi text is unchecked ([docs/HINDI_REVIEW.md](docs/HINDI_REVIEW.md)). To show the demo: [docs/PROGRESS.md](docs/PROGRESS.md#showing-the-demo); store officer: [docs/PROGRESS.md](docs/PROGRESS.md#testing-the-store-officer); on a phone: [docs/PROGRESS.md](docs/PROGRESS.md#testing-on-your-phone).
+
+Hardware rules to keep: the main board sends **grams**; only `hardware/index.ts` turns them into kg (`gramsToKg`), and the thresholds are settings in grams. The simulator, `pnpm journey`, `pnpm fake-hardware` and the browser tests use `scripts/sim/board.ts`: change it with the firmware and the README ("Device connection"). The server decides the lights (`hardware/signals.ts`; a `leaving` signal means the exit sensor is not a bad position). A weighbridge fault blocks every capture. Cameras push frames to `POST /api/cam/:camera`; a photo is never older than 3 s, and the plate services are never asked per frame. The model scale cannot change between a truck's two weighings. Both sketches must compile with the IDE's `arduino-cli`.
 
 Business rules are pure functions in `packages/shared` (`src/rules`, `src/matching`, `src/format.ts`). Use them; do not repeat a rule in the backend or website. The ticket API's request schemas and answer types are in `src/tickets.ts`.
 
@@ -104,7 +107,9 @@ Demo settings rules to keep: `/settings` is the store officer's; the server acce
 
 Settle before the phases that need it:
 
-- **Phase 5B:** do not tick Phase 5 until 5B passes. The firmware must follow the device protocol in the README ("Device connection"). Send a heartbeat or weight often enough: the main ESP32 is offline after 3 s of silence, a camera after 15 s.
+- **Phase 5B:** do not tick Phase 5 until it passes on the real boards. The main ESP32 is offline after 3 s of silence, a camera after 15 s.
+- **To prove on the real scale:** a 200 g cargo must read within ±1 g to pass 0.5%. If it cannot, [HARDWARE.md](docs/HARDWARE.md#pass-and-hold) gives heavier cargo with a smaller model scale; changing the tolerance is the user's decision.
+- **To decide:** the boards do not check the server's TLS certificate over `wss://` and `https://`.
 - **Open:** the backend keeps "truck on the bridge" and the plate reads in memory, so after a restart `truck:arrived` fires again (safe: it creates nothing) and the plate must be read again. Events missed while disconnected are not resent: pages reload over REST (`useOnReconnect`).
 - **Open:** logging out does not close the live connection of other open tabs; the server ends it when the 12 hour login expires. (Such a tab goes to the login when it next gets focus.)
 - **Open:** the kiosk's dialogs are not measured by the driver-rule check.

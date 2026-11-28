@@ -1,18 +1,25 @@
-// A pretend weighbridge: the main ESP32 and both ESP32-CAMs.
-//   pnpm sim                 cameras upload the matching plate pair
+// A pretend weighbridge: the main ESP32 and both ESP32-CAMs, speaking the firmware's
+// protocol.
+//   pnpm sim                 cameras send the matching plate pair
 //   pnpm sim --mismatch      the back camera shows another plate
 //   pnpm sim --loaded 19150  what the loaded truck of key "a" weighs
+//   pnpm sim --scale 40      if "1 g = X kg" on /settings is not 100
 //   pnpm sim --url ws://host:4000/device
 // The device tokens come from apps/server/.env. Start the backend first.
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { CAMERA_IDS, formatKg, type CameraId } from "@trinetra/shared";
-import { SimDevice } from "./sim/device";
-import { EMPTY_KG, LOADED_KG, WeightModel } from "./sim/weight-model";
+import {
+  CAMERA_IDS,
+  DEFAULT_MODEL_SCALE,
+  formatKg,
+  MAX_MODEL_SCALE,
+  TAMPER_REASONS,
+} from "@trinetra/shared";
+import { SimCamera, SimMainBoard } from "./sim/board";
+import { EMPTY_KG, LOADED_KG } from "./sim/weight-model";
 
-const SEND_EVERY_MS = 200;
 const OFFLINE_FOR_MS = 5000;
 
 const envFile = fileURLToPath(new URL("../apps/server/.env", import.meta.url));
@@ -24,132 +31,145 @@ const { values: args } = parseArgs({
     url: { type: "string" },
     mismatch: { type: "boolean", default: false },
     loaded: { type: "string" },
+    scale: { type: "string" },
   },
 });
+function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
+}
 const loadedKg = args.loaded === undefined ? LOADED_KG : Number(args.loaded);
 if (!Number.isInteger(loadedKg) || loadedKg <= 0 || loadedKg > 200_000) {
-  console.error("--loaded takes a whole number of kilograms, such as 19150.");
-  process.exit(1);
+  fail("--loaded takes a whole number of kilograms, such as 19150.");
+}
+const kgPerGram = args.scale === undefined ? DEFAULT_MODEL_SCALE : Number(args.scale);
+if (!(kgPerGram > 0 && kgPerGram <= MAX_MODEL_SCALE)) {
+  fail(`--scale takes the kilograms for 1 gram, up to ${MAX_MODEL_SCALE}.`);
 }
 const url = args.url ?? process.env.SIM_SERVER_URL ?? "ws://localhost:4000/device";
 const httpBase = url.replace(/^ws/, "http").replace(/\/device$/, "");
 let mismatch = args.mismatch;
 
 function token(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`${name} is not set in apps/server/.env (see .env.example).`);
-    process.exit(1);
-  }
-  return value;
+  return process.env[name] || fail(`${name} is not set in apps/server/.env (see .env.example).`);
 }
 
 const log = (text: string) => console.log(`${new Date().toLocaleTimeString("en-GB")}  ${text}`);
-const model = new WeightModel();
 const now = () => performance.now();
-
-const main = new SimDevice({
-  name: "main ESP32",
-  url,
-  token: token("DEVICE_TOKEN"),
-  log,
-  onCommand: (command) => {
-    if (command.t === "light") log(`<- light: ${command.c}`);
-    else if (command.t === "buzz") log(`<- buzz: ${command.ms} ms`);
-    else if (command.t === "display") log(`<- display: "${command.text}"`);
-    else if (command.t === "tare") log("<- tare");
-    else log(`<- unknown command: ${JSON.stringify(command)}`);
-  },
-});
-
-async function uploadPhoto(camera: CameraId, id: string, cameraToken: string): Promise<void> {
-  const file = `${mismatch ? "mismatch" : "match"}-${camera}.jpg`;
-  try {
-    const body = await readFile(new URL(`./sample-plates/${file}`, import.meta.url));
-    const response = await fetch(`${httpBase}/api/device/photo/${id}`, {
-      method: "POST",
-      headers: { "content-type": "image/jpeg", "x-device-token": cameraToken },
-      body: new Uint8Array(body),
-    });
-    const answer = response.ok ? "uploaded" : `refused: ${await response.text()}`;
-    log(`${camera} camera: ${file} ${answer}`);
-  } catch (error) {
-    log(`${camera} camera: upload failed: ${(error as Error).message}`);
-  }
-}
-
-const cameras = CAMERA_IDS.map((camera) => {
-  const cameraToken = token(camera === "front" ? "CAM_FRONT_TOKEN" : "CAM_BACK_TOKEN");
-  const device: SimDevice = new SimDevice({
-    name: `${camera} camera`,
-    url,
-    token: cameraToken,
-    log,
-    onOpen: () => device.send({ t: "hello", cam: camera }),
-    onCommand: (command) => {
-      if (command.t !== "snap" || typeof command.id !== "string") return;
-      log(`<- snap (${camera} camera)`);
-      void uploadPhoto(camera, command.id, cameraToken);
-    },
-  });
-  return device;
-});
-const devices = [main, ...cameras];
 
 let lastShown = "";
 let lastShownAt = 0;
-const sender = setInterval(() => {
-  const reading = model.read(now());
-  main.send({ t: "w", ...reading });
 
+const main = new SimMainBoard({
+  url,
+  token: token("DEVICE_TOKEN"),
+  kgPerGram,
+  log,
+  onCommand: (command) => {
+    if (command.t === "light") {
+      log(
+        `<- lights: entry ${command.entry}, exit ${command.exit}${command.blink ? ", blinking" : ""}`,
+      );
+    } else if (command.t === "buzz") log(`<- buzz: ${command.times} x ${command.ms} ms`);
+    else if (command.t === "display") {
+      log(`<- display: "${(command.lines as string[]).join(" | ")}"`);
+    } else if (command.t === "tare") log("<- tare");
+    else log(`<- unknown command: ${JSON.stringify(command)}`);
+  },
   // Shows the weight when it changes, at most once a second.
-  const shown = `${formatKg(reading.kg)}  stable=${reading.stable}  position=${reading.pos ? "OK" : "NOT OK"}`;
-  if (shown !== lastShown && now() - lastShownAt >= 1000) {
-    log(shown);
-    lastShown = shown;
-    lastShownAt = now();
-  }
-}, SEND_EVERY_MS);
+  onWeight: (reading) => {
+    const shown =
+      `${formatKg(reading.kg)} (${(reading.kg / kgPerGram).toFixed(1)} g)  ` +
+      `stable=${reading.stable}  position=${reading.pos ? "OK" : main.badSide}`;
+    if (shown !== lastShown && now() - lastShownAt >= 1000) {
+      log(shown);
+      lastShown = shown;
+      lastShownAt = now();
+    }
+  },
+});
+
+const cameras = CAMERA_IDS.map(
+  (camera) =>
+    new SimCamera({
+      httpBase,
+      camera,
+      token: token(camera === "front" ? "CAM_FRONT_TOKEN" : "CAM_BACK_TOKEN"),
+      log,
+      picture: () =>
+        readFile(
+          new URL(
+            `./sample-plates/${mismatch ? "mismatch" : "match"}-${camera}.jpg`,
+            import.meta.url,
+          ),
+        ),
+    }),
+);
 
 const HELP = `
   a  truck arrives (${formatKg(loadedKg)})     e  empty truck (${formatKg(EMPTY_KG)})
-  l  truck leaves                  p  toggle position OK
+  l  truck leaves                  p  position: OK -> move forward -> move back
   u  toggle unstable wobble        o  all boards offline for 5 s
   m  switch matching / mismatched plate photos
+  t  tamper alarm on / off         c  cameras off / on
   h  show these keys               q  quit
 `;
 
 function quit(): void {
-  clearInterval(sender);
-  devices.forEach((device) => device.close());
+  main.stop();
+  cameras.forEach((camera) => camera.stop());
   if (process.stdin.isTTY) process.stdin.setRawMode(false);
   // pause() is not enough: on Windows an open input stream keeps the process running.
   process.stdin.destroy();
   log("simulator stopped");
 }
 
+let tamperReason = 0;
+let tampered = false;
+
 const keys: Record<string, () => void> = {
   a: () => {
-    model.arrive(loadedKg, now());
+    main.model.arrive(loadedKg, now());
     log("key a: a loaded truck arrives");
   },
   e: () => {
-    model.arrive(EMPTY_KG, now());
+    main.model.arrive(EMPTY_KG, now());
     log("key e: an empty truck arrives");
   },
   l: () => {
-    model.leave(now());
+    main.model.leave(now());
     log("key l: the truck leaves");
   },
-  p: () => log(`key p: position ${model.togglePosition() ? "OK" : "NOT OK"}`),
-  u: () => log(`key u: unstable wobble ${model.toggleUnstable(now()) ? "on" : "off"}`),
+  p: () => {
+    const { model } = main;
+    if (model.positionOk) {
+      main.badSide = "forward";
+      model.togglePosition();
+    } else if (main.badSide === "forward") main.badSide = "back";
+    else model.togglePosition();
+    log(`key p: position ${model.positionOk ? "OK" : `NOT OK (${main.badSide})`}`);
+  },
+  u: () => log(`key u: unstable wobble ${main.model.toggleUnstable(now()) ? "on" : "off"}`),
   o: () => {
     log(`key o: offline for ${OFFLINE_FOR_MS / 1000} s`);
-    devices.forEach((device) => device.goOffline(OFFLINE_FOR_MS));
+    main.goOffline(OFFLINE_FOR_MS);
+    cameras.forEach((camera) => camera.goOffline(OFFLINE_FOR_MS));
   },
   m: () => {
     mismatch = !mismatch;
     log(`key m: cameras now send the ${mismatch ? "mismatched" : "matching"} pair`);
+  },
+  t: () => {
+    tampered = !tampered;
+    const reason = TAMPER_REASONS[tamperReason % TAMPER_REASONS.length]!;
+    if (!tampered) tamperReason += 1;
+    main.setTamper(tampered ? reason : null);
+    log(tampered ? `key t: TAMPER "${reason}"` : "key t: tamper cleared");
+  },
+  c: () => {
+    const on = !cameras[0]!.running;
+    cameras.forEach((camera) => (on ? camera.start() : camera.stop()));
+    log(`key c: cameras ${on ? "on" : "off (offline after 15 s)"}`);
   },
   h: () => console.log(HELP),
   q: quit,
@@ -164,5 +184,6 @@ process.stdin.on("data", (data: string) => {
   for (const key of data) keys[key.toLowerCase()]?.();
 });
 
-console.log(`Trinetra ESP32 simulator -> ${url}\n${HELP}`);
-devices.forEach((device) => device.connect());
+console.log(`Trinetra ESP32 simulator -> ${url}  (1 g = ${kgPerGram} kg)\n${HELP}`);
+main.start();
+cameras.forEach((camera) => camera.start());

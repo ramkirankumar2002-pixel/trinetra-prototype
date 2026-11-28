@@ -1,47 +1,60 @@
-// Messages on the /device WebSocket (build plan section 7). Everything from a device is
-// checked here; anything else is ignored. A camera cannot send a weight: it has its own schema.
-import { CAMERA_IDS, LIGHT_COLOURS, type LightColour } from "@trinetra/shared";
+// Messages on the /device WebSocket (build plan section 7; README "Device connection").
+// Only the main ESP32 uses it. Everything it sends is checked here; anything else is
+// ignored. The cameras send their frames over HTTP instead (routes/camera-frame.ts).
+import {
+  DISPLAY_LINE_CHARS,
+  DISPLAY_MAX_LINES,
+  LIGHT_STATES,
+  TAMPER_REASONS,
+  TRUCK_POSITIONS,
+  type Lights,
+} from "@trinetra/shared";
 import { z } from "zod";
 
-/** Far above any real truck: a reading outside this is a fault, not a weight. */
-const MAX_KG = 200_000;
-
-const heartbeat = z.object({ t: z.literal("hb") });
+/** Far above any model truck: a reading outside this is a fault, not a weight. */
+export const MAX_GRAMS = 100_000;
 
 export const mainMessageSchema = z.discriminatedUnion("t", [
   z.object({
     t: z.literal("w"),
-    // Slightly below zero is normal when the empty bridge drifts.
-    kg: z.number().min(-MAX_KG).max(MAX_KG),
+    /**
+     * Grams on the model, as the load cells measure them. The backend turns them into truck
+     * kilograms. Slightly below zero is normal when the empty bridge drifts.
+     */
+    g: z.number().min(-MAX_GRAMS).max(MAX_GRAMS),
     stable: z.boolean(),
-    pos: z.boolean(),
+    /** From the IR sensors. */
+    pos: z.enum(TRUCK_POSITIONS),
   }),
-  heartbeat,
+  z.object({ t: z.literal("hb") }),
+  /** Repeated while the fault lasts, and sent again after connecting. */
+  z.object({ t: z.literal("tamper"), reason: z.enum(TAMPER_REASONS) }),
+  /** The wiring is healthy: sent when a fault ends, and after connecting. */
+  z.object({ t: z.literal("tamper_clear") }),
 ]);
 export type MainMessage = z.infer<typeof mainMessageSchema>;
 
-export const cameraMessageSchema = z.discriminatedUnion("t", [
-  z.object({ t: z.literal("hello"), cam: z.enum(CAMERA_IDS) }),
-  heartbeat,
-]);
-export type CameraMessage = z.infer<typeof cameraMessageSchema>;
-
 /** Backend to the main ESP32. */
 export type MainCommand =
-  | { t: "light"; c: LightColour }
-  | { t: "buzz"; ms: number }
-  | { t: "display"; text: string }
+  | ({ t: "light" } & Required<Lights>)
+  | { t: "buzz"; ms: number; times: number; gap: number }
+  | { t: "display"; lines: string[] }
   | { t: "tare" };
 
-/** Backend to a camera. */
-export interface SnapCommand {
-  t: "snap";
-  id: string;
-}
-
-export const buzzMsSchema = z.number().int().min(1).max(10_000);
-export const displayTextSchema = z.string().min(1).max(80);
-export const lightColourSchema: z.ZodType<LightColour, LightColour> = z.enum(LIGHT_COLOURS);
+export const buzzSchema = z.object({
+  ms: z.number().int().min(1).max(10_000),
+  times: z.number().int().min(1).max(10),
+  gap: z.number().int().min(0).max(2000),
+});
+export const displayLinesSchema = z
+  .array(z.string().max(DISPLAY_LINE_CHARS))
+  .min(1)
+  .max(DISPLAY_MAX_LINES);
+export const lightsSchema = z.object({
+  entry: z.enum(LIGHT_STATES),
+  exit: z.enum(LIGHT_STATES),
+  blink: z.boolean().default(false),
+});
 
 /** Returns the message, or undefined if it is not valid JSON of a known shape. */
 export function parseMessage<T>(schema: z.ZodType<T>, text: string): T | undefined {

@@ -4,10 +4,10 @@ import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/guard";
 import { KIOSK_STATE_RATE_LIMIT } from "../config/limits";
 import { materials, suppliers, transporters } from "../db/schema";
-import type { HardwareState } from "../hardware/state";
+import type { Hardware } from "../hardware";
 import { kioskCollect } from "../tickets/collect";
 
-export function registerKioskRoutes(app: FastifyInstance, state: HardwareState): void {
+export function registerKioskRoutes(app: FastifyInstance, hardware: Hardware): void {
   const kiosk = { preHandler: requireRole("KIOSK") };
 
   app.get(
@@ -19,7 +19,7 @@ export function registerKioskRoutes(app: FastifyInstance, state: HardwareState):
     },
     async (_request, reply): Promise<KioskStateResponse> => {
       reply.header("cache-control", "no-store");
-      return state.snapshot();
+      return hardware.state.snapshot(hardware.lastHeard);
     },
   );
 

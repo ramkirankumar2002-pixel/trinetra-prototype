@@ -6,6 +6,7 @@ import { cn } from "cn";
 import { Cpu, Gauge } from "lucide-react";
 import { useT } from "@/i18n/use-t";
 import { Panel } from "../dashboard/panel";
+import { Banner } from "../ui/banner";
 import { StatusLight } from "../ui/status-light";
 import { StatusPill } from "../ui/status-pill";
 
@@ -60,6 +61,13 @@ export function DevicesPanel({ overview }: { overview: DemoOverview }) {
   const t = useT();
   return (
     <Panel icon={Cpu} title={t("settings.devices")}>
+      {overview.fault && (
+        <Banner tone="stop" className="mb-3">
+          <span role="alert" data-testid="settings-fault">
+            {t("settings.fault", { reason: overview.fault.reason })}
+          </span>
+        </Banner>
+      )}
       <ul className="flex flex-col">
         {DEVICE_IDS.map((id) => {
           const { online, lastSeenAt } = overview.devices[id];

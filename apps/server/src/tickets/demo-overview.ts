@@ -61,6 +61,7 @@ export async function demoOverview(app: FastifyInstance, now = new Date()): Prom
       DEVICE_IDS.map((id) => [id, device(id)]),
     ) as DemoOverview["devices"],
     weightSimulated: simulated,
+    fault: state.fault,
   };
 }
 
@@ -109,6 +110,7 @@ export async function demoMasterData(app: FastifyInstance): Promise<DemoMasterDa
       id: invoice.id,
       material: invoice.expected.material,
       plate: invoice.printed.vehicle_number.replaceAll(" ", ""),
+      weightKg: invoice.expected.weightKg,
     })),
   };
 }

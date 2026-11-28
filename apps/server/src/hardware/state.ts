@@ -1,13 +1,16 @@
 // What the backend knows about the weighbridge right now. THE BACKEND OWNS THE WEIGHT:
-// a weight gets in here only as a checked message from the main ESP32, or from demo mode
-// (simulated-weight.ts: kiosk login plus the admin PIN, and its tickets are tagged demo).
+// a weight gets in here only as a checked message from the main ESP32 (grams, turned into
+// kilograms by index.ts), or from demo mode (simulated-weight.ts: kiosk login plus the
+// admin PIN, and its tickets are tagged demo).
 import {
   DEVICE_IDS,
-  isStable,
+  stableKg,
   type CaptureCheck,
   type CaptureBlockReason,
   type DeviceId,
   type KioskStateResponse,
+  type TamperReason,
+  type WeighbridgeFault,
   type WeightReading,
 } from "@trinetra/shared";
 import type { HardwareBus } from "./events";
@@ -32,8 +35,11 @@ export interface HardwareSettings {
   wakeThresholdKg: number;
   stableWindowMs: number;
   stableSpreadKg: number;
+  /** 1 gram on the model stands for this many kilograms. */
+  modelScaleKgPerG: number;
 }
 
+/** A reading in truck kilograms. */
 export interface WeightMessage {
   kg: number;
   stable: boolean;
@@ -53,6 +59,8 @@ export class HardwareState {
   private readings: WeightReading[] = [];
   private latest: LatestReading | undefined;
   private truckOnBridge = false;
+  /** Kept when the ESP32 goes offline: unplugging it must not hide a tamper alarm. */
+  private currentFault: WeighbridgeFault | null = null;
 
   constructor(
     private readonly bus: HardwareBus,
@@ -82,6 +90,39 @@ export class HardwareState {
     this.forgetOldReadings(reading.at);
     this.bus.emit("hw:weight", { kg, stable: message.stable, positionOk: message.pos });
     this.watchForTrucks(kg, message.pos);
+  }
+
+  /** The weighbridge fault happening now, or null. */
+  get fault(): WeighbridgeFault | null {
+    return this.currentFault;
+  }
+
+  /**
+   * The ESP32 says the load cell wiring was tampered with, or (null) that it is healthy
+   * again. Every earlier reading is forgotten, so nothing measured around a fault can be
+   * captured.
+   */
+  setFault(reason: TamperReason | null): void {
+    const before = this.currentFault;
+    if (reason === null) {
+      if (!before) return;
+      this.currentFault = null;
+      this.forgetReadings();
+      this.bus.emit("hw:fault", { fault: null, reason: before.reason });
+      return;
+    }
+    // The ESP32 repeats its alarm: only a new fault, or another reason, is news.
+    if (before?.reason === reason) return;
+    const fault = { reason, since: before?.since ?? new Date().toISOString() };
+    this.currentFault = fault;
+    this.forgetReadings();
+    this.bus.emit("hw:fault", { fault, reason });
+  }
+
+  /** What the weight did before is unknown or means something else: start again. */
+  forgetReadings(): void {
+    this.readings = [];
+    this.latest = undefined;
   }
 
   /** The weight must hold still for the whole window again before it can be captured. */
@@ -121,6 +162,7 @@ export class HardwareState {
     const no = (reason: CaptureBlockReason) => ({ ok: false as const, reason });
     const settings = this.settings();
     if (!settings) return no("SETTINGS_NOT_LOADED");
+    if (this.currentFault) return no("WEIGHBRIDGE_FAULT");
     if (!this.isOnline("main")) return no("DEVICE_OFFLINE");
 
     const reading = this.currentReading();
@@ -138,13 +180,13 @@ export class HardwareState {
     const truck = this.truckCheck();
     if (!truck.ok) return truck;
     const settings = this.settings()!;
-    if (!isStable(this.readings, settings.stableWindowMs, settings.stableSpreadKg)) {
-      return { ok: false, reason: "NOT_STABLE" };
-    }
-    return truck;
+    // The average over the stable window: closer to the truth than one noisy reading.
+    const kg = stableKg(this.readings, settings.stableWindowMs, settings.stableSpreadKg);
+    if (kg === null) return { ok: false, reason: "NOT_STABLE" };
+    return { ok: true, reason: null, kg };
   }
 
-  snapshot(): KioskStateResponse {
+  snapshot(lastHeard: (device: DeviceId) => Date | null = () => null): KioskStateResponse {
     const reading = this.currentReading();
     const decision = this.canCapture();
     const canCapture: CaptureCheck = decision.ok
@@ -159,11 +201,13 @@ export class HardwareState {
             ageMs: Math.round(reading.ageMs),
           }
         : null,
-      devices: {
-        main: { online: this.isOnline("main") },
-        front: { online: this.isOnline("front") },
-        back: { online: this.isOnline("back") },
-      },
+      devices: Object.fromEntries(
+        DEVICE_IDS.map((id) => [
+          id,
+          { online: this.isOnline(id), lastSeenAt: lastHeard(id)?.toISOString() ?? null },
+        ]),
+      ) as KioskStateResponse["devices"],
+      fault: this.currentFault,
       canCapture,
     };
   }
@@ -177,8 +221,7 @@ export class HardwareState {
     this.lastSeen.delete(device);
     if (device === "main") {
       // We no longer know what the weight did, so stability starts again from nothing.
-      this.readings = [];
-      this.latest = undefined;
+      this.forgetReadings();
     }
     this.bus.emit("hw:status", { device, online: false });
   }

@@ -3,7 +3,16 @@
 // One big message with its icon: "wait here", "go to the store office".
 import type { TicketView } from "@trinetra/shared";
 import { cn } from "cn";
-import { Ban, CircleAlert, Clock, Hourglass, Scale, Store, type LucideIcon } from "lucide-react";
+import {
+  Ban,
+  CircleAlert,
+  Clock,
+  Hourglass,
+  Scale,
+  Store,
+  TriangleAlert,
+  type LucideIcon,
+} from "lucide-react";
 import type { MessageKey } from "@/i18n/translate";
 import { useT } from "@/i18n/use-t";
 import type { Screen } from "@/lib/kiosk/flow";
@@ -14,13 +23,27 @@ import { KioskFrame } from "../frame";
 
 export type MessageScreenName = Extract<
   Screen,
-  "waitStore" | "mismatch" | "notApprovedEarlier" | "rejected" | "blocked" | "hold" | "timedOut"
+  | "fault"
+  | "waitStore"
+  | "mismatch"
+  | "notApprovedEarlier"
+  | "rejected"
+  | "blocked"
+  | "hold"
+  | "timedOut"
 >;
 
 const MESSAGES: Record<
   MessageScreenName,
   { tone: Tone; icon: LucideIcon; heading: MessageKey; title: MessageKey; text: MessageKey }
 > = {
+  fault: {
+    tone: "stop",
+    icon: TriangleAlert,
+    heading: "kiosk.heading.wait",
+    title: "kiosk.fault.title",
+    text: "kiosk.fault.text",
+  },
   waitStore: {
     tone: "wait",
     icon: Hourglass,

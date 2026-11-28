@@ -1,21 +1,14 @@
-import type { CameraId, DeviceId } from "@trinetra/shared";
+import type { DeviceId } from "@trinetra/shared";
 import type { FastifyBaseLogger, FastifyInstance } from "fastify";
 import type { RawData } from "ws";
 import type { Env } from "../config/env";
 import { DEVICE_TOKEN_HEADER, identifyDevice } from "../hardware/auth";
 import { CLOSE_BAD_TOKEN, type DeviceHub } from "../hardware/hub";
-import {
-  cameraMessageSchema,
-  mainMessageSchema,
-  parseMessage,
-  type CameraMessage,
-  type MainMessage,
-} from "../hardware/messages";
+import { mainMessageSchema, parseMessage, type MainMessage } from "../hardware/messages";
 
-/** What the rest of the backend hears from the devices. Only checked messages arrive. */
+/** What the rest of the backend hears on /device. Only checked messages arrive. */
 export interface DeviceListener {
   mainMessage(message: MainMessage): void;
-  cameraMessage(camera: CameraId, message: CameraMessage): void;
   /** The device's connection ended, or a new one is taking its place. */
   disconnected(device: DeviceId): void;
 }
@@ -40,7 +33,7 @@ function badMessageLogger(log: FastifyBaseLogger, device: DeviceId) {
   };
 }
 
-/** For registering @fastify/websocket. Device messages are tiny; photos go over HTTP. */
+/** For registering @fastify/websocket. Device messages are tiny; frames go over HTTP. */
 export const DEVICE_SOCKET_OPTIONS = { options: { maxPayload: 4096 } };
 
 /** The /device WebSocket. @fastify/websocket must already be registered. */
@@ -52,10 +45,17 @@ export function registerDeviceSocket(
 
   app.get("/device", { websocket: true }, (socket, request) => {
     const device = identifyDevice(env, request.headers[DEVICE_TOKEN_HEADER]);
-    if (!device) {
-      request.log.warn({ ip: request.ip }, "refused a device connection: wrong or missing token");
+    // Only the main ESP32 talks here: a camera's token cannot send a weight.
+    if (device !== "main") {
+      request.log.warn(
+        { ip: request.ip, device },
+        "refused a device connection: wrong or missing token",
+      );
       // No message listener is added, so nothing this connection sends is ever read.
-      socket.close(CLOSE_BAD_TOKEN, "wrong or missing device token");
+      socket.close(
+        CLOSE_BAD_TOKEN,
+        device ? "cameras send their frames to /api/cam" : "wrong or missing device token",
+      );
       return;
     }
 
@@ -69,23 +69,9 @@ export function registerDeviceSocket(
       // A replaced connection may still deliver a few messages while it closes.
       if (!hub.isCurrent(device, socket)) return;
       const text = isBinary ? "(binary data)" : data.toString();
-
-      if (device === "main") {
-        const message = isBinary ? undefined : parseMessage(mainMessageSchema, text);
-        if (message) listener.mainMessage(message);
-        else logBadMessage(text);
-        return;
-      }
-      const message = isBinary ? undefined : parseMessage(cameraMessageSchema, text);
-      if (!message) {
-        logBadMessage(text);
-      } else if (message.t === "hello" && message.cam !== device) {
-        // The two cameras have each other's tokens: front and back photos would be swapped.
-        request.log.error({ device, saysItIs: message.cam }, "camera token does not match");
-        socket.close(CLOSE_BAD_TOKEN, `this token belongs to the ${device} camera`);
-      } else {
-        listener.cameraMessage(device, message);
-      }
+      const message = isBinary ? undefined : parseMessage(mainMessageSchema, text);
+      if (message) listener.mainMessage(message);
+      else logBadMessage(text);
     });
 
     socket.on("error", (error) => request.log.warn({ device, err: error }, "device socket error"));

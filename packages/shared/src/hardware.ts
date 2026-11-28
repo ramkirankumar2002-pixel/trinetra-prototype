@@ -7,13 +7,68 @@ export type CameraId = (typeof CAMERA_IDS)[number];
 export const DEVICE_IDS = ["main", ...CAMERA_IDS] as const;
 export type DeviceId = (typeof DEVICE_IDS)[number];
 
-export const LIGHT_COLOURS = ["green", "red", "orange"] as const;
-export type LightColour = (typeof LIGHT_COLOURS)[number];
+/** What one of the two traffic lights shows. */
+export const LIGHT_STATES = ["R", "Y", "G", "off"] as const;
+export type LightState = (typeof LIGHT_STATES)[number];
+
+/** Both traffic lights, as one command: the entry end and the exit end of the bridge. */
+export interface Lights {
+  entry: LightState;
+  exit: LightState;
+  /** The lights that are not off flash. */
+  blink?: boolean;
+}
+
+/** The OLED is 128 pixels wide: this many characters of the small font. */
+export const DISPLAY_LINE_CHARS = 21;
+/** Top line (small), middle line (large if it fits), bottom line (small). */
+export const DISPLAY_MAX_LINES = 3;
+
+/**
+ * Where the IR sensors say the truck is. "forward": it still covers the entry end.
+ * "back": it covers the exit end.
+ */
+export const TRUCK_POSITIONS = ["ok", "forward", "back"] as const;
+export type TruckPosition = (typeof TRUCK_POSITIONS)[number];
+
+/** Why the main ESP32 thinks the load cell wiring was tampered with (its own words). */
+export const TAMPER_REASONS = [
+  "HX711 NO DATA",
+  "CELL WIRE OPEN",
+  "HX711 STUCK",
+  "CELL WIRE FAULT",
+] as const;
+export type TamperReason = (typeof TAMPER_REASONS)[number];
+
+/** A weighbridge fault that is happening now. Nothing can be weighed until it is over. */
+export interface WeighbridgeFault {
+  reason: TamperReason;
+  /** When the backend first heard of it, ISO 8601 in UTC. */
+  since: string;
+}
+
+/**
+ * The model weighbridge: 1 gram on the model stands for this many kilograms of a truck.
+ * Only the backend converts. The value is a setting on /settings.
+ */
+export const DEFAULT_MODEL_SCALE = 100;
+export const MAX_MODEL_SCALE = 1000;
+/** The stable band, in grams on the model (± this). */
+export const MAX_STABLE_BAND_G = 100;
+
+/** Model grams to truck kilograms. Weights are whole kilograms everywhere. */
+export const gramsToKg = (grams: number, kgPerGram: number): number =>
+  Math.round(grams * kgPerGram) || 0;
+
+/** A camera frame older than this is not used as a photo of the truck. */
+export const MAX_FRAME_AGE_MS = 3000;
 
 /** Why a weight cannot be captured now, in the order the checks are made. */
 export const CAPTURE_BLOCK_REASONS = [
   /** The backend has not read the weighbridge settings from the database yet. */
   "SETTINGS_NOT_LOADED",
+  /** The main ESP32 reports that the load cell wiring was tampered with. */
+  "WEIGHBRIDGE_FAULT",
   "DEVICE_OFFLINE",
   /** No weight in the last second. */
   "STALE_READING",
@@ -36,6 +91,9 @@ export interface KioskStateResponse {
     positionOk: boolean;
     ageMs: number;
   } | null;
-  devices: Record<DeviceId, { online: boolean }>;
+  /** lastSeenAt: when the real board was last heard. Null: not since the server started. */
+  devices: Record<DeviceId, { online: boolean; lastSeenAt: string | null }>;
+  /** The weighbridge fault happening now, or null. */
+  fault: WeighbridgeFault | null;
   canCapture: CaptureCheck;
 }

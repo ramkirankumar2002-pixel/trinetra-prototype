@@ -10,6 +10,7 @@ import { createDb, type Database } from "./db/client";
 import { registerErrorHandling, sendError } from "./errors/handler";
 import { createHardware, type Hardware } from "./hardware";
 import { loadHardwareSettings } from "./hardware/settings";
+import { waitUntilStill } from "./hardware/still";
 import type { HardwareSettings } from "./hardware/state";
 import { registerIdempotency } from "./http/idempotency";
 import { loggerOptions } from "./logger";
@@ -21,9 +22,10 @@ import { upgradesWithoutSocketIo } from "./realtime/upgrades";
 import { registerAnprRoutes } from "./routes/anpr";
 import { registerApprovalRoutes } from "./routes/approvals";
 import { registerDemoRoutes } from "./routes/demo";
-import { registerDevicePhotoRoute } from "./routes/device-photo";
+import { registerCameraFrameRoute } from "./routes/camera-frame";
 import { registerDevReaderRoutes } from "./routes/dev-readers";
 import { DEVICE_SOCKET_OPTIONS, registerDeviceSocket } from "./routes/device-socket";
+import { PLATE_STABLE_WAIT_MS } from "./config/limits";
 import { registerFileRoutes } from "./routes/files";
 import { registerHealthRoute } from "./routes/health";
 import { registerKioskRoutes } from "./routes/kiosk";
@@ -37,6 +39,7 @@ import { createReaders, type Readers } from "./services/readers";
 import { createStorage, LocalStorage, type StorageService } from "./services/storage";
 import { scheduleAbandonedSweep } from "./tickets/abandon";
 import { AnprSession } from "./tickets/anpr-session";
+import { recordFaults, type BridgeTicket } from "./tickets/fault";
 import { PHOTO_LINK_SECONDS } from "./tickets/photo-links";
 
 export interface AppOptions {
@@ -52,6 +55,8 @@ export interface AppOptions {
     settings?: HardwareSettings;
     loadSettings?: () => Promise<HardwareSettings>;
     photoTimeoutMs?: number;
+    /** The hardware's clock, for how old a reading or a camera frame is. */
+    now?: () => number;
   };
   /** For tests: a pretend network for the plate and invoice services. */
   readers?: { fetch: typeof fetch };
@@ -71,6 +76,8 @@ declare module "fastify" {
     storage: StorageService;
     /** The plate reads of the truck on the bridge now. */
     anpr: AnprSession;
+    /** The ticket of the truck on the bridge, as far as the backend knows it. */
+    bridgeTicket: BridgeTicket;
     /** Work that continues after a request is answered. */
     background: BackgroundTasks;
   }
@@ -117,6 +124,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     db: database.db,
     storage,
     ...(photoTimeoutMs === undefined ? {} : { photoTimeoutMs }),
+    ...(options.hardware?.now ? { now: options.hardware.now } : {}),
     loadSettings:
       options.hardware?.loadSettings ??
       (fixedSettings
@@ -131,6 +139,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       db: database.db,
       storage,
       photos: hardware.photos,
+      whenStill: () => waitUntilStill(hardware.state, PLATE_STABLE_WAIT_MS),
       log: app.log,
       ...options.readers,
     }),
@@ -147,10 +156,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     hardware.stop();
   });
   registerDeviceSocket(app, { env, hub: hardware.hub, listener: hardware.listener });
-  registerKioskRoutes(app, hardware.state);
+  registerKioskRoutes(app, hardware);
   const anpr = new AnprSession();
   app.decorate("anpr", anpr);
   hardware.bus.on("truck:left", () => anpr.clear());
+  const bridgeTicket: BridgeTicket = { id: null };
+  app.decorate("bridgeTicket", bridgeTicket);
+  hardware.bus.on("truck:left", () => (bridgeTicket.id = null));
+  recordFaults(app);
   registerAnprRoutes(app);
   registerTicketRoutes(app, env);
   registerUploadRoutes(app);
@@ -160,7 +173,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   registerPublicRoutes(app);
   registerDemoRoutes(app, env, now);
   scheduleAbandonedSweep(app);
-  await registerDevicePhotoRoute(app, { env, photos: hardware.photos });
+  await registerCameraFrameRoute(app, { env, hardware });
 
   registerHealthRoute(app, database.sql);
   if (storage instanceof LocalStorage) registerFileRoutes(app, storage);

@@ -6,6 +6,7 @@ import { RoleShell } from "../role-shell";
 import { LoadFailed, Loading } from "../store/parts";
 import { Card } from "../ui/card";
 import { useDemoMasterData, useDemoOverview, useDemoSettings } from "@/lib/settings/queries";
+import { ModelPanel } from "./model-panel";
 import { DevicesPanel, UsagePanel } from "./status-panels";
 import { ResetPanel } from "./reset-panel";
 import { RulesPanels } from "./rules-panels";
@@ -34,7 +35,10 @@ function Content() {
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <SwitchesPanel settings={settings.data} master={master.data} />
+        <div className="flex flex-col gap-4">
+          <SwitchesPanel settings={settings.data} master={master.data} />
+          <ModelPanel settings={settings.data} />
+        </div>
         <div className="flex flex-col gap-4">
           <UsagePanel overview={overview.data} />
           <DevicesPanel overview={overview.data} />

@@ -6,6 +6,7 @@ import { useLanguageStore } from "@/i18n/language-store";
 import { ApiError } from "../api";
 import { fitWithin, kindOf } from "../upload/prepare-file";
 import {
+  afterFault,
   afterSnapshot,
   afterWeight,
   EMPTY_BRIDGE,
@@ -227,15 +228,40 @@ describe("noticing the truck", () => {
   it("takes the state from the backend after a lost connection", () => {
     const snapshot = {
       weight: { kg: 0, stable: true, positionOk: true, ageMs: 10 },
-      devices: { main: { online: true }, front: { online: false }, back: { online: true } },
+      devices: {
+        main: { online: true, lastSeenAt: "2026-11-28T08:00:00.000Z" },
+        front: { online: false, lastSeenAt: null },
+        back: { online: true, lastSeenAt: null },
+      },
+      fault: null,
       canCapture: { ok: false as const, reason: "NO_TRUCK" as const },
     };
     expect(afterSnapshot(present, snapshot)).toMatchObject({
       truckPresent: false,
       departures: 1,
       devices: { main: true, front: false, back: true },
+      lastSeen: { main: "2026-11-28T08:00:00.000Z", front: null, back: null },
     });
   });
+
+  it("forgets the weight during a fault, and still knows the truck is there", () => {
+    const fault = { reason: "CELL WIRE OPEN" as const, since: "2026-11-28T08:00:00.000Z" };
+    const weighed = { ...present, reading: reading("NOT_STABLE") };
+    expect(afterFault(weighed, fault)).toEqual({ fault, reading: null });
+    expect({ ...weighed, ...afterFault(weighed, fault) }.truckPresent).toBe(true);
+    expect(afterFault(weighed, null)).toEqual({ fault: null, reading: weighed.reading });
+  });
+});
+
+describe("a weighbridge fault", () => {
+  it.each([null, "language", "weigh1", "weigh2"] as const)(
+    "covers the screen at step %s, and the step is kept",
+    (step) => {
+      const session = { step, ticketId: null, collect: null };
+      expect(screenOf(session, undefined, true, true)).toBe("fault");
+      expect(screenOf(session, undefined, false, false)).not.toBe("fault");
+    },
+  );
 });
 
 describe("one press, once", () => {

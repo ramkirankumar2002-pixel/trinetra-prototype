@@ -216,11 +216,13 @@ export const SEED_SETTINGS = {
   tolerance_pct: 0.5,
   mismatch_attempts: 5,
   stable_window_seconds: 3,
-  stable_band_kg: 10,
-  // Placeholder: the plan gives no value. In truck kilograms; tune on the real model (Phase 5).
-  wake_threshold_kg: 500,
-  // Placeholder: model weight to truck kilograms. Calibrate on the real model (Phase 5).
-  scale_factor: 1,
+  // The model weighbridge: 1 gram on the model stands for this many kilograms. The backend
+  // converts; the ESP32 only ever sends grams. Also on /settings.
+  model_scale_kg_per_g: 100,
+  // In grams on the model: a weight is still when it stays within ± this. Also on /settings.
+  stable_band_g: 15,
+  // In grams on the model: more than this on the bridge means a truck has arrived.
+  wake_threshold_g: 100,
   // Demo replacements, if something fails on stage. "real" or "pick".
   anpr_mode: "real",
   // The reading of the supervisor's photo has its own switch.

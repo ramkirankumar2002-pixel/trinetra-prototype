@@ -13,7 +13,12 @@ import {
 import { testEnv } from "../test/env";
 import { connectLive, socketToken, type LiveClient } from "../test/live-client";
 
-const SETTINGS = { wakeThresholdKg: 500, stableWindowMs: 600, stableSpreadKg: 10 };
+const SETTINGS = {
+  wakeThresholdKg: 500,
+  stableWindowMs: 600,
+  stableSpreadKg: 10,
+  modelScaleKgPerG: 100,
+};
 const OFFLINE = { main: false, front: false, back: false };
 
 let app: FastifyInstance;
@@ -26,7 +31,8 @@ let main: TestDevice;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const weights = (client: LiveClient) => client.named("hw:weight") as HardwareWeightEvent[];
-const send = (kg: number, stable = true, pos = true) => main.send({ t: "w", kg, stable, pos });
+const send = (kg: number, stable = true, pos = true) =>
+  main.send({ t: "w", g: kg / 100, stable, pos: pos ? "ok" : "forward" });
 
 beforeEach(async () => {
   app = await buildApp({ env: testEnv(deviceTokenEnv), hardware: { settings: SETTINGS } });
@@ -122,7 +128,11 @@ describe("who receives the hardware events", () => {
     await waitFor(() => kiosk.named("truck:arrived").length === 1);
     await sleep(100);
 
-    expect(store.events).toEqual([]);
+    // The store officer hears of a fault (and, on connecting, that there is none), and of
+    // nothing else about the hardware.
+    expect(store.events.map(([name]) => name)).not.toContain("hw:weight");
+    expect(store.named("hw:fault")).toEqual([{ fault: null }]);
+    expect(store.events).toHaveLength(1);
     expect(supervisor.events).toEqual([]);
   });
 });
@@ -146,16 +156,15 @@ describe("hw:status", () => {
   });
 
   it("follows each board online and offline", async () => {
-    const camera = await connectDevice(url, TEST_DEVICE_TOKENS.back);
     send(0);
-    camera.send({ t: "hello", cam: "back" });
+    app.hardware.listener.cameraFrame("back", Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
     await waitFor(() => {
       const now = latest(kiosk) as typeof OFFLINE | undefined;
       return !!now?.main && now.back;
     });
     expect(latest(kiosk)).toEqual({ main: true, front: false, back: true });
 
-    camera.socket.close();
+    app.hardware.state.disconnected("back");
     main.socket.close();
     await waitFor(() => JSON.stringify(latest(live)) === JSON.stringify(OFFLINE));
   });

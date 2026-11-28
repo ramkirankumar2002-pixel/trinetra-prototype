@@ -4,6 +4,7 @@ import { AppError } from "../errors/app-error";
 
 const MESSAGES: Record<CaptureBlockReason, string> = {
   SETTINGS_NOT_LOADED: "The weighbridge is still starting. Try again in a moment.",
+  WEIGHBRIDGE_FAULT: "Weighbridge fault. Please wait.",
   DEVICE_OFFLINE: "The weighbridge is offline.",
   STALE_READING: "No new weight has arrived from the weighbridge.",
   NO_TRUCK: "There is no truck on the bridge.",

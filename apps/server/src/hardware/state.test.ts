@@ -8,6 +8,7 @@ const SETTINGS: HardwareSettings = {
   wakeThresholdKg: 500,
   stableWindowMs: 3000,
   stableSpreadKg: 10,
+  modelScaleKgPerG: 100,
 };
 
 let time: number;
@@ -20,7 +21,13 @@ beforeEach(() => {
   settings = SETTINGS;
   events = [];
   const bus = createHardwareBus();
-  for (const name of ["hw:weight", "hw:status", "truck:arrived", "truck:left"] as const) {
+  for (const name of [
+    "hw:weight",
+    "hw:status",
+    "hw:fault",
+    "truck:arrived",
+    "truck:left",
+  ] as const) {
     bus.on(name, (data: object) => events.push([name, data]));
   }
   state = new HardwareState(
@@ -45,7 +52,77 @@ function hold(ms: number, kg = 32_560, stable = true, pos = true) {
 const named = (name: string) => events.filter(([event]) => event === name).map(([, data]) => data);
 const reason = () => state.canCapture().reason;
 
+describe("a weighbridge fault", () => {
+  const faults = () => named("hw:fault");
+
+  beforeEach(() => hold(3000));
+
+  it("blocks every capture, and the plate reading too", () => {
+    state.setFault("CELL WIRE OPEN");
+    expect(reason()).toBe("WEIGHBRIDGE_FAULT");
+    expect(state.truckCheck()).toEqual({ ok: false, reason: "WEIGHBRIDGE_FAULT" });
+    expect(state.snapshot().fault).toEqual({
+      reason: "CELL WIRE OPEN",
+      since: expect.any(String),
+    });
+    expect(state.snapshot().weight).toBeNull();
+  });
+
+  it("is announced once, however often the ESP32 repeats it", () => {
+    state.setFault("HX711 STUCK");
+    state.setFault("HX711 STUCK");
+    state.setFault("HX711 STUCK");
+    expect(faults()).toEqual([
+      { fault: { reason: "HX711 STUCK", since: expect.any(String) }, reason: "HX711 STUCK" },
+    ]);
+  });
+
+  it("keeps its start time when only the reason changes", () => {
+    state.setFault("HX711 STUCK");
+    const since = state.fault!.since;
+    state.setFault("HX711 NO DATA");
+    expect(state.fault).toEqual({ reason: "HX711 NO DATA", since });
+  });
+
+  it("stays when the ESP32 is unplugged", () => {
+    state.setFault("CELL WIRE FAULT");
+    state.disconnected("main");
+    expect(reason()).toBe("WEIGHBRIDGE_FAULT");
+  });
+
+  it("ends with the cleared message, and the weight must be still all over again", () => {
+    state.setFault("CELL WIRE OPEN");
+    state.setFault(null);
+    expect(faults().at(-1)).toEqual({ fault: null, reason: "CELL WIRE OPEN" });
+    send();
+    expect(reason()).toBe("NOT_STABLE");
+    pass(200);
+    hold(2800);
+    expect(state.canCapture().ok).toBe(true);
+  });
+
+  it("says nothing when there was no fault to clear", () => {
+    state.setFault(null);
+    expect(faults()).toEqual([]);
+    expect(state.canCapture().ok).toBe(true);
+  });
+});
+
 describe("canCapture", () => {
+  it("gives the average of the still readings, not just the last one", () => {
+    // A noisy load cell: every reading is within the band of the newest one.
+    for (let i = 0; i <= 15; i++) {
+      send(i % 2 === 0 ? 32_556 : 32_564);
+      pass(200);
+    }
+    send(32_564);
+    const decision = state.canCapture();
+    expect(decision).toMatchObject({ ok: true });
+    expect(decision).not.toMatchObject({ kg: 32_564 });
+    expect((decision as { kg: number }).kg).toBeGreaterThan(32_558);
+    expect((decision as { kg: number }).kg).toBeLessThan(32_562);
+  });
+
   it("is true after the weight holds still for 3 seconds, and gives that weight", () => {
     hold(3000);
     expect(state.canCapture()).toEqual({ ok: true, reason: null, kg: 32_560 });
@@ -219,9 +296,11 @@ describe("online and offline", () => {
     hold(3000);
     expect(state.snapshot().weight).toMatchObject({ kg: 32_560, positionOk: true, ageMs: 0 });
     pass(3001);
+    const never = { online: false, lastSeenAt: null };
     expect(state.snapshot()).toEqual({
       weight: null,
-      devices: { main: { online: false }, front: { online: false }, back: { online: false } },
+      devices: { main: never, front: never, back: never },
+      fault: null,
       canCapture: { ok: false, reason: "DEVICE_OFFLINE" },
     });
   });

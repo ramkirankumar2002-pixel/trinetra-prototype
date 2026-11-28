@@ -96,10 +96,27 @@ Build order: phases in number order, except Phase 11 (Voice, optional), which is
 - Step 49: `/device`, tokens, latest reading and 3 s offline are done. Forwarding `hw:weight` to browsers comes in Phase 6 (the backend already emits it internally).
 - Step 50: only the **simulator** is done. The ESP32-CAM firmware named in step 50 is listed under 5B below.
 
-**Phase 5B** (needs the hardware and the existing ESP32 code), steps 42–48 and 51, plus:
+**Phase 5B** (needs the boards on the bench), steps 42–48 and 51, plus:
 
 - [ ] Real plate-reading test with ESP32-CAM photos of the model plates (target: 9 of 10 read correctly).
-- [ ] ESP32-CAM firmware, front and back (the rest of step 50): Wi-Fi, connect to `/device` with its own token, say hello, heartbeat, on "snap" take a JPEG with flash and upload it; tune for plate reading; stable 5 V supply.
+- [ ] ESP32-CAM firmware, front and back (the rest of step 50): tried on both boards.
+- [ ] The [first power-on checklist](HARDWARE.md#first-power-on-checklist) passes on the real boards.
+- [ ] A full truck with the real model: a 200 g cargo passes, a 180 g cargo goes on HOLD.
+
+**Software for 5B (2026-11-28): written and compiled, NOT tried on a board.** None of steps 42–48 and 51 is ticked until it works on the real weighbridge.
+
+- [x] Main board firmware ([firmware/esp32](../firmware/esp32/esp32.ino), steps 42–48), from the offline sketch: pins, HX711 averaging, steady check, auto-zero, IR positioning and tamper detection kept.
+- [x] Camera firmware ([firmware/esp32-cam](../firmware/esp32-cam/esp32-cam.ino)), one sketch for both: it pushes a frame every 1.5 s.
+- [x] Both sketches compile (`arduino-cli`, ESP32 core 4.0.0): [HARDWARE.md](HARDWARE.md#compile-check).
+- [x] Backend: grams to kg with "Model scale" and "Stable band" on `/settings`, tamper alarm, camera frames, both traffic lights.
+- [x] Website: "Weighbridge fault" screen, store officer's alert, camera light and "last seen".
+- [x] Seven 20,000 kg model bills; the simulator speaks the firmware's protocol; `pnpm fake-hardware`.
+- [x] [HARDWARE.md](HARDWARE.md): wiring, libraries, flashing, `secrets.h`, hotspot, calibration, first power-on.
+- [ ] The new Hindi text needs your review: [HINDI_REVIEW.md](HINDI_REVIEW.md#phase-5b).
+
+✅ Checked on 2026-11-28 **without the boards**: typecheck, lint, format, unit and API tests, all 56 browser tests (3 new, in `hardware.spec.ts`), all six `pnpm journey` scenarios, `pnpm fake-hardware` and the build passed. Pictures of the new screens are in [screenshots/phase5b](screenshots/phase5b). The browser tests ran the website on port 3100, because another program on the computer held 3000.
+
+After pulling this: `pnpm db:seed` (without it nothing can be weighed).
 
 **Done when:** a weight placed on the model shows in the backend within half a second; lights, buzzer and display respond to commands.
 

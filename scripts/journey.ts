@@ -33,8 +33,7 @@ import {
   type UploadLinkResponse,
 } from "@trinetra/shared";
 import { SEED_USERS, type SampleInvoiceId } from "@trinetra/shared/seed";
-import { SimDevice } from "./sim/device";
-import { WeightModel } from "./sim/weight-model";
+import { SimMainBoard } from "./sim/board";
 
 const envFile = fileURLToPath(new URL("../apps/server/.env", import.meta.url));
 if (existsSync(envFile)) process.loadEnvFile(envFile);
@@ -148,13 +147,13 @@ async function fileForm(
 
 // ---- The weighbridge (the ESP32 simulator) ----
 
-const bridge = new WeightModel();
+let esp32: SimMainBoard | undefined;
+/** The simulated truck on the simulated bridge. */
+const bridge = () => esp32!.model;
 const commands: string[] = [];
 /** What the light and the display show, to catch a command that changes nothing. */
 const showing = new Map<string, string>();
 const repeated: string[] = [];
-let sender: NodeJS.Timeout | undefined;
-let esp32: SimDevice | undefined;
 
 const kioskState = () => api<KioskStateResponse>("GET", "/api/kiosk/state", { who: KIOSK });
 
@@ -173,22 +172,25 @@ async function waitForState(
 }
 
 async function startWeighbridge(): Promise<void> {
-  esp32 = new SimDevice({
-    name: "main ESP32",
+  // Whatever "1 g = X kg" is set to, the truck weighs the same here.
+  const { modelScaleKgPerG } = await demo<DemoSettings>("GET", "settings");
+  esp32 = new SimMainBoard({
     url: `${BASE.replace(/^http/, "ws")}/device`,
     token: setting("DEVICE_TOKEN"),
-    log: () => {},
+    kgPerGram: modelScaleKgPerG,
     onCommand: (command) => {
-      if (command.t === "buzz") commands.push("buzzer");
+      if (command.t === "buzz") commands.push(`buzzer x${String(command.times)}`);
       if (command.t !== "light" && command.t !== "display") return;
-      const value = command.t === "light" ? String(command.c) : `"${String(command.text)}"`;
+      const value =
+        command.t === "light"
+          ? `entry ${String(command.entry)}, exit ${String(command.exit)}`
+          : `"${(command.lines as string[]).join(" | ")}"`;
       if (showing.get(command.t) === value) repeated.push(`${command.t} ${value}`);
       showing.set(command.t, value);
       commands.push(`${command.t} ${value}`);
     },
   });
-  esp32.connect();
-  sender = setInterval(() => esp32!.send({ t: "w", ...bridge.read(performance.now()) }), 200);
+  esp32.start();
   await waitForState((state) => state.devices.main.online, "the simulated ESP32");
 }
 
@@ -201,7 +203,7 @@ function hardwareSaid(): void {
 
 /** A truck drives on and stands still. */
 async function driveOn(kg: number): Promise<void> {
-  bridge.arrive(kg, performance.now());
+  bridge().arrive(kg, performance.now());
   await waitForState(
     (state) => state.canCapture.ok && state.weight?.kg === kg,
     `a stable ${formatKg(kg)}`,
@@ -210,7 +212,7 @@ async function driveOn(kg: number): Promise<void> {
 }
 
 async function driveOff(): Promise<void> {
-  bridge.leave(performance.now());
+  bridge().leave(performance.now());
   await waitForState(
     (state) => (state.weight?.kg ?? Number.POSITIVE_INFINITY) === 0,
     "an empty bridge",
@@ -734,7 +736,7 @@ async function main(): Promise<void> {
     const reset = await demo<{ deletedTickets: number }>("POST", "reset");
     console.log(`Reset demo data: ${reset.deletedTickets} earlier demo ticket(s) deleted.`);
     await startWeighbridge();
-    bridge.leave(performance.now());
+    bridge().leave(performance.now());
 
     const results: [string, string][] = [
       ["Type 3 automatic", await typeThreeAutomatic()],
@@ -769,8 +771,7 @@ async function main(): Promise<void> {
         console.error(`Could not restore the demo settings: ${error.message}`),
       );
     }
-    clearInterval(sender);
-    esp32?.close();
+    esp32?.stop();
     server?.kill();
   }
 }

@@ -115,6 +115,7 @@ export async function readTruckPlates(app: FastifyInstance, actor: Actor): Promi
   const retriesUsedUp = visit.attempts >= PLATE_ATTEMPTS;
   const plates = platesRead(read);
   const open = await openTicketFor(app, plates);
+  if (open) app.bridgeTicket.id = open.id;
   const blocked = open ? undefined : await blockedTicketFor(app, plates);
 
   // A truck on its second visit starts no new ticket, so its photos and any warning are

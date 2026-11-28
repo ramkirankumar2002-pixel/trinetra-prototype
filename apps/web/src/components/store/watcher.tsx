@@ -19,6 +19,7 @@ import {
   unlockSound,
 } from "@/lib/supervisor/alerts";
 import { useToast } from "../ui/toast";
+import { FaultAlert } from "./fault-alert";
 
 /**
  * The requests already announced. Kept outside the component, so that moving between
@@ -90,5 +91,5 @@ export function StoreWatcher() {
     return () => watcher.disconnect();
   }, [waiting, pathname]);
 
-  return null;
+  return <FaultAlert />;
 }

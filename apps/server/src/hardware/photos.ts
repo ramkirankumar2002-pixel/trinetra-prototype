@@ -1,16 +1,16 @@
-// Asking the two ESP32-CAMs for plate photos and receiving them (build plan section 7).
-import { randomUUID } from "node:crypto";
-import { CAMERA_IDS, type CameraId, type PhotoKind } from "@trinetra/shared";
+// The two ESP32-CAMs. Each one pushes its newest JPEG every second or two
+// (POST /api/cam/front or /back). Only the newest frame of each camera is kept, in memory.
+// When a photo of the truck is wanted, that frame is saved, if it is fresh enough.
+// Nothing is read from a frame until then: the plate services are never asked per frame.
+import { CAMERA_IDS, MAX_FRAME_AGE_MS, type CameraId, type PhotoKind } from "@trinetra/shared";
 import type { FastifyBaseLogger } from "fastify";
 import type { Database } from "../db/client";
 import { AppError } from "../errors/app-error";
 import { storeFile } from "../services/images/pipeline";
 import type { StorageService } from "../services/storage";
-import type { DeviceHub } from "./hub";
 
-export const PHOTO_TIMEOUT_MS = 5000;
-/** The first request, then "asks once more". */
-const ATTEMPTS = 2;
+/** How long to wait for a new frame from a camera that is online but has no fresh one. */
+export const FRAME_WAIT_MS = 4000;
 
 const PHOTO_KIND: Record<CameraId, PhotoKind> = { front: "FRONT_PLATE", back: "BACK_PLATE" };
 
@@ -21,11 +21,11 @@ export interface CameraPhoto {
 }
 
 export type PhotoFailure =
-  /** The camera is not connected. */
+  /** The camera has sent nothing for a while. */
   | "OFFLINE"
-  /** No photo arrived, even after asking again. */
+  /** The camera is there, but no fresh frame arrived in time. */
   | "TIMEOUT"
-  /** The photo arrived but could not be saved. */
+  /** There was a frame, but it could not be saved. */
   | "SAVE_FAILED";
 
 export interface PhotoRequestResult {
@@ -33,36 +33,55 @@ export interface PhotoRequestResult {
   failed: { camera: CameraId; reason: PhotoFailure }[];
 }
 
-interface Pending {
-  camera: CameraId;
-  ticketId: number | null;
-  /** An upload has arrived and is being saved. */
-  claimed: boolean;
-  /** Settles with the saved photo, or null if saving it failed. */
-  result: Promise<CameraPhoto | null>;
-  settle: (photo: CameraPhoto | null) => void;
+interface Frame {
+  data: Buffer;
+  /** When it arrived, on the clock below. */
+  at: number;
 }
 
 const isJpeg = (data: Buffer) => data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
 
 export class PhotoService {
-  /** Photo ids that may still be uploaded. Each works once, for one camera. */
-  private readonly pending = new Map<string, Pending>();
+  private readonly latest = new Map<CameraId, Frame>();
+  /** Requests waiting for a camera's next frame. */
+  private readonly waiting = new Map<CameraId, Set<(frame: Frame | null) => void>>();
 
   constructor(
     private readonly options: {
-      hub: DeviceHub;
       storage: StorageService;
       db: Database;
       log: FastifyBaseLogger;
-      timeoutMs?: number;
+      isOnline: (camera: CameraId) => boolean;
+      /** A clock that never jumps. Replaced by tests. */
+      now?: () => number;
+      waitMs?: number;
       /** Told as each camera's photo is saved. */
       onSaved?: (camera: CameraId, photo: CameraPhoto) => void;
     },
   ) {}
 
+  private now(): number {
+    return (this.options.now ?? (() => performance.now()))();
+  }
+
+  /** A frame has arrived from a camera. It replaces the one before. */
+  addFrame(camera: CameraId, data: Buffer): void {
+    if (!isJpeg(data)) throw new AppError(415, "UNSUPPORTED_FILE_TYPE", "Send a JPEG photo.");
+    const frame = { data, at: this.now() };
+    this.latest.set(camera, frame);
+    const waiters = this.waiting.get(camera);
+    this.waiting.delete(camera);
+    waiters?.forEach((resolve) => resolve(frame));
+  }
+
+  /** The newest frame, if it is not older than 3 seconds. */
+  freshFrame(camera: CameraId): Frame | undefined {
+    const frame = this.latest.get(camera);
+    return frame && this.now() - frame.at <= MAX_FRAME_AGE_MS ? frame : undefined;
+  }
+
   /**
-   * Asks both cameras for a photo. `ticketId` is null before a ticket exists (the plate is
+   * Saves a photo from each camera. `ticketId` is null before a ticket exists (the plate is
    * read first). Never throws for a camera problem: see `failed` in the answer.
    */
   async requestPhotos(ticketId: number | null): Promise<PhotoRequestResult> {
@@ -77,87 +96,52 @@ export class PhotoService {
     return result;
   }
 
-  /** Saves a photo a camera uploaded, if the id was sent to that camera and is unused. */
-  async receive(camera: CameraId, photoId: string, data: Buffer): Promise<CameraPhoto> {
-    const pending = this.pending.get(photoId);
-    if (!pending || pending.claimed) {
-      // The same answer for unknown, used and expired ids.
-      throw new AppError(404, "UNKNOWN_PHOTO_ID", "This photo id cannot be used.");
-    }
-    if (pending.camera !== camera) {
-      throw new AppError(403, "WRONG_CAMERA", "This photo id was sent to the other camera.");
-    }
-    if (!isJpeg(data)) {
-      // Not claimed, so the camera may send a good photo.
-      throw new AppError(415, "UNSUPPORTED_FILE_TYPE", "Send a JPEG photo.");
-    }
-    // No await before this line: two uploads cannot both get here.
-    pending.claimed = true;
-
-    try {
-      const { storage, db } = this.options;
-      const stored = await storeFile(
-        { storage, db },
-        {
-          data,
-          contentType: "image/jpeg",
-          kind: PHOTO_KIND[camera],
-          ticketId: pending.ticketId,
-          id: photoId,
-        },
-      );
-      const photo = { id: photoId, storagePath: stored.storagePath, sha256: stored.sha256 };
-      pending.settle(photo);
-      this.options.onSaved?.(camera, photo);
-      return photo;
-    } catch (error) {
-      pending.settle(null);
-      throw error;
-    } finally {
-      this.pending.delete(photoId);
-    }
+  /** Ends every waiting request and forgets the frames, for shutdown. */
+  stop(): void {
+    for (const waiters of this.waiting.values()) waiters.forEach((resolve) => resolve(null));
+    this.waiting.clear();
+    this.latest.clear();
   }
 
-  /** Ends every waiting request, for shutdown. */
-  stop(): void {
-    for (const pending of this.pending.values()) pending.settle(null);
-    this.pending.clear();
+  private nextFrame(camera: CameraId): Promise<Frame | null> {
+    return new Promise((resolve) => {
+      const waiters = this.waiting.get(camera) ?? new Set();
+      this.waiting.set(camera, waiters);
+      const done = (frame: Frame | null) => {
+        clearTimeout(timer);
+        waiters.delete(done);
+        resolve(frame);
+      };
+      const timer = setTimeout(() => done(null), this.options.waitMs ?? FRAME_WAIT_MS);
+      waiters.add(done);
+    });
   }
 
   private async capture(
     camera: CameraId,
     ticketId: number | null,
   ): Promise<{ photo: CameraPhoto } | { failure: PhotoFailure }> {
-    const { hub, log, timeoutMs = PHOTO_TIMEOUT_MS } = this.options;
-    // The same id is used again on the retry, so a slow first photo still counts.
-    const id = randomUUID();
-    let settle!: Pending["settle"];
-    const result = new Promise<CameraPhoto | null>((resolve) => (settle = resolve));
-    const pending: Pending = { camera, ticketId, claimed: false, result, settle };
-    this.pending.set(id, pending);
-
-    try {
-      for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-        if (!hub.send(camera, { t: "snap", id })) return { failure: "OFFLINE" };
-
-        let timer: NodeJS.Timeout | undefined;
-        const timeout = new Promise<"timeout">((resolve) => {
-          timer = setTimeout(() => resolve("timeout"), timeoutMs);
-        });
-        let outcome = await Promise.race([result, timeout]);
-        clearTimeout(timer);
-        // The photo is here and being saved: wait for that instead of asking again.
-        if (outcome === "timeout" && pending.claimed) outcome = await result;
-
-        if (outcome !== "timeout") {
-          return outcome ? { photo: outcome } : { failure: "SAVE_FAILED" };
-        }
-        log.warn({ camera, attempt }, "no photo from the camera in time");
+    const { storage, db, log, isOnline, onSaved } = this.options;
+    let frame: Frame | null | undefined = this.freshFrame(camera);
+    if (!frame) {
+      if (!isOnline(camera)) return { failure: "OFFLINE" };
+      frame = await this.nextFrame(camera);
+      if (!frame) {
+        log.warn({ camera }, "no fresh frame from the camera in time");
+        return { failure: "TIMEOUT" };
       }
-      return { failure: "TIMEOUT" };
-    } finally {
-      // After this the id is refused, even if the photo turns up later.
-      if (!pending.claimed) this.pending.delete(id);
+    }
+    try {
+      const stored = await storeFile(
+        { storage, db },
+        { data: frame.data, contentType: "image/jpeg", kind: PHOTO_KIND[camera], ticketId },
+      );
+      const photo = { id: stored.id, storagePath: stored.storagePath, sha256: stored.sha256 };
+      onSaved?.(camera, photo);
+      return { photo };
+    } catch (error) {
+      log.error({ camera, err: error }, "could not save a camera frame");
+      return { failure: "SAVE_FAILED" };
     }
   }
 }

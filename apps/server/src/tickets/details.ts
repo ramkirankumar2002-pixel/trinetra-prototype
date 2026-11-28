@@ -111,6 +111,6 @@ export async function saveDetails(
   });
 
   const saved = await ticketView(app.db, app.storage, ticketId);
-  if (saved.status === "MISMATCH_PENDING") app.hardware.signals.show(SIGNALS.store);
+  if (saved.status === "MISMATCH_PENDING") app.hardware.signals.show(SIGNALS.officeFirst);
   return { ...result, ticket: saved };
 }

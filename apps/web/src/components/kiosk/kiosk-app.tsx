@@ -34,7 +34,12 @@ function useBridgeFeed() {
       .catch(() => {});
   }, []);
   useSocketEvent("hw:weight", (event) => useBridge.getState().weight(event));
-  useSocketEvent("hw:status", (event) => useBridge.getState().status(event));
+  useSocketEvent("hw:status", (event) => {
+    useBridge.getState().status(event);
+    // "Last seen" comes only with the state.
+    load();
+  });
+  useSocketEvent("hw:fault", (event) => useBridge.getState().setFault(event.fault));
   useSocketEvent("truck:arrived", () => useBridge.getState().arrived());
   useSocketEvent("truck:left", () => useBridge.getState().left());
   useEffect(() => {
@@ -108,6 +113,7 @@ function screenFor(screen: Screen, ticket: TicketView | undefined): ReactNode {
       return <PositionScreen />;
     case "plate":
       return <PlateScreen />;
+    case "fault":
     case "waitStore":
     case "mismatch":
     case "notApprovedEarlier":
@@ -160,11 +166,12 @@ export function KioskApp() {
   const driver = useKiosk((state) => state.driver);
   const startOver = useKiosk((state) => state.startOver);
   const positionBad = useBridge((state) => state.reading?.reason === "POSITION_NOT_OK");
+  const faulty = useBridge((state) => state.fault !== null);
   const { data } = useTicket(ticketId);
   const ticket = data && data.id === ticketId ? data : undefined;
   useTicketLanguage(ticket, ticketId);
 
-  const screen = screenOf({ step, ticketId, collect }, ticket, positionBad);
+  const screen = screenOf({ step, ticketId, collect }, ticket, positionBad, faulty);
   // Waiting for the store officer is not a driver who has stopped answering.
   const waitingForOfficer = useKiosk((state) => state.noPhone) && screen === "invoice";
   const { stage, stay } = useInactivity(

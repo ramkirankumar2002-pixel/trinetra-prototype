@@ -22,7 +22,12 @@ export class SimulatedWeight {
 
   set(value: WeightMessage): void {
     // Switching from the real weight: its readings must not help the new one look stable.
-    if (!this.value) this.state.disconnected("main");
+    if (!this.value) {
+      this.state.disconnected("main");
+      // The simulated weight stands in for a weighbridge that cannot be used, so a fault
+      // reported by the real one is set aside. The ESP32 repeats it afterwards.
+      this.state.setFault(null);
+    }
     this.value = { ...value };
     this.state.addWeight(this.value);
     this.timer ??= setInterval(() => {

@@ -2,7 +2,7 @@
 
 // The row under the header of every weighbridge screen: where the driver is (step dots),
 // the live weight, and the weighbridge light. The connection is named only when it is lost.
-import { formatKg } from "@trinetra/shared";
+import { CAMERA_IDS, formatKg } from "@trinetra/shared";
 import { cn } from "cn";
 import { Scale } from "lucide-react";
 import { useT } from "@/i18n/use-t";
@@ -58,19 +58,40 @@ export function BridgeLight() {
   const t = useT();
   const connected = useSocketStatus() === "connected";
   const online = useBridge((state) => state.devices?.main ?? null);
+  const faulty = useBridge((state) => state.fault !== null);
   // Without a connection the last news may be old, and the connection light says why.
   if (!connected) return null;
   return (
     <StatusLight
       data-testid="weighbridge"
-      tone={online === null ? "idle" : online ? "go" : "stop"}
+      // A board that is there but reports tampering is not "online" to anyone's eye.
+      tone={faulty ? "stop" : online === null ? "idle" : online ? "go" : "stop"}
       label={t(
-        online === null
-          ? "weighbridge.checking"
-          : online
-            ? "weighbridge.online"
-            : "weighbridge.offline",
+        faulty
+          ? "weighbridge.fault"
+          : online === null
+            ? "weighbridge.checking"
+            : online
+              ? "weighbridge.online"
+              : "weighbridge.offline",
       )}
+    />
+  );
+}
+
+/** Both cameras in one light: "Cam 2/2". Any longer and the row wraps onto a second line. */
+export function CameraLight() {
+  const t = useT();
+  const connected = useSocketStatus() === "connected";
+  const devices = useBridge((state) => state.devices);
+  if (!connected || !devices) return null;
+  const online = CAMERA_IDS.filter((camera) => devices[camera]).length;
+  return (
+    <StatusLight
+      data-testid="cameras"
+      data-online={online}
+      tone={online === CAMERA_IDS.length ? "go" : "stop"}
+      label={t("kiosk.cameras", { online, total: CAMERA_IDS.length })}
     />
   );
 }
@@ -82,6 +103,7 @@ export function KioskStatus({ dots }: { dots: { current: number; total: number }
       {dots && <StepDots {...dots} />}
       <LiveWeightChip />
       <BridgeLight />
+      <CameraLight />
       {/* Always there for a screen reader; seen only when there is a problem. */}
       <span className={connected ? "sr-only" : "contents"}>
         <ConnectionStatusLight />

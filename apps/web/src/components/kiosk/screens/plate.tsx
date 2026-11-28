@@ -29,7 +29,7 @@ import { PlateKeypad } from "../keypads";
 /** A moment between two automatic reads, so the driver sees what happened. */
 const READ_AGAIN_MS = 1500;
 /** Reading was refused because of the truck's place on the bridge: that passes. */
-const PASSING = new Set(["POSITION_NOT_OK", "NO_TRUCK", "STALE_READING"]);
+const PASSING = new Set(["POSITION_NOT_OK", "NO_TRUCK", "STALE_READING", "WEIGHBRIDGE_FAULT"]);
 /** The plate was not read for this driver, or was forgotten: read it again. */
 const READ_FIRST = new Set(["UNKNOWN_PHOTO_ID", "PLATE_NOT_READ", "PLATE_NOT_CONFIRMED"]);
 

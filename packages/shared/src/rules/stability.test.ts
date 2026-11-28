@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { SEED_SETTINGS } from "../seed/default-data";
-import { isStable, type WeightReading } from "./stability";
+import { gramsToKg } from "../hardware";
+import { isStable, stableKg, type WeightReading } from "./stability";
 
 const windowMs = SEED_SETTINGS.stable_window_seconds * 1000;
-const spreadKg = SEED_SETTINGS.stable_band_kg;
+const spreadKg = 10;
 
 /** Readings every 200 ms from 0 to `durationMs`, all stable unless changed. */
 function readings(
@@ -17,6 +18,52 @@ function readings(
 }
 
 const stable = (list: WeightReading[]) => isStable(list, windowMs, spreadKg);
+
+describe("gramsToKg: the model weighbridge", () => {
+  it.each([
+    [200, 100, 20_000],
+    [180, 100, 18_000],
+    [325.6, 100, 32_560],
+    [143.1, 100, 14_310],
+    [500, 40, 20_000],
+    [0.004, 100, 0],
+    [-0.2, 100, -20],
+    [1, 2.5, 3],
+  ])("%s g at %s kg to a gram is %s kg", (grams, scale, kg) => {
+    expect(gramsToKg(grams, scale)).toBe(kg);
+  });
+
+  it("never gives minus zero", () => {
+    expect(Object.is(gramsToKg(-0.001, 100), 0)).toBe(true);
+  });
+});
+
+describe("stableKg", () => {
+  it("is the average of the still readings, in whole kilograms", () => {
+    const noisy = readings(3000, ({ at }) => ({ kg: at % 400 === 0 ? 32_556 : 32_565 }));
+    const kg = stableKg(noisy, windowMs, spreadKg)!;
+    expect(Number.isInteger(kg)).toBe(true);
+    expect(kg).toBeGreaterThan(32_556);
+    expect(kg).toBeLessThan(32_565);
+  });
+
+  it("is null whenever the weight is not stable", () => {
+    expect(stableKg(readings(2800), windowMs, spreadKg)).toBeNull();
+    expect(
+      stableKg(
+        readings(3000, () => ({ stable: false })),
+        windowMs,
+        spreadKg,
+      ),
+    ).toBeNull();
+    expect(stableKg([], windowMs, spreadKg)).toBeNull();
+  });
+
+  it("leaves out readings from before the window", () => {
+    const settled = readings(6000, ({ at }) => (at < 2000 ? { kg: 5 } : {}));
+    expect(stableKg(settled, windowMs, spreadKg)).toBe(32_560);
+  });
+});
 
 describe("isStable", () => {
   it("is true after 3 seconds of a steady, flagged weight", () => {

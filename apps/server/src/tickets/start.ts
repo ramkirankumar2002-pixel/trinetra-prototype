@@ -170,6 +170,7 @@ export async function startTicket(
   app.anpr.clear();
   const ticket = await ticketView(app.db, app.storage, ticketId);
   const blocked = ticket.plateCheck === "PENDING";
-  app.hardware.signals.show(blocked ? SIGNALS.store : SIGNALS.processing);
+  app.bridgeTicket.id = ticketId;
+  app.hardware.signals.show(blocked ? SIGNALS.officeFirst : SIGNALS.processing);
   return { resumed, ticket };
 }

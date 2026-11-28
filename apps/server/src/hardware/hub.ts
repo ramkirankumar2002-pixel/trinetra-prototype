@@ -1,6 +1,6 @@
 import type { DeviceId } from "@trinetra/shared";
 import type { WebSocket } from "ws";
-import type { MainCommand, SnapCommand } from "./messages";
+import type { MainCommand } from "./messages";
 
 /** WebSocket close codes the devices can read. */
 export const CLOSE_BAD_TOKEN = 1008;
@@ -38,7 +38,7 @@ export class DeviceHub {
   }
 
   /** Returns false when there is no open connection to send on. */
-  send(device: DeviceId, message: MainCommand | SnapCommand): boolean {
+  send(device: DeviceId, message: MainCommand): boolean {
     const socket = this.sockets.get(device);
     if (!socket || socket.readyState !== socket.OPEN) return false;
     socket.send(JSON.stringify(message));

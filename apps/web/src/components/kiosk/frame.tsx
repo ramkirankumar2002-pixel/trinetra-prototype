@@ -14,6 +14,7 @@ import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent } from "../ui/dialog";
 import { YesNo } from "../ui/yes-no";
+import { DeviceList } from "./device-list";
 import { KioskStatus } from "./kiosk-status";
 
 export interface FrameState {
@@ -102,6 +103,7 @@ export function KioskFrame({
 
       <Dialog open={frame.staffOpen} onOpenChange={frame.setStaffOpen}>
         <DialogContent title={t("kiosk.staff.title")} description={t("kiosk.staff.text")}>
+          <DeviceList />
           <LogoutButton area="kiosk" variant="dark" />
           <Button onClick={() => frame.setStaffOpen(false)}>{t("common.ok")}</Button>
         </DialogContent>

@@ -240,7 +240,12 @@ describe.skipIf(!testDatabaseUrl)("emitAfterCommit", { timeout: 30_000 }, () => 
     const app = await buildApp({
       env: testEnv(),
       hardware: {
-        settings: { wakeThresholdKg: 500, stableWindowMs: 3000, stableSpreadKg: 10 },
+        settings: {
+          wakeThresholdKg: 500,
+          stableWindowMs: 3000,
+          stableSpreadKg: 10,
+          modelScaleKgPerG: 100,
+        },
       },
     });
     const url = await app.listen({ port: 0, host: "127.0.0.1" });

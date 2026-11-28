@@ -6,6 +6,7 @@
   "scripts": {
     "lan": "tsx lan.ts",
     "sim": "tsx esp32-sim.ts",
+    "fake-hardware": "tsx fake-hardware.ts",
     "journey": "tsx journey.ts",
     "office": "tsx office.ts",
     "compress-screenshots": "tsx compress-screenshots.ts",

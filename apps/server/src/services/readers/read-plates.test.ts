@@ -13,13 +13,7 @@ import { createDb } from "../../db/client";
 import { photos } from "../../db/schema";
 import { seedDatabase } from "../../db/seed";
 import { resetTestDatabase } from "../../test/database";
-import {
-  connectDevice,
-  deviceTokenEnv,
-  TEST_DEVICE_TOKENS,
-  waitFor,
-  type TestDevice,
-} from "../../test/device-client";
+import { deviceTokenEnv, TEST_DEVICE_TOKENS } from "../../test/device-client";
 import { testDatabaseUrl, testEnv } from "../../test/env";
 import { fakeApis, geminiText, plates } from "../../test/fake-apis";
 import { LocalStorage } from "../storage";
@@ -35,8 +29,6 @@ describe.skipIf(!testDatabaseUrl)("readPlates", { timeout: 30_000 }, () => {
   let folder: string;
   let connection: ReturnType<typeof createDb>;
   let app: FastifyInstance;
-  let url: string;
-  const devices: TestDevice[] = [];
   const widths: Record<CameraId, number> = { front: 80, back: 120 };
 
   beforeAll(async () => {
@@ -55,32 +47,29 @@ describe.skipIf(!testDatabaseUrl)("readPlates", { timeout: 30_000 }, () => {
       env: testEnv(deviceTokenEnv),
       storage: new LocalStorage(folder, testEnv().JWT_SECRET),
       hardware: {
-        settings: { wakeThresholdKg: 500, stableWindowMs: 3000, stableSpreadKg: 10 },
+        settings: {
+          wakeThresholdKg: 500,
+          stableWindowMs: 3000,
+          stableSpreadKg: 10,
+          modelScaleKgPerG: 100,
+        },
         photoTimeoutMs: 400,
       },
     });
-    url = await app.listen({ port: 0, host: "127.0.0.1" });
   });
   afterEach(async () => {
-    devices.splice(0).forEach((device) => device.socket.terminate());
     await app.close();
   });
 
+  /** A camera that has just sent its frame. */
   async function camera(name: CameraId) {
-    const device = await connectDevice(url, TEST_DEVICE_TOKENS[name]);
-    devices.push(device);
-    device.socket.on("message", async (data) => {
-      const message = JSON.parse(data.toString());
-      if (message.t !== "snap") return;
-      await app.inject({
-        method: "POST",
-        url: `/api/device/photo/${message.id}`,
-        headers: { "content-type": "image/jpeg", "x-device-token": TEST_DEVICE_TOKENS[name] },
-        payload: await picture(widths[name]),
-      });
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/cam/${name}`,
+      headers: { "content-type": "image/jpeg", "x-device-token": TEST_DEVICE_TOKENS[name] },
+      payload: await picture(widths[name]),
     });
-    device.send({ t: "hello", cam: name });
-    await waitFor(() => app.hardware.state.isOnline(name));
+    expect(response.statusCode).toBe(204);
   }
 
   /** The readers wired to pretend services that answer by which camera's photo was sent. */

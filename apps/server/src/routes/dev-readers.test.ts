@@ -39,7 +39,14 @@ describe.skipIf(!testDatabaseUrl)("dev reader routes", { timeout: 30_000 }, () =
         PLATE_RECOGNIZER_TOKEN: "fake-token",
         GEMINI_API_KEY: "fake-key",
       }),
-      hardware: { settings: { wakeThresholdKg: 500, stableWindowMs: 3000, stableSpreadKg: 10 } },
+      hardware: {
+        settings: {
+          wakeThresholdKg: 500,
+          stableWindowMs: 3000,
+          stableSpreadKg: 10,
+          modelScaleKgPerG: 100,
+        },
+      },
       readers: { fetch: apis.fetch },
     });
   }

@@ -714,3 +714,29 @@ New texts for the issues in [MANUAL_CHECK.md](MANUAL_CHECK.md). Not checked by a
 | `settings.chainages` | Chainages and supervisors | चेनेज और सुपरवाइज़र |
 | `settings.chainage` | Chainage | चेनेज |
 | `settings.location` | Location | जगह |
+
+## Phase 5B
+
+19 new texts: the weighbridge fault screen, the camera light, the store officer's alert and the model settings. **Check `kiosk.fault.title` first:** a driver sees it.
+
+| Key | English | Hindi |
+| --- | --- | --- |
+| `kiosk.fault.title` | Weighbridge fault – please wait | धर्म कांटे में खराबी – कृपया रुकें |
+| `kiosk.fault.text` | Nothing can be weighed now. Please stay where you are. | अभी वज़न नहीं लिया जा सकता। कृपया अपनी जगह पर रहें। |
+| `kiosk.cameras` | Cam {online}/{total} | कैमरा {online}/{total} |
+| `store.event.WEIGHBRIDGE_FAULT` | Weighbridge fault: possible tampering | धर्म कांटे में खराबी: छेड़छाड़ की आशंका |
+| `store.event.WEIGHBRIDGE_FAULT_CLEARED` | Weighbridge fault ended | धर्म कांटे की खराबी खत्म हुई |
+| `store.fault.title` | Weighbridge fault: possible tampering. | धर्म कांटे में खराबी: छेड़छाड़ की आशंका। |
+| `store.fault.text` | The load cell wiring reports “{reason}” (since {time}). Nothing can be weighed until it is healthy again. | लोड सेल की वायरिंग से संदेश “{reason}” ({time} से)। ठीक होने तक कोई वज़न नहीं लिया जा सकता। |
+| `store.fault.cleared` | The weighbridge fault has ended | धर्म कांटे की खराबी खत्म हो गई |
+| `settings.fault` | Weighbridge fault: {reason} | धर्म कांटे में खराबी: {reason} |
+| `settings.model` | Model weighbridge | मॉडल धर्म कांटा |
+| `settings.modelScale` | Model scale: 1 g = X kg | मॉडल पैमाना: 1 g = X kg |
+| `settings.modelScaleText` | A {grams} g cargo on the model reads as {kg}. | मॉडल पर {grams} g सामान {kg} दिखेगा। |
+| `settings.stableBand` | Stable band (± grams) | स्थिर सीमा (± ग्राम) |
+| `settings.stableBandText` | A weight is still when it stays within ± {kg} for 3 seconds. | 3 सेकंड तक ± {kg} के भीतर रहने पर वज़न स्थिर माना जाता है। |
+| `settings.modelSave` | Save model settings | मॉडल सेटिंग सेव करें |
+| `settings.badNumber` | Enter a number from {min} to {max}. | {min} से {max} तक की संख्या डालें। |
+| `settings.scaleInUse` | A truck has been weighed and is not finished. Finish it first, or reset demo data. | एक गाड़ी का वज़न लिया जा चुका है और काम पूरा नहीं हुआ। पहले उसे पूरा करें, या डेमो डेटा रीसेट करें। |
+| `settings.bridgeNotEmpty` | Take the truck off the weighbridge first. | पहले गाड़ी को धर्म कांटे से हटाएँ। |
+| `weighbridge.fault` | Weighbridge fault | धर्म कांटे में खराबी |

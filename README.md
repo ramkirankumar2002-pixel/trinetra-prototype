@@ -19,8 +19,9 @@ trinetra-prototype/
 ├─ packages/
 │  └─ shared/         @trinetra/shared: TypeScript used by both apps
 ├─ firmware/
-│  ├─ esp32/          Weighbridge model code (from Phase 5)
-│  └─ esp32-cam/      Front and back camera code (from Phase 5)
+│  ├─ esp32/          Main weighbridge board (Arduino)
+│  ├─ esp32-cam/      One sketch for the front and back cameras
+│  └─ original/       The offline sketches the firmware grew from
 ├─ scripts/           @trinetra/scripts: ESP32 and camera simulator, sample plate photos
 ├─ tests/e2e/         @trinetra/e2e: Playwright browser tests (logins; demo scenarios later)
 └─ docs/              Build plan, progress and decisions
@@ -245,19 +246,29 @@ pnpm sim
 | `a` | A truck arrives: the weight climbs, wobbles, then settles at 32,560 kg |
 | `e` | An empty truck arrives and settles at 18,250 kg                        |
 | `l` | The truck leaves: back to 0                                            |
-| `p` | Switches "position OK" off or on                                       |
+| `p` | Position: OK, then "move forward", then "move back"                    |
 | `u` | Switches an unstable wobble on or off                                  |
+| `t` | Starts or ends a tamper alarm                                          |
+| `c` | Switches both cameras off or on (offline 15 s after switching off)     |
 | `o` | All three boards go offline for 5 seconds                              |
 | `m` | Switches between the matching and the mismatched plate photos          |
 | `h` | Shows the keys                                                         |
 | `q` | Quits                                                                  |
 
-It prints every command it receives (light, buzzer, display, tare). On "snap", each camera uploads a sample photo from [scripts/sample-plates](scripts/sample-plates): `match-*.jpg` show MH 12 AB 1234 front and back; `mismatch-back.jpg` shows MH 14 CD 5678. `pnpm sim:plates` draws them again. These are drawings for testing the connection, not for judging plate reading.
+It sends grams, like the real board (`--scale` must match "1 g = X kg" on `/settings`; the default is 100), and prints every command it receives (lights, buzzer, display, tare). Each camera sends a sample photo from [scripts/sample-plates](scripts/sample-plates) every 1.5 s: `match-*.jpg` show MH 12 AB 1234 front and back; `mismatch-back.jpg` shows MH 14 CD 5678. `pnpm sim:plates` draws them again. These are drawings for testing the connection, not for judging plate reading.
 
 To start with the mismatched pair, or to use a backend on another address:
 
 ```powershell
 pnpm -C scripts sim --mismatch --url ws://localhost:4000/device
+```
+
+### Fake hardware check
+
+`pnpm fake-hardware` checks a running backend with pretend boards that speak the firmware's protocol, and prints PASS or FAIL for each point: tokens, grams to kilograms, position, lights and display, tamper, camera frames and going offline. It creates no ticket and changes nothing. Stop `pnpm sim` and unplug the real boards first.
+
+```powershell
+pnpm fake-hardware
 ```
 
 ### Watching the weight
@@ -272,17 +283,42 @@ Invoke-RestMethod -Method Post -Uri http://localhost:4000/api/auth/login -Conten
 Invoke-RestMethod -Uri http://localhost:4000/api/kiosk/state -WebSession $kiosk | ConvertTo-Json -Depth 4
 ```
 
-With `NODE_ENV=test` the backend also has `POST /api/test/photos` (asks both cameras for photos) and `POST /api/test/command` (for example `{"t":"light","c":"green"}`), both for the kiosk login.
+With `NODE_ENV=test` the backend also has `POST /api/test/photos` (saves a photo from each camera) and `POST /api/test/command` (for example `{"t":"light","entry":"G","exit":"R"}`), both for the kiosk login.
 
 ## Device connection
 
-The firmware (Phase 5B) and the simulator speak this protocol.
+The firmware ([firmware/](firmware)) and the simulator speak this protocol. How to wire and flash the boards: [docs/HARDWARE.md](docs/HARDWARE.md).
 
-- **WebSocket** `/device` (`wss://` when deployed), with the board's secret in an `x-device-token` header. A wrong or missing token is closed at once (code 1008). A new connection replaces the board's old one (code 4000). Messages are at most 4 KB of JSON; bad ones are ignored and logged.
-- **Main ESP32 sends** `{"t":"w","kg":32560,"stable":true,"pos":true}` about every 200 ms, and `{"t":"hb"}` every 5 s. It is **offline after 3 s** without a message.
-- **Main ESP32 receives** `{"t":"light","c":"green"|"red"|"orange"}`, `{"t":"buzz","ms":1000}`, `{"t":"display","text":"Go to CH-6"}` (1 to 80 characters) and `{"t":"tare"}`. Tare is only sent when the bridge is empty.
-- **Cameras send** `{"t":"hello","cam":"front"}` (or `"back"`) after connecting, then `{"t":"hb"}` every 5 s. A camera is **offline after 15 s** without a message. A hello that does not match the token is refused.
-- **Cameras receive** `{"t":"snap","id":"<photo-id>"}` and upload with `POST /api/device/photo/<photo-id>`: header `x-device-token`, header `content-type: image/jpeg`, the JPEG itself as the body (not a form), at most 8 MB. Success is `201`. A photo id works once and only for the camera it was sent to. If nothing arrives in 5 s, the same id is sent once more.
+### Main ESP32: a WebSocket
+
+- `/device` (`wss://` when deployed), with the board's secret in an `x-device-token` header. A wrong or missing token, or a camera's token, is closed at once (code 1008). A new connection replaces the old one (code 4000). Messages are at most 4 KB of JSON; bad ones are ignored and logged.
+- It is **offline after 3 s** without a message.
+
+| It sends                                       | When                                                           | Meaning                                                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `{"t":"w","g":200.4,"stable":true,"pos":"ok"}` | Every 200 ms                                                   | **Grams on the model.** `pos` is `ok`, `forward` or `back`, from the IR sensors                      |
+| `{"t":"hb"}`                                   | Every 5 s, and whenever 1 s passes with nothing else           | Heartbeat                                                                                            |
+| `{"t":"tamper","reason":"CELL WIRE OPEN"}`     | When it starts, every 1 s while it lasts, and after connecting | `HX711 NO DATA`, `CELL WIRE OPEN`, `HX711 STUCK` or `CELL WIRE FAULT`. No weights are sent meanwhile |
+| `{"t":"tamper_clear"}`                         | When it ends, and after connecting if all is well              | The wiring is healthy                                                                                |
+
+| It receives                                                    | Meaning                                         |
+| -------------------------------------------------------------- | ----------------------------------------------- |
+| `{"t":"light","entry":"G","exit":"R","blink":false}`           | Both traffic lights: `R`, `Y`, `G` or `off`     |
+| `{"t":"buzz","ms":120,"times":2,"gap":120}`                    | Beep pattern                                    |
+| `{"t":"display","lines":["Unload at","Plant","Drive off ->"]}` | 1 to 3 lines for the OLED, 21 characters each   |
+| `{"t":"tare"}`                                                 | Zero the scale (only sent with an empty bridge) |
+
+**Grams to kilograms:** the backend multiplies by the setting "Model scale: 1 g = X kg" (default 100, on `/settings`). The stable band (15 g) and the wake threshold (100 g) are in grams too. A weight is saved as the **average of the 3 s stable window**. The scale cannot be changed while a truck is on the bridge or between the two weighings of a truck.
+
+**Tamper:** every capture is refused (`WEIGHBRIDGE_FAULT`), the weighbridge screen says "Weighbridge fault – please wait", the store officer is alerted (`hw:fault`), and the timeline of the truck on the bridge notes the start and the end. While the weight is simulated for a demo, the real board's alarm is set aside.
+
+**Lights:** the backend decides them. The ESP32 itself adds only yellow with "Move FORWARD / BACK" while positioning, both red when offline, and its tamper alarm.
+
+### Cameras: frames over HTTP
+
+- Each ESP32-CAM sends its newest picture every 1.5 s: `POST /api/cam/front` or `/api/cam/back`, header `x-device-token` (its own token), header `content-type: image/jpeg`, the JPEG itself as the body, at most 2 MB. Success is `204`.
+- The backend keeps **only the newest frame of each camera, in memory**. A camera is **offline after 15 s** without a frame.
+- When the plate is read, the backend waits (at most 4 s) for the weight to be still, then saves each camera's newest frame, **never one older than 3 s** (it waits up to 4 s for a new one). Only then are the plate services asked.
 
 ### When a weight can be captured
 
@@ -291,6 +327,7 @@ The firmware (Phase 5B) and the simulator speak this protocol.
 | Reason                | Meaning                                                             |
 | --------------------- | ------------------------------------------------------------------- |
 | `SETTINGS_NOT_LOADED` | The backend has not read the weighbridge settings from the database |
+| `WEIGHBRIDGE_FAULT`   | The ESP32 reports tampering with the load cell wiring               |
 | `DEVICE_OFFLINE`      | The main ESP32 is offline                                           |
 | `STALE_READING`       | The newest weight is 1 second old or more                           |
 | `NO_TRUCK`            | The weight is not above the wake threshold                          |
@@ -328,7 +365,7 @@ Demo usernames and PINs are in [default-data.ts](packages/shared/src/seed/defaul
 
 ### Browser tests
 
-Playwright logs in as each role with its demo PIN, checks the page, the language switch and the connection status, tries the other roles' pages and logs out. It drives the five truck journeys and the fallback screens through the real weighbridge screens (with the simulator's code, a second browser as the driver's phone, and the demo pick modes; **it runs "Reset demo data" first**), measures the kiosk's driver rules, and checks the dashboards at phone, tablet and desktop width. The whole run takes about 5 minutes and needs the device tokens and `ADMIN_PIN`; stop `pnpm sim` first, because only one simulator may be connected. It uses the installed **Google Chrome** and the development database, and uses a running `pnpm dev` or starts one.
+Playwright logs in as each role with its demo PIN, checks the page, the language switch and the connection status, tries the other roles' pages and logs out. It drives the five truck journeys and the fallback screens through the real weighbridge screens (with the simulator's code, a second browser as the driver's phone, and the demo pick modes; **it runs "Reset demo data" first**), measures the kiosk's driver rules, and checks the dashboards at phone, tablet and desktop width. The whole run takes about 5 minutes and needs the device tokens and `ADMIN_PIN`; stop `pnpm sim` first, because only one simulator may be connected. It uses the installed **Google Chrome** and the development database, and uses a running `pnpm dev` or starts one. If another program holds port 3000, set `E2E_WEB_PORT` (for example `3100`) and stop `pnpm dev` first.
 
 ```powershell
 pnpm test:e2e
@@ -354,6 +391,7 @@ The backend pushes news to the browsers with **Socket.IO** on the same port as t
 | `kiosk:ready`                 | kiosk                          | ticketId, ticketNo, plate                                           |
 | `demo:changed`                | kiosk, supervisor, store       | demo (a switch changed: show or hide the DEMO badge)                |
 | `invoice:read`                | kiosk                          | ticketId                                                            |
+| `hw:fault`                    | kiosk, store                   | fault (reason and since), or null; also sent on connecting          |
 
 The names and types are in [packages/shared/src/realtime.ts](packages/shared/src/realtime.ts).
 
@@ -405,15 +443,15 @@ With `pnpm dev` running, open <http://localhost:3000/dev/readers> and log in as 
 
 If a service fails on stage, these settings replace it. They are in [default-data.ts](packages/shared/src/seed/default-data.ts); edit them and run `pnpm db:seed` (or change them while it runs on the `/settings` page). Running `pnpm db:seed` also puts them back to whatever the file says.
 
-| Setting                | Values         | Effect of `pick`                                                                                                         |
-| ---------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `anpr_mode`            | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                                         |
-| `supervisor_anpr_mode` | `real`, `pick` | The supervisor's photo "shows" `demo_plate` and is not read                                                              |
-| `ocr_mode`             | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand`, `aggregate`, `steel-bars` or `bitumen` |
+| Setting                | Values         | Effect of `pick`                                                                                                                          |
+| ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `anpr_mode`            | `real`, `pick` | Uses `demo_plate` (from the vehicle list) instead of the cameras                                                                          |
+| `supervisor_anpr_mode` | `real`, `pick` | The supervisor's photo "shows" `demo_plate` and is not read                                                                               |
+| `ocr_mode`             | `real`, `pick` | Uses the sample invoice named by `demo_invoice`: `cement`, `steel-scrap`, `sand`, `aggregate`, `steel-bars`, `bitumen`, or a `model-` one |
 
 ### Sample invoices and the real check
 
-[scripts/sample-invoices](scripts/sample-invoices) holds six made-up **SAMPLE** invoices as PDF and JPEG, one per demo scenario (`pnpm sim:invoices` draws them). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
+[scripts/sample-invoices](scripts/sample-invoices) holds made-up **SAMPLE** invoices as PDF and JPEG (`pnpm sim:invoices` draws them): six for the demo scenarios, and seven `model-*` bills of 20,000 kg for the real model weighbridge ([docs/HARDWARE.md](docs/HARDWARE.md#demo-cargo-and-bills)). [scripts/test-plates](scripts/test-plates) holds 10 synthetic plate images (`pnpm sim:test-plates`). They are **not** a test of real camera photos.
 
 This reads them all with the **real services** (about 10 plate lookups and 4 Gemini requests):
 
@@ -454,7 +492,8 @@ Run all commands from the repository root.
 | `pnpm lan`               | Website and backend over https on the Wi-Fi address, for a phone                |
 | `pnpm office`            | Demo pick modes and the supervisor's and store's decisions, for trying by hand  |
 | `pnpm sim`               | Simulates the main ESP32 and both cameras (see [Simulator](#simulator))         |
-| `pnpm journey`           | Runs the five truck journeys (see [Journeys](#journeys))                        |
+| `pnpm journey`           | Runs the six truck journeys (see [Journeys](#journeys))                         |
+| `pnpm fake-hardware`     | Checks a running backend with pretend boards (firmware protocol)                |
 | `pnpm sim:plates`        | Draws the sample plate photos again                                             |
 | `pnpm lint`              | Checks the code with ESLint                                                     |
 | `pnpm typecheck`         | Checks TypeScript types in every package                                        |

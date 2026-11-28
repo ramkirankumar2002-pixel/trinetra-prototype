@@ -16,6 +16,18 @@ export const LOGIN_RATE_LIMIT = { max: 20, timeWindow: "1 minute" };
 /** The kiosk may read the live state up to 20 times a second. */
 export const KIOSK_STATE_RATE_LIMIT = { max: 1200, timeWindow: "1 minute" };
 
+/** One camera frame. A VGA JPEG is about 50 KB. */
+export const MAX_FRAME_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Frames per minute from one address. On a hotspot both cameras share one, and each sends
+ * up to one frame a second.
+ */
+export const CAMERA_FRAME_RATE_LIMIT = { max: 600, timeWindow: "1 minute" };
+
+/** How long reading the plate waits for the weight to be still before taking the photos. */
+export const PLATE_STABLE_WAIT_MS = 4000;
+
 /** The phone upload routes need no login, so they get a tighter limit. */
 export const UPLOAD_RATE_LIMIT = { max: 30, timeWindow: "1 minute" };
 
@@ -36,8 +48,8 @@ export const INVOICE_READ_STALE_MS = 3 * 60 * 1000;
 
 /**
  * The longest one plate may take to read. POST /api/anpr and the supervisor's photo wait for
- * it, and must answer within the 30 s the website's forwarding allows (the cameras may
- * take 10 s of that).
+ * it, and must answer within the 30 s the website's forwarding allows (waiting for a still
+ * weight and for camera frames may take 8 s of that).
  */
 export const PLATE_READ_DEADLINE_MS = 17_000;
 

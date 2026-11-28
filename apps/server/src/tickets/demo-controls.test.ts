@@ -183,7 +183,15 @@ describe.skipIf(!testDatabaseUrl)("demo controls", { timeout: 30_000 }, () => {
       });
       expect(body.unloadingRules.at(-1)).toMatchObject({ material: null, isDefault: true });
       expect(body.plates).toContain(PLATE);
-      expect(body.invoices).toContainEqual({ id: "cement", material: "Cement Bags", plate: PLATE });
+      expect(body.invoices).toContainEqual({
+        id: "cement",
+        material: "Cement Bags",
+        plate: PLATE,
+        weightKg: 14_310,
+      });
+      expect(body.invoices).toContainEqual(
+        expect.objectContaining({ id: "model-cement", weightKg: 20_000 }),
+      );
       expect(JSON.stringify(body)).not.toMatch(/98765432\d\d|pin|hash|phone/i);
     });
   });
@@ -203,6 +211,8 @@ describe.skipIf(!testDatabaseUrl)("demo controls", { timeout: 30_000 }, () => {
         demoInvoice: "cement",
         weightMode: "real",
         simulatedWeight: null,
+        modelScaleKgPerG: 100,
+        stableBandG: 15,
       });
       const changed = await demo("PUT", "settings", {
         anprMode: "pick",

@@ -1,7 +1,7 @@
 // Live events from the backend to the browsers (build plan section 7). The backend and the
 // website both use these names and types. Browsers only listen: they send nothing.
 import type { ApprovalKind, ApprovalStatus, TicketStatus } from "./domain";
-import type { CameraId, CaptureBlockReason, DeviceId } from "./hardware";
+import type { CameraId, CaptureBlockReason, DeviceId, WeighbridgeFault } from "./hardware";
 
 export interface HardwareWeightEvent {
   kg: number;
@@ -18,6 +18,11 @@ export interface HardwareWeightEvent {
 
 /** Which boards are online. */
 export type HardwareStatusEvent = Record<DeviceId, boolean>;
+
+/** A weighbridge fault began or ended. Null: there is none now. */
+export interface HardwareFaultEvent {
+  fault: WeighbridgeFault | null;
+}
 
 export interface TruckEvent {
   kg: number;
@@ -71,6 +76,7 @@ export interface DemoChangedEvent {
 export interface RealtimeEvents {
   "hw:weight": HardwareWeightEvent;
   "hw:status": HardwareStatusEvent;
+  "hw:fault": HardwareFaultEvent;
   "truck:arrived": TruckEvent;
   "truck:left": TruckEvent;
   "ticket:updated": TicketUpdatedEvent;
@@ -104,6 +110,7 @@ export const roomKind = (room: Room): RoomKind =>
 export const EVENT_AUDIENCE: Readonly<Record<RealtimeEventName, readonly RoomKind[]>> = {
   "hw:weight": ["kiosk"],
   "hw:status": ["kiosk", "live"],
+  "hw:fault": ["kiosk", "store"],
   "truck:arrived": ["kiosk"],
   "truck:left": ["kiosk"],
   "ticket:updated": ["kiosk", "supervisor", "store", "live"],

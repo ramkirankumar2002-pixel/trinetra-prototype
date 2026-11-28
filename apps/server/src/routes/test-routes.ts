@@ -2,12 +2,12 @@ import { USER_ROLES } from "@trinetra/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireRole } from "../auth/guard";
-import { buzzMsSchema, displayTextSchema, lightColourSchema } from "../hardware/messages";
+import { buzzSchema, displayLinesSchema, lightsSchema } from "../hardware/messages";
 
 const commandSchema = z.discriminatedUnion("t", [
-  z.object({ t: z.literal("light"), c: lightColourSchema }),
-  z.object({ t: z.literal("buzz"), ms: buzzMsSchema }),
-  z.object({ t: z.literal("display"), text: displayTextSchema }),
+  lightsSchema.extend({ t: z.literal("light") }),
+  buzzSchema.pick({ ms: true }).extend({ t: z.literal("buzz") }),
+  z.object({ t: z.literal("display"), lines: displayLinesSchema }),
   z.object({ t: z.literal("tare") }),
 ]);
 
@@ -23,9 +23,9 @@ export function registerTestRoutes(app: FastifyInstance): void {
   app.post("/api/test/command", kioskOnly, async (request) => {
     const command = commandSchema.parse(request.body);
     const { commands } = app.hardware;
-    if (command.t === "light") return commands.setLight(command.c);
+    if (command.t === "light") return commands.setLights(command);
     if (command.t === "buzz") return commands.buzz(command.ms);
-    if (command.t === "display") return commands.showText(command.text);
+    if (command.t === "display") return commands.showLines(command.lines);
     return commands.tare();
   });
 

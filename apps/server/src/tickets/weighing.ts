@@ -18,7 +18,7 @@ import {
 } from "@trinetra/shared";
 import { and, count, eq, gte, isNotNull, ne } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { goTo, SIGNALS } from "../hardware/signals";
+import { CAPTURED_BEEP, goTo, SIGNALS } from "../hardware/signals";
 import { materials, tickets, unloadingPoints, unloadingRules, users } from "../db/schema";
 import { AppError } from "../errors/app-error";
 import type { Transaction } from "../realtime/after-commit";
@@ -39,6 +39,8 @@ import { holdReasonOf, ticketView } from "./view";
 export interface CapturedWeight {
   kg: number;
   source: "esp32" | "simulated";
+  /** For a weight from the model: the scale it was converted with. Kept on the timeline. */
+  modelScaleKgPerG?: number;
 }
 
 /** The weight to save, or an error saying why none can be taken now. */
@@ -46,7 +48,8 @@ function captureWeight(app: FastifyInstance): CapturedWeight {
   const { state, simulatedWeight } = app.hardware;
   const decision = state.canCapture();
   if (!decision.ok) throw bridgeNotReady(decision.reason);
-  return { kg: decision.kg, source: simulatedWeight.current() ? "simulated" : "esp32" };
+  if (simulatedWeight.current()) return { kg: decision.kg, source: "simulated" };
+  return { kg: decision.kg, source: "esp32", modelScaleKgPerG: app.hardware.modelScale()! };
 }
 
 interface DbPoint extends Point {
@@ -166,6 +169,7 @@ export async function sendToUnload(
 }
 
 export async function takeFirstWeight(app: FastifyInstance, ticketId: number, actor: Actor) {
+  app.bridgeTicket.id = ticketId;
   await app.eventTransaction(async (tx) => {
     let ticket = await lockTicket(tx, ticketId);
     if (ticket.status !== "STARTED") {
@@ -188,7 +192,7 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
     const demo = await isDemoActive(tx, app.hardware);
 
     // After every wait for a lock, so the weight is the one on the bridge now.
-    const { kg, source } = captureWeight(app);
+    const { kg, ...how } = captureWeight(app);
     const takenAt = new Date();
     ticket = await tagDemo(tx, ticket, demo);
     const move = {
@@ -203,7 +207,7 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
         actor,
         context: move.context,
         set: { type: classified.type, heldWeightKg: kg, firstWeightAt: takenAt },
-        data: { kg, source, type: classified.type, why: classified.reason },
+        data: { kg, ...how, type: classified.type, why: classified.reason },
         request: "STORE_TYPE2",
       });
     } else {
@@ -212,11 +216,12 @@ export async function takeFirstWeight(app: FastifyInstance, ticketId: number, ac
         kg,
         type: classified.type,
         takenAt,
-        data: { source, why: classified.reason },
+        data: { ...how, why: classified.reason },
       });
     }
   });
   const saved = await ticketView(app.db, app.storage, ticketId);
+  app.hardware.commands.buzz(CAPTURED_BEEP.ms, CAPTURED_BEEP.times);
   // A Type 2 truck waits aside; the others are told where to unload.
   app.hardware.signals.show(saved.unloadingPoint ? goTo(saved.unloadingPoint.code) : SIGNALS.wait);
   return saved;
@@ -239,12 +244,13 @@ function checkMayWeighAgain(ticket: TicketRow): void {
 }
 
 export async function takeSecondWeight(app: FastifyInstance, ticketId: number, actor: Actor) {
+  app.bridgeTicket.id = ticketId;
   await app.eventTransaction(async (tx) => {
     let ticket = await lockTicket(tx, ticketId);
     checkMayWeighAgain(ticket);
     const tolerancePct = await readNumberSetting(tx, "tolerance_pct", DEFAULT_TOLERANCE_PCT);
     const demo = await isDemoActive(tx, app.hardware);
-    const { kg, source } = captureWeight(app);
+    const { kg, ...how } = captureWeight(app);
     ticket = await tagDemo(tx, ticket, demo);
 
     const net = computeNet(ticket.firstWeightKg!, kg);
@@ -265,7 +271,7 @@ export async function takeSecondWeight(app: FastifyInstance, ticketId: number, a
       set: { secondWeightKg: kg, secondWeightAt: new Date(), netKg: net.netKg, variancePct },
       data: {
         kg,
-        source,
+        ...how,
         netKg: net.netKg,
         invoiceWeightKg: ticket.invoiceWeightKg,
         variancePct,
@@ -276,6 +282,7 @@ export async function takeSecondWeight(app: FastifyInstance, ticketId: number, a
     });
   });
   const saved = await ticketView(app.db, app.storage, ticketId);
+  app.hardware.commands.buzz(CAPTURED_BEEP.ms, CAPTURED_BEEP.times);
   app.hardware.signals.show(saved.status === "COMPLETED" ? SIGNALS.thankYou : SIGNALS.store);
   return saved;
 }

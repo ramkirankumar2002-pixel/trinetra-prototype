@@ -2,6 +2,7 @@
 // scripts/sample-invoices/ are drawn from this data (pnpm sim:invoices), and
 // "pick" demo mode returns it without reading any file.
 import type { TicketType } from "../domain";
+import { DEFAULT_MODEL_SCALE } from "../hardware";
 
 export const SAMPLE_INVOICE_IDS = [
   "cement",
@@ -10,8 +11,21 @@ export const SAMPLE_INVOICE_IDS = [
   "aggregate",
   "steel-bars",
   "bitumen",
+  // For the real model weighbridge (docs/HARDWARE.md).
+  "model-cement",
+  "model-steel-bars",
+  "model-bitumen",
+  "model-steel-scrap",
+  "model-sand",
+  "model-aggregate",
+  "model-bricks",
 ] as const;
 export type SampleInvoiceId = (typeof SAMPLE_INVOICE_IDS)[number];
+
+/** The cargo the "model-" bills are written for, in grams on the model weighbridge. */
+export const MODEL_CARGO_G = 200;
+/** What those bills say: the model cargo at the default model scale. */
+export const MODEL_CARGO_KG = MODEL_CARGO_G * DEFAULT_MODEL_SCALE;
 
 export interface SampleInvoice {
   id: SampleInvoiceId;
@@ -32,7 +46,7 @@ export interface SampleInvoice {
   expected: { material: string; weightKg: number; type: TicketType };
 }
 
-export const SAMPLE_INVOICES: readonly SampleInvoice[] = [
+const SCENARIO_INVOICES: readonly SampleInvoice[] = [
   {
     id: "cement",
     scenario: "Type 1: a supervisor checks the truck",
@@ -130,4 +144,69 @@ export const SAMPLE_INVOICES: readonly SampleInvoice[] = [
     quantityText: "14.310",
     expected: { material: "Bitumen", weightKg: 14_310, type: "TYPE_1" },
   },
+];
+
+/**
+ * A bill for the model weighbridge: the same truck (plate, supplier, transporter) as the
+ * material's other sample, carrying the model cargo.
+ */
+function modelBill(
+  id: SampleInvoiceId,
+  number: number,
+  truck: Pick<SampleInvoice["printed"], "supplier" | "transporter" | "vehicle_number">,
+  printedMaterial: string,
+  material: string,
+  type: TicketType,
+): SampleInvoice {
+  return {
+    id,
+    scenario: `Model weighbridge, ${MODEL_CARGO_G} g cargo: ${material}`,
+    printed: {
+      invoice_number: `SMPL-MOD-${String(number).padStart(3, "0")}`,
+      invoice_date: "2026-11-26",
+      supplier: truck.supplier,
+      transporter: truck.transporter,
+      vehicle_number: truck.vehicle_number,
+      material: printedMaterial,
+      quantity: MODEL_CARGO_KG / 1000,
+      quantity_unit: "MT",
+    },
+    quantityText: (MODEL_CARGO_KG / 1000).toFixed(3),
+    expected: { material, weightKg: MODEL_CARGO_KG, type },
+  };
+}
+
+/** The model bill for the material of another sample, with that sample's truck. */
+function modelBillLike(
+  id: SampleInvoiceId,
+  number: number,
+  like: SampleInvoiceId,
+  type: TicketType,
+): SampleInvoice {
+  const { printed, expected } = SCENARIO_INVOICES.find((invoice) => invoice.id === like)!;
+  return modelBill(id, number, printed, printed.material, expected.material, type);
+}
+
+export const SAMPLE_INVOICES: readonly SampleInvoice[] = [
+  ...SCENARIO_INVOICES,
+  modelBillLike("model-cement", 1, "cement", "TYPE_1"),
+  modelBillLike("model-steel-bars", 2, "steel-bars", "TYPE_1"),
+  modelBillLike("model-bitumen", 3, "bitumen", "TYPE_1"),
+  // 20,000 kg is above these materials' thresholds, so the store officer checks them.
+  modelBillLike("model-steel-scrap", 4, "steel-scrap", "TYPE_2"),
+  modelBillLike("model-sand", 5, "sand", "TYPE_2"),
+  modelBillLike("model-aggregate", 6, "aggregate", "TYPE_2"),
+  // Bricks are always Type 3: the run that needs no person.
+  modelBill(
+    "model-bricks",
+    7,
+    {
+      supplier: "Shree Ram Crushers",
+      transporter: "Sri Balaji Transport",
+      vehicle_number: "MH 14 CD 5678",
+    },
+    "Red Clay Bricks",
+    "Bricks",
+    "TYPE_3",
+  ),
 ];

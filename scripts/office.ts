@@ -1,6 +1,7 @@
 // For trying the weighbridge by hand before the supervisor and store screens exist
 // (Phases 12 and 13). It sets the demo "pick" modes and makes the people's decisions.
 //   pnpm office pick cement          also: sand, steel-scrap, aggregate, steel-bars, bitumen
+//                                    and model-cement ... model-bricks (200 g model cargo)
 //   pnpm office list                 what is waiting for a person
 //   pnpm office approve              the oldest waiting request
 //   pnpm office reject               the same, refused
@@ -33,6 +34,14 @@ const LOADED_KG: Record<string, number> = {
   aggregate: 32_560,
   "steel-bars": 32_560,
   bitumen: 32_560,
+  // The model bills: the simulator's empty truck plus the 200 g (20,000 kg) cargo.
+  "model-cement": 38_250,
+  "model-steel-bars": 38_250,
+  "model-bitumen": 38_250,
+  "model-steel-scrap": 38_250,
+  "model-sand": 38_250,
+  "model-aggregate": 38_250,
+  "model-bricks": 38_250,
 };
 
 /** Those the unloading rules can send a Type 1 truck to. */

@@ -1,6 +1,7 @@
 // The ticket API (build plan sections 6 and 7): what the website sends and gets back.
 // No request carries a weight: the backend takes every weight from the weighbridge itself.
 import { z } from "zod";
+import { MAX_MODEL_SCALE, MAX_STABLE_BAND_G } from "./hardware";
 import {
   CAPTURE_SOURCES,
   LANGUAGES,
@@ -126,6 +127,10 @@ export const demoSettingsSchema = z
     demoInvoice: z.string().max(40),
     /** "real" hands the weight back to the ESP32. Simulated starts with POST /api/demo/weight. */
     weightMode: z.literal("real"),
+    /** The model weighbridge: 1 g stands for this many kg. At most 2 decimals. */
+    modelScaleKgPerG: z.number().positive().max(MAX_MODEL_SCALE).multipleOf(0.01),
+    /** A weight counts as still within ± this many grams. */
+    stableBandG: z.number().int().min(1).max(MAX_STABLE_BAND_G),
   })
   .partial();
 
@@ -143,6 +148,8 @@ export interface DemoSettings {
   demoInvoice: string | null;
   weightMode: "real" | "simulated";
   simulatedWeight: { kg: number; stable: boolean; positionOk: boolean } | null;
+  modelScaleKgPerG: number;
+  stableBandG: number;
 }
 
 export interface OpenTicket {

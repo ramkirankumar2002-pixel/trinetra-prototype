@@ -1,7 +1,7 @@
 // Commands to the main ESP32.
-import type { LightColour } from "@trinetra/shared";
+import type { Lights } from "@trinetra/shared";
 import type { DeviceHub } from "./hub";
-import { buzzMsSchema, displayTextSchema, lightColourSchema, type MainCommand } from "./messages";
+import { buzzSchema, displayLinesSchema, lightsSchema, type MainCommand } from "./messages";
 import { MAX_CAPTURE_AGE_MS, type HardwareSettings, type HardwareState } from "./state";
 
 export type CommandRefusal =
@@ -17,11 +17,12 @@ export type CommandResult = { sent: true } | { sent: false; reason: CommandRefus
 /** What the ESP32 has been told, on one connection. */
 interface Told {
   connection: object;
-  light?: LightColour;
+  /** The command as it was sent, to see whether a new one would change anything. */
+  light?: string;
   text?: string;
 }
 
-/** The helpers throw a ZodError for a wrong value, such as an empty display text. */
+/** The helpers throw a ZodError for a wrong value, such as a display line too long. */
 export class HardwareCommands {
   private told: Told | undefined;
 
@@ -31,21 +32,19 @@ export class HardwareCommands {
     private readonly settings: () => HardwareSettings | undefined,
   ) {}
 
-  /** Not sent again if the light already shows this colour. */
-  setLight(colour: LightColour): CommandResult {
-    return this.change("light", lightColourSchema.parse(colour), (c) => ({ t: "light", c }));
+  /** Both traffic lights. Not sent again if they already show this. */
+  setLights(lights: Lights): CommandResult {
+    return this.change("light", { t: "light", ...lightsSchema.parse(lights) });
   }
 
-  buzz(ms: number): CommandResult {
-    return this.send({ t: "buzz", ms: buzzMsSchema.parse(ms) });
+  /** `times` beeps of `ms` each, `gap` milliseconds apart. */
+  buzz(ms: number, times = 1, gap = 120): CommandResult {
+    return this.send({ t: "buzz", ...buzzSchema.parse({ ms, times, gap }) });
   }
 
-  /** Not sent again if the display already shows this text. */
-  showText(text: string): CommandResult {
-    return this.change("text", displayTextSchema.parse(text), (shown) => ({
-      t: "display",
-      text: shown,
-    }));
+  /** Not sent again if the display already shows these lines. */
+  showLines(lines: string[]): CommandResult {
+    return this.change("text", { t: "display", lines: displayLinesSchema.parse(lines) });
   }
 
   /**
@@ -70,16 +69,13 @@ export class HardwareCommands {
     return this.send({ t: "tare" });
   }
 
-  private change<K extends "light" | "text">(
-    part: K,
-    value: NonNullable<Told[K]>,
-    command: (value: NonNullable<Told[K]>) => MainCommand,
-  ): CommandResult {
+  private change(part: "light" | "text", command: MainCommand): CommandResult {
+    const value = JSON.stringify(command);
     const connection = this.hub.connectionOf("main");
     if (this.told && this.told.connection !== connection) this.told = undefined;
     if (this.state.isOnline("main") && this.told?.[part] === value) return { sent: true };
 
-    const result = this.send(command(value));
+    const result = this.send(command);
     if (result.sent && connection) this.told = { ...this.told, connection, [part]: value };
     return result;
   }

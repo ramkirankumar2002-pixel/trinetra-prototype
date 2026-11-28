@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
-export const WEB_URL = "http://localhost:3000";
+// E2E_WEB_PORT runs the website on another port, for when something else holds 3000.
+const WEB_PORT = process.env.E2E_WEB_PORT ?? "3000";
+export const WEB_URL = `http://localhost:${WEB_PORT}`;
 
 export default defineConfig({
   testDir: ".",
@@ -26,9 +28,12 @@ export default defineConfig({
       cwd: root,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+      // A backend started here allows the website's address (apps/server/.env does not
+      // override a variable that is already set).
+      env: { FRONTEND_ORIGIN: WEB_URL },
     },
     {
-      command: "pnpm --filter @trinetra/web run dev",
+      command: `pnpm --filter @trinetra/web exec next dev --port ${WEB_PORT}`,
       url: WEB_URL,
       cwd: root,
       reuseExistingServer: !process.env.CI,

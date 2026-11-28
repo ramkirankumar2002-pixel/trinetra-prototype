@@ -85,13 +85,21 @@ export function useTicketHarness() {
     if (folder) await rm(folder, { recursive: true, force: true });
   });
 
-  async function startApp(beforeReady?: (app: FastifyInstance) => void) {
+  /** `databaseSettings`: read the weighbridge settings from the table, as the server does. */
+  async function startApp(beforeReady?: (app: FastifyInstance) => void, databaseSettings = false) {
     app = await buildApp({
       env: testEnv({ ...deviceTokenEnv, ADMIN_PIN }),
       storage,
-      hardware: {
-        settings: { wakeThresholdKg: 500, stableWindowMs: STABLE_MS, stableSpreadKg: 10 },
-      },
+      hardware: databaseSettings
+        ? {}
+        : {
+            settings: {
+              wakeThresholdKg: 500,
+              stableWindowMs: STABLE_MS,
+              stableSpreadKg: 10,
+              modelScaleKgPerG: 100,
+            },
+          },
     });
     beforeReady?.(app);
     await app.ready();
@@ -126,7 +134,14 @@ export function useTicketHarness() {
   /** Sends this reading again and again, as the ESP32 would. */
   function weigh(kg: number, options: { stable?: boolean; pos?: boolean } = {}) {
     Object.assign(current, { kg, stable: options.stable ?? true, pos: options.pos ?? true });
-    const send = () => app.hardware.listener.mainMessage({ t: "w", ...current });
+    // As the ESP32 sends it: grams on the model, at the default scale of 100 kg to 1 g.
+    const send = () =>
+      app.hardware.listener.mainMessage({
+        t: "w",
+        g: current.kg / 100,
+        stable: current.stable,
+        pos: current.pos ? "ok" : "forward",
+      });
     send();
     feeder ??= setInterval(send, FEED_EVERY_MS);
   }
@@ -302,11 +317,12 @@ export function useTicketHarness() {
       return connection.db;
     },
     userId: (who: Who) => accounts.get(who)!.id,
-    restart: async (beforeReady?: (app: FastifyInstance) => void) => {
+    restart: async (beforeReady?: (app: FastifyInstance) => void, databaseSettings = false) => {
       clearInterval(feeder);
       feeder = undefined;
       await app.close();
-      await startApp(beforeReady);
+      await startApp(beforeReady, databaseSettings);
+      await app.hardware.ready;
     },
     weigh,
     settle,

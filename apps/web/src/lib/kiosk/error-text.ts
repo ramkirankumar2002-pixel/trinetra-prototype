@@ -8,6 +8,7 @@ const BY_CODE: Record<string, MessageKey> = {
   SERVER_UNREACHABLE: "kiosk.error.network",
   // Why the weighbridge cannot be used now.
   SETTINGS_NOT_LOADED: "kiosk.weigh.starting",
+  WEIGHBRIDGE_FAULT: "kiosk.fault.title",
   DEVICE_OFFLINE: "kiosk.weigh.offline",
   STALE_READING: "kiosk.weigh.waiting",
   NO_TRUCK: "kiosk.weigh.noTruck",

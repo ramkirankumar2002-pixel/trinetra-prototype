@@ -20,6 +20,7 @@
     "db:seed": "pnpm --filter @trinetra/server run db:seed",
     "sim": "pnpm -C scripts run sim",
     "journey": "pnpm -C scripts run journey",
+    "fake-hardware": "pnpm -C scripts run fake-hardware",
     "office": "pnpm -C scripts run office",
     "test:e2e": "pnpm --filter @trinetra/e2e run e2e",
     "screenshots": "pnpm --filter @trinetra/e2e run screenshots",

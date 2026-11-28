@@ -28,7 +28,6 @@ beforeAll(async () => {
     hub,
     listener: {
       mainMessage: (message) => void events.push(["main", message]),
-      cameraMessage: (camera, message) => void events.push([camera, message]),
       disconnected: (device) => void events.push(["disconnected", device]),
     },
   });
@@ -54,15 +53,26 @@ async function connect(token?: string) {
   return device;
 }
 const messages = () => events.filter(([from]) => from !== "disconnected");
-const weight = { t: "w", kg: 32_560, stable: true, pos: true };
+const weight = { t: "w", g: 325.6, stable: true, pos: "ok" };
 
 describe("device authentication", () => {
-  it.each(["main", "front", "back"] as const)("accepts the %s token", async (name) => {
-    const device = await connect(TEST_DEVICE_TOKENS[name]);
-    await waitFor(() => hub.send(name, { t: "snap", id: "x" }));
+  it("accepts the main ESP32's token", async () => {
+    const device = await connect(TEST_DEVICE_TOKENS.main);
+    await waitFor(() => hub.send("main", { t: "tare" }));
     await waitFor(() => device.received.length > 0);
     expect(device.socket.readyState).toBe(device.socket.OPEN);
   });
+
+  it.each(["front", "back"] as const)(
+    "refuses the %s camera: it sends frames, not weights",
+    async (name) => {
+      const camera = await connect(TEST_DEVICE_TOKENS[name]);
+      camera.send(weight);
+
+      expect((await camera.closed).code).toBe(1008);
+      expect(events).toEqual([]);
+    },
+  );
 
   it.each([
     ["no token", undefined],
@@ -87,19 +97,20 @@ describe("device authentication", () => {
     const second = await connect(TEST_DEVICE_TOKENS.main);
     expect(await first.closed).toEqual({ code: 4000, reason: "replaced by a new connection" });
 
-    second.send({ ...weight, kg: 100 });
+    second.send({ ...weight, g: 1 });
     await waitFor(() => messages().length === 1);
-    expect(messages()).toEqual([["main", { ...weight, kg: 100 }]]);
+    expect(messages()).toEqual([["main", { ...weight, g: 1 }]]);
     // The old connection closing must not report the new one as gone.
     expect(events.filter(([from]) => from === "disconnected")).toHaveLength(1);
     expect(hub.send("main", { t: "tare" })).toBe(true);
     await waitFor(() => second.received.length === 1);
   });
 
-  it("keeps the three devices apart", async () => {
+  it("keeps the weighbridge connected when a camera's token is tried", async () => {
     const main = await connect(TEST_DEVICE_TOKENS.main);
-    await connect(TEST_DEVICE_TOKENS.front);
-    await connect(TEST_DEVICE_TOKENS.back);
+    await (
+      await connect(TEST_DEVICE_TOKENS.front)
+    ).closed;
     expect(main.socket.readyState).toBe(main.socket.OPEN);
   });
 
@@ -127,14 +138,29 @@ describe("device authentication", () => {
 describe("message validation", () => {
   it("passes on weights and heartbeats from the main ESP32", async () => {
     const device = await connect(TEST_DEVICE_TOKENS.main);
-    device.send({ ...weight, kg: -4.5 });
+    device.send({ ...weight, g: -4.5 });
     device.send({ t: "hb" });
     await waitFor(() => messages().length === 2);
 
     expect(messages()).toEqual([
-      ["main", { ...weight, kg: -4.5 }],
+      ["main", { ...weight, g: -4.5 }],
       ["main", { t: "hb" }],
     ]);
+  });
+
+  it.each([
+    { t: "w", g: 200, stable: false, pos: "forward" },
+    { t: "w", g: 200, stable: false, pos: "back" },
+    { t: "tamper", reason: "HX711 NO DATA" },
+    { t: "tamper", reason: "CELL WIRE OPEN" },
+    { t: "tamper", reason: "HX711 STUCK" },
+    { t: "tamper", reason: "CELL WIRE FAULT" },
+    { t: "tamper_clear" },
+  ])("passes on %j", async (message) => {
+    const device = await connect(TEST_DEVICE_TOKENS.main);
+    device.send(message);
+    await waitFor(() => messages().length === 1);
+    expect(messages()).toEqual([["main", message]]);
   });
 
   it.each([
@@ -142,10 +168,13 @@ describe("message validation", () => {
     ["an array", "[1,2]"],
     ["null", "null"],
     ["an unknown type", { t: "boom" }],
-    ["a missing field", { t: "w", kg: 5, stable: true }],
-    ["a weight as text", { ...weight, kg: "32560" }],
+    ["a missing field", { t: "w", g: 5, stable: true }],
+    ["a weight as text", { ...weight, g: "325.6" }],
+    ["a weight in kilograms, the old way", { t: "w", kg: 32_560, stable: true, pos: true }],
     ["a flag as text", { ...weight, stable: "yes" }],
-    ["an impossible weight", { ...weight, kg: 10_000_000 }],
+    ["an unknown position", { ...weight, pos: "sideways" }],
+    ["an impossible weight", { ...weight, g: 10_000_000 }],
+    ["an unknown tamper reason", { t: "tamper", reason: "COFFEE SPILT" }],
     ["a camera greeting", { t: "hello", cam: "front" }],
   ])("ignores %s and keeps the connection", async (_label, message) => {
     const device = await connect(TEST_DEVICE_TOKENS.main);
@@ -172,25 +201,6 @@ describe("message validation", () => {
     await waitFor(() => messages().length === 1);
 
     expect(logLines.filter((line) => line.includes("ignored a bad message"))).toHaveLength(1);
-  });
-
-  it("does not let a camera send a weight", async () => {
-    const camera = await connect(TEST_DEVICE_TOKENS.front);
-    camera.send(weight);
-    camera.send({ t: "hello", cam: "front" });
-    await waitFor(() => messages().length === 1);
-    expect(messages()).toEqual([["front", { t: "hello", cam: "front" }]]);
-  });
-
-  it("closes a camera that says it is the other one", async () => {
-    const camera = await connect(TEST_DEVICE_TOKENS.front);
-    camera.send({ t: "hello", cam: "back" });
-
-    expect(await camera.closed).toEqual({
-      code: 1008,
-      reason: "this token belongs to the front camera",
-    });
-    expect(messages()).toEqual([]);
   });
 
   it("closes a connection that sends a very large message", async () => {

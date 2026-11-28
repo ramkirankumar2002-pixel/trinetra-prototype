@@ -11,35 +11,41 @@ describe.skipIf(!testDatabaseUrl)(
     const h = useTicketHarness();
     const { post, started, weighed, secondWeight } = flows(h);
 
-    /** What the display was last told, and the light. */
+    /** The lights (entry then exit) and the middle line of the display, as last told. */
     function watch() {
-      const light = vi.spyOn(h.app.hardware.commands, "setLight");
-      const text = vi.spyOn(h.app.hardware.commands, "showText");
-      return () => [light.mock.lastCall?.[0], text.mock.lastCall?.[0]];
+      const lights = vi.spyOn(h.app.hardware.commands, "setLights");
+      const lines = vi.spyOn(h.app.hardware.commands, "showLines");
+      return () => {
+        const light = lights.mock.lastCall?.[0];
+        return [light && `${light.entry}${light.exit}`, lines.mock.lastCall?.[0][1]];
+      };
     }
 
     it("is red while the ticket is filled in, then says where to unload", async () => {
       const shown = watch();
+      const beeps = vi.spyOn(h.app.hardware.commands, "buzz");
       const id = await started({ material: "Aggregate 10 mm", invoiceKg: 400 });
-      expect(shown()).toEqual(["red", "Please wait"]);
+      expect(shown()).toEqual(["RR", "WAIT"]);
       await h.settle(LOADED);
       await post(id, "first-weight");
-      expect(shown()).toEqual(["orange", "Go to CH-005+250"]);
+      expect(shown()).toEqual(["RG", "CH-005+250"]);
+      // Two short beeps: the weight has been taken.
+      expect(beeps).toHaveBeenLastCalledWith(120, 2);
       await secondWeight(id, LOADED - 400);
-      expect(shown()).toEqual(["orange", "Thank you"]);
+      expect(shown()).toEqual(["RG", "THANK YOU"]);
     });
 
-    it("asks a Type 2 truck to wait", async () => {
+    it("asks a Type 2 truck to move aside", async () => {
       const shown = watch();
       await weighed({ material: "Sand", invoiceKg: 14_500 });
-      expect(shown()).toEqual(["orange", "Please wait"]);
+      expect(shown()).toEqual(["RG", "WAIT"]);
     });
 
     it("sends a truck on hold to the store office", async () => {
       const shown = watch();
       const id = await weighed({ invoiceKg: 14_500 });
       await secondWeight(id);
-      expect(shown()).toEqual(["orange", "Go to store office"]);
+      expect(shown()).toEqual(["RG", "OFFICE"]);
     });
 
     it("sends a mismatch and a blocked plate to the store office", async () => {
@@ -49,12 +55,13 @@ describe.skipIf(!testDatabaseUrl)(
       for (let n = 0; n < 5; n++) {
         await h.call("kiosk", "PATCH", `/api/tickets/${id}/details`, { material: "Bricks" });
       }
-      expect(shown()).toEqual(["orange", "Go to store office"]);
+      // The truck stays on the bridge: both ends stay red.
+      expect(shown()).toEqual(["RR", "OFFICE"]);
 
       await h.db.execute(`update tickets set status = 'BLOCKED', closed_at = now()`);
       await started({ plate: OTHER_PLATE });
       // The details were saved after the ticket started, which changes no light.
-      expect(shown()).toEqual(["orange", "Go to store office"]);
+      expect(shown()).toEqual(["RR", "OFFICE"]);
     });
   },
 );

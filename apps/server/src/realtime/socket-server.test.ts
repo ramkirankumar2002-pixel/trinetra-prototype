@@ -8,7 +8,12 @@ import { connectDevice, deviceTokenEnv, TEST_DEVICE_TOKENS, waitFor } from "../t
 import { testEnv } from "../test/env";
 import { connectLive, socketToken, type LiveClient } from "../test/live-client";
 
-const SETTINGS = { wakeThresholdKg: 500, stableWindowMs: 3000, stableSpreadKg: 10 };
+const SETTINGS = {
+  wakeThresholdKg: 500,
+  stableWindowMs: 3000,
+  stableSpreadKg: 10,
+  modelScaleKgPerG: 100,
+};
 
 let app: FastifyInstance;
 let url: string;
@@ -260,8 +265,8 @@ describe("sharing the port with the devices", () => {
 
     expect(device.socket.readyState).toBe(device.socket.OPEN);
     expect(browser.socket.connected).toBe(true);
-    app.hardware.commands.setLight("green");
-    app.hardware.hub.send("main", { t: "light", c: "red" });
+    app.hardware.commands.setLights({ entry: "G", exit: "R" });
+    app.hardware.hub.send("main", { t: "light", entry: "R", exit: "R", blink: false });
     await waitFor(() => device.received.length > 0);
     device.socket.close();
     await device.closed;

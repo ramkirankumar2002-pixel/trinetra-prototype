@@ -5,10 +5,9 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { expect, type APIRequestContext, type Browser, type Page } from "@playwright/test";
-import type { StoreRequestsResponse, SupervisorTicketView } from "@trinetra/shared";
+import type { StoreRequestsResponse, SupervisorTicketView, TamperReason } from "@trinetra/shared";
 import type { SampleInvoiceId } from "@trinetra/shared/seed";
-import { SimDevice } from "../../scripts/sim/device";
-import { WeightModel } from "../../scripts/sim/weight-model";
+import { SimCamera, SimMainBoard } from "../../scripts/sim/board";
 import { expectDriverRules, KIOSK_SIZES } from "./driver-rules";
 import { WEB_URL } from "./playwright.config";
 import { signIn } from "./staff-session";
@@ -31,50 +30,33 @@ export const SHOT_FOLDER = root("docs/screenshots/phase10/");
 export const sampleInvoice = (name: string) => root(`scripts/sample-invoices/${name}`);
 
 export class Weighbridge {
-  private readonly model = new WeightModel();
-  private readonly devices: SimDevice[] = [];
-  private sender: NodeJS.Timeout | undefined;
+  private main: SimMainBoard | undefined;
+  private cameras: SimCamera[] = [];
   private zerosSent = 0;
 
+  /** The seeded model scale (1 g = 100 kg) is assumed, as in a fresh database. */
   start(): void {
-    const url = `${BACKEND.replace("http", "ws")}/device`;
-    const quiet = () => {};
-    const main = new SimDevice({
-      name: "main ESP32",
-      url,
+    this.main = new SimMainBoard({
+      url: `${BACKEND.replace("http", "ws")}/device`,
       token: setting("DEVICE_TOKEN"),
-      log: quiet,
-      onCommand: quiet,
+      onWeight: (reading) => (this.zerosSent = reading.kg === 0 ? this.zerosSent + 1 : 0),
     });
-    const cameras = (["front", "back"] as const).map((camera) => {
-      const token = setting(camera === "front" ? "CAM_FRONT_TOKEN" : "CAM_BACK_TOKEN");
-      const device: SimDevice = new SimDevice({
-        name: `${camera} camera`,
-        url,
-        token,
-        log: quiet,
-        onOpen: () => device.send({ t: "hello", cam: camera }),
-        onCommand: (command) => {
-          if (command.t !== "snap") return;
-          void readFile(root(`scripts/sample-plates/match-${camera}.jpg`)).then((body) =>
-            fetch(`${BACKEND}/api/device/photo/${String(command.id)}`, {
-              method: "POST",
-              headers: { "content-type": "image/jpeg", "x-device-token": token },
-              body: new Uint8Array(body),
-            }),
-          );
-        },
-      });
-      return device;
-    });
-    this.devices.push(main, ...cameras);
-    this.devices.forEach((device) => device.connect());
-    this.model.leave(performance.now() - 60_000);
-    this.sender = setInterval(() => {
-      const reading = this.model.read(performance.now());
-      main.send({ t: "w", ...reading });
-      this.zerosSent = reading.kg === 0 ? this.zerosSent + 1 : 0;
-    }, 200);
+    this.cameras = (["front", "back"] as const).map(
+      (camera) =>
+        new SimCamera({
+          httpBase: BACKEND,
+          camera,
+          token: setting(camera === "front" ? "CAM_FRONT_TOKEN" : "CAM_BACK_TOKEN"),
+          picture: () => readFile(root(`scripts/sample-plates/match-${camera}.jpg`)),
+        }),
+    );
+    this.main.model.leave(performance.now() - 60_000);
+    this.main.start();
+    this.cameras.forEach((camera) => camera.start());
+  }
+
+  private get model() {
+    return this.main!.model;
   }
 
   /** The backend has been told twice in a row that nothing is on the bridge. */
@@ -83,8 +65,9 @@ export class Weighbridge {
   }
 
   stop(): void {
-    clearInterval(this.sender);
-    this.devices.splice(0).forEach((device) => device.close());
+    this.main?.stop();
+    this.main = undefined;
+    this.cameras.splice(0).forEach((camera) => camera.stop());
   }
 
   driveOn(kg: number): void {
@@ -92,6 +75,7 @@ export class Weighbridge {
   }
 
   driveOff(): void {
+    this.main!.setTamper(null);
     this.model.leave(performance.now());
     this.model.positionOk = true;
     if (this.model.unstable) this.model.toggleUnstable(performance.now());
@@ -103,6 +87,15 @@ export class Weighbridge {
 
   wobble(on: boolean): void {
     if (this.model.unstable !== on) this.model.toggleUnstable(performance.now());
+  }
+
+  /** The load cell wiring is tampered with, or healthy again. */
+  tamper(reason: TamperReason | null): void {
+    this.main!.setTamper(reason);
+  }
+
+  camerasOn(on: boolean): void {
+    this.cameras.forEach((camera) => (on ? camera.start() : camera.stop()));
   }
 }
 

@@ -49,6 +49,10 @@ export function forwardHardware(
     if (device === "main" && !online) weight.cancel();
     realtime.publish("hw:status", ["kiosk", "live"], status());
   });
+  bus.on("hw:fault", ({ fault }) => {
+    if (fault) weight.cancel();
+    realtime.publish("hw:fault", ["kiosk", "store"], { fault });
+  });
   bus.on("truck:arrived", ({ kg }) =>
     realtime.publish("truck:arrived", ["kiosk"], { kg, at: timestamp() }),
   );
@@ -67,6 +71,8 @@ export function forwardHardware(
   // for something to change.
   realtime.onJoin((room, emit) => {
     if (room === "kiosk" || room === "live") emit("hw:status", [room], status());
+    // Also "no fault": a screen that was away must not keep showing an old one.
+    if (room === "kiosk" || room === "store") emit("hw:fault", [room], { fault: state.fault });
   });
 
   return { stop: () => weight.cancel() };
